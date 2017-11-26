@@ -1,0 +1,27 @@
+# Generated files/folders
+depend
+/compile_commands.json
+
+# CMake files
+/CMakeCache.txt
+/Testing
+CMakeFiles
+Makefile
+*.cmake
+*.so
+*_tests
+/extense/extense
+
+# Temporary/configuration files/directories
+*~
+*.bak
+*.sw[abcdefghijklmnop]
+*.saved_session
+/.vscode/
+tags
+/.ycm_extra_conf.py
+/vgcore.*
+
+# Other files
+todo
+session

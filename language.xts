@@ -1,0 +1,277 @@
+# Single argument function calls
+# Strings can use either ' or "
+println 'Hello World'
+print "HelloWorld\n"
+
+# Logical operators
+true or false # true
+true and false # false
+true and true # true
+not false or false # true or false -> true
+
+# Relational operators
+1 == 1 # true
+1 != 1 # false
+1 >= 0 # true
+1 <= 5 # true
+1 > 1 # false
+1 < 3 # true
+
+# Arithmetic operators
+x = 0
+x -= 1 # -1
+x *= 3 # -3
+x /= 2 # -1.5
+x **= 2 # 2.25
+x %= 1.5 # 0.75
+println x
+
+5 + 2 # 7
+5 - 2 # 3
+5 * 2 # 10
+5 / 2 # 2.5
+5 // 2 # 2
+5 ** 2 # 25
+
+8 % 3 # 2
+8.5 % 2.5 # Since 8.5 = 3 * 2.5 + 1, 8.5 % 2.5 = 1
+
+# Binary operators
+3 & 2 # 11 & 10 = 10 (2)
+3 | 8 # 0011 | 1000 = 1011 (11)
+5 ^ 3 # 101 ^ 011 = 110 (6)
+~0 # 111111... (-1)
+1 << 2 # 100 (4)
+4 >> 1 # 10 (2)
+
+z = 1
+z <<= 2 # 100 (4)
+z >>= 1 # 10 (2)
+z &= 3 # 010 & 011 = 010 (2)
+z |= 8 # 0010 | 1000 = 1010 (10)
+z ^= 5 # 1010 ^ 0101 = 1111 (15)
+
+# Multiple statements on one line
+x = 1; x += 3; println x # 4
+
+# Escape characters
+println "' \"" # ' "
+println '" \'' # " '
+
+#{
+  References
+
+  Basic datatypes like integers, and strings have their values copied by default
+  when '=' is used. Sets and arrays are referenced by default, and can be copied
+  using the 'copy' function.
+}
+x = 8
+a = !x
+a = 5
+println a # 5
+println x # 8
+
+# Arrays
+array = (1,2,3,4,5)
+array:1 # 2
+array:(1,3) # (2,3)
+(1..5) # (1,2,3,4,5)
+array2 = (true,17,'Hi') # Can store different types
+
+#{
+  Scopes:
+  A scope is enclosed in square brackets
+  ; or \n separate each statement
+}
+[] # Empty scope
+
+# 'a.b' is equivalent to 'b a'
+# 'a.b c' is equivalent to 'b (a, c)'
+# 'a.b (c,d)' is equivalent to 'b (a,c,d)', and so on
+
+# Function
+average = [
+  #{
+    The forEach function (dot notation)
+    $:0 - The element currently being accessed
+    $:1 - The index for the element currently being accessed
+  }
+  sum = 0
+  $.forEach [sum += $:0]
+  # The result of evaluating the last statement in a function is the return
+  # value (unless of course the function returns before then)
+  sum / size $
+]
+
+#{
+  Since parentheses can be used to create a list and to change expression
+  evaluation, a single list cannot be created like this: (3).
+
+  Instead, it is necessary to add a comma: (3,).
+}
+
+# Functions can only take one argument, and so to accept more a list is required
+println (average (3,8,5)) # (3 + 8 + 5) / 3 = 16 / 3 = 5.333...
+
+# To call a function with no arguments, we can just type the name
+sayHi = [println 'Hi']
+sayHi
+# To store a function in a variable, precede the function name with a !
+x = !sayHi
+x # Equivalent to calling sayHi
+
+pigLatin = [
+  input = $:0
+  input:0.anyOf (`a,`e,`i,`o,`u) ? [
+    pop (outer, input + 'ay')
+  ] ? [
+    pop (outer, input:(1,) + input:0 + 'ay')
+  ]
+  @outer
+]
+
+println (pigLatin 'bucket') # ucketbay
+println (pigLatin 'air') # airay
+
+# The $ variable differs for each scope.
+incrementArgs = [$.forEach [$:0 += 1]]
+# To access an outer $ from an inner scope it is necessary to give it or its
+# data a name
+incrementArgsByFirstArg = [
+  amount = $:0
+  $:(1,).forEach [$:0 += amount]
+  $:(1,)
+]
+
+println (incrementArgsByFirstArg (2,5,7,17)) # (7,9,19)
+
+#{
+  cond ? func # Returns false if func is executed, else false, so can be chained
+  cond ? func1 ? func2
+
+  Can create an 'else if' like this:
+  cond1 ? cond1Func
+    and cond2 ? cond2Func
+    ? elseFunc
+
+  Same behaviour works with ??
+}
+
+# min returns the minimum value of its two arguments
+# ?? acts as ternary operator - returns second argument instead of calling it
+min = [$:0 < $:1 ?? $:0 ?? $1]
+
+println (min (3.6,2)) # 2
+
+# Sets
+data = {
+  a = 7,
+  b = 'Hi'
+}
+
+# Or, for using any key -> value we can do the following:
+data2 = {
+  7 -> 'Hello',
+  'Woop' -> true,
+  # With this syntax, the identifier 'data' is actually substituted for its
+  # value, and so the following is equivalent to:
+  # {a = 7, b = 'Hi'} -> (7,2)
+  data -> (7,2)
+}
+
+println data:a # 7
+println data:b # Hi
+
+println (data.has 'a') # true
+
+#{
+  Doing the following adds the 'c' member to 'data'
+}
+data += {c = true}
+
+# OOP
+
+# Create a constructor - function returning a set
+Person = [{
+  name = $:0,
+  age = $:1,
+  height = $:2
+}]
+
+speak = [println ['Hi, I\'m ',$:name]]
+
+jack = Person ('Jack',15,172)
+println (speak jack)
+
+# Inheritance
+Mutant = [Person $ + {power = $:3}]
+hulk = Mutant ('Hulk',25,378,'Strength')
+println (speak hulk)
+
+# Can also add functions to a set, which can act as member functions or
+# essentially a namespace equivalent
+Fruit = [{
+  color = $,
+  sayColor = [println ('I am ' + $:color)]
+  betterColor = [println ($:0:color + ' is a better color than ' + $:1)]
+  tasty = [true] # Function which does not take self or any argument
+}]
+
+apple = Fruit 'red'
+# We can call apple's sayColor function like this:
+apple:sayColor apple
+# But we needed to repeat the name 'apple'. For convenience, using '::' does the
+# same thing - calls the function passing self.
+apple::sayColor
+
+# For functions which take more then one argument, using '::' just calls the
+# function with self and any other arguments in a list
+apple::betterColor 'orange'
+# Is equivalent to
+apple:betterColor (apple,'orange')
+
+# To reference the function, just do this, but when calling x we need to provide
+# apple
+x = !apple:sayColor
+x apple
+# To avoid having to pass apple, we can just create a short function like this
+x = [apple::sayColor]
+
+# Example of a 'namespace'
+namespace = {
+  constant = 7,
+  foo = [print 1]
+}
+
+println (namespace:constant) # 7
+namespace:foo # 1
+
+# Reference semantics with an array
+a = (1,2,3)
+b = a # 'b' holds a reference to 'a'
+b:1 = 5 # Since 'b' references 'a', both 'a' and 'b' are now (1,5,3)
+# Both print '(1,5,3)'
+println a
+println b
+
+# Same but with copying
+a = (1,2,3)
+b = copy(a) # 'b' is a copy of 'a'
+b:1 = 5 # 'b' is now (1,5,3), 'a' is unchanged
+println a # Prints '(1,2,3)'
+println b # Prints '(1,5,3)'
+
+# Using makeScope to interpret a string into a scope
+scope = makeScope "println 'This was from a string'"
+# Displays the AST for the scope. This can also be done with other functions
+println !scope
+println [3 * 2] # Displays AST for code '3 * 2'
+scope # Runs the code
+
+# Can create a list of tokens also
+tokens = tokenize "3 * (4 - 2) + 1"
+print tokens
+# Can also create a scope from a list of tokens
+mathScope = makeScope tokens
+print !mathScope # Displays AST
+print mathScope # Prints 7
