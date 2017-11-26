@@ -1,0 +1,33 @@
+set (source_dir src)
+set (detail_source_dir ${source_dir}/detail)
+
+set (sources
+    ${source_dir}/source.cpp
+    ${source_dir}/token.cpp
+    ${source_dir}/lexer.cpp
+    ${detail_source_dir}/sourcecache.cpp)
+
+add_library (api SHARED ${sources})
+target_include_directories (api PUBLIC
+    ${HEADER_ONLY_DEPENDS} ${PROJECT_BINARY_DIR}/include include ${PROJECT_BINARY_DIR}/lib/extense/include)
+
+if (ENABLE_TESTS)
+  set (test_dir test)
+  set (detail_test_dir ${test_dir}/detail)
+
+  set (test_sources
+    ${test_dir}/source.cpp
+    ${test_dir}/token.cpp
+    ${test_dir}/lexer.cpp
+    ${detail_test_dir}/sourcecache.cpp)
+
+  add_executable (api_tests ${test_dir}/runner.cpp ${test_sources})
+  target_include_directories (api_tests PUBLIC
+    ${HEADER_ONLY_DEPENDS} ${PROJECT_BINARY_DIR}/include include
+    ${PROJECT_BINARY_DIR}/lib/extense/include)
+  target_link_libraries (api_tests PUBLIC api catch)
+
+  add_test(NAME api_tests COMMAND api_tests)
+endif ()
+
+install (TARGETS api DESTINATION ${PACKAGE_DIR}/api)

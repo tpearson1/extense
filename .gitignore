@@ -21,6 +21,7 @@ Makefile
 tags
 /.ycm_extra_conf.py
 /vgcore.*
+/include/config.h
 
 # Other files
 todo
