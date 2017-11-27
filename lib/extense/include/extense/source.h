@@ -29,7 +29,10 @@ SOFTWARE.
 
 #include <iosfwd>
 
-#include <extense/detail/sourcecache.h>
+#include <cassert>
+#include <string>
+#include <string_view>
+#include <vector>
 
 namespace extense {
 class Source {
@@ -39,8 +42,8 @@ public:
      * Returns whether the character represents a character before or after the
      * source respectively.
      */
-    bool isBeforeSource() const { return value == beforeSource; }
-    bool isAfterSource() const { return value == afterSource; }
+    bool isBeforeSource() const { return value == beforeSrc; }
+    bool isAfterSource() const { return value == afterSrc; }
 
     /*
      * Is the character actually a valid character (not before or after source).
@@ -59,14 +62,8 @@ public:
      * Constructs characters.
      */
     explicit Char(char val) : value(val) {}
-    static Char BeforeSource() { return beforeSource; }
-    static Char AfterSource() { return afterSource; }
-
-    /*
-     * Gets a character from a stream.
-     * May be an 'after source' character if the istream reads eof.
-     */
-    static Char fromStream(std::istream &is);
+    static Char beforeSource() { return beforeSrc; }
+    static Char afterSource() { return afterSrc; }
 
     friend bool operator==(const Char &lhs, char rhs) {
       return lhs.value == static_cast<int>(rhs);
@@ -82,23 +79,46 @@ public:
     int value;
 
     // Characters outside of the range of the source
-    static constexpr int beforeSource = 256;
-    static constexpr int afterSource = 257;
+    static constexpr int beforeSrc = 256;
+    static constexpr int afterSrc = 257;
   };
 
 private:
-  std::istream &stream;
+  std::string data;
 
-  detail::SourceCache cache;
-  Char current;
+  // Stores the indices in the source which represent the first characters on a
+  // line
+  std::vector<std::string::size_type> lineStartIndices;
 
-  friend class Char;
+  int lineIdx = 0;
+
+  // Index of the current character in the source file.
+  // It starts off at -1 so when the first character is read, the index is 0.
+  int idx = 0;
+
+  bool beforeSource() const { return idx == -1; }
+  bool afterSource() const { return size() == idx; }
 
 public:
   /*
    * Constructs a Source with the given input stream.
    */
-  explicit Source(std::istream &is);
+  explicit Source(std::string source);
+
+  /*
+   * Gets number of characters in the source.
+   */
+  int size() const { return static_cast<int>(data.size()); }
+
+  /*
+   * The number of lines in the source that have been iterated over.
+   */
+  int lineCount() const { return static_cast<int>(lineStartIndices.size()); }
+
+  /*
+   * Is the current character the last character?
+   */
+  bool atLastChar() const { return idx + 1 == size(); }
 
   /*
    * Advances the current character to the next in the source, returning the new
@@ -115,7 +135,11 @@ public:
   /*
    * Returns the current character.
    */
-  Char currentChar() const { return current; }
+  Char currentChar() const {
+    if (beforeSource()) return Char::beforeSource();
+    if (afterSource()) return Char::afterSource();
+    return Char{data[idx]};
+  }
 
   /*
    * Return the character after current, without changing the current character.
@@ -131,17 +155,17 @@ public:
   /*
    * The index for the current character in the source.
    */
-  int index() const { return cache.sourceIndex(); }
+  int index() const { return idx; }
 
   /*
    * The current line number (starts at one).
    */
-  int lineNumber() const { return cache.lineIndex() + 1; }
+  int lineNumber() const { return lineIdx + 1; }
 
   /*
    * The current index in the current line.
    */
-  int linePosition() const { return cache.linePosition(); }
+  int linePosition() const { return idx - lineStartIndices[lineIdx]; }
 
   class Location {
 #ifndef NDEBUG
@@ -179,9 +203,9 @@ public:
    * Returns a Location instance for the current character.
    */
 #ifdef NDEBUG
-  Location location() { return {index(), lineNumber(), linePosition()}; }
+  Location location() { return {idx, lineNumber(), linePosition()}; }
 #else
-  Location location() { return {this, index(), lineNumber(), linePosition()}; }
+  Location location() { return {this, idx, lineNumber(), linePosition()}; }
 #endif
 
   /*
@@ -192,16 +216,41 @@ public:
    * The slice can only be obtained if the source has been traversed to the end
    * of the slice.
    *
-   * For example, if the cache contains "hello", slicing with begin=1, end=3,
+   * For example, if the source is "hello", slicing with begin=1, end=3,
    * would give "el".
    */
 
-  std::string_view getSlice(int beginIndex, int endIndex) {
-    return cache.getSlice(beginIndex, endIndex);
+  std::string_view getSlice(int begin, int end) {
+    assert(end > begin);
+    assert(size() >= end); // Haven't provided enough characters
+    return {&data[begin], static_cast<std::size_t>(end - begin)};
   }
 
   std::string_view getSlice(const Location &begin, const Location &end) {
-    return cache.getSlice(begin.index(), end.index());
+    return getSlice(begin.index(), end.index());
+  }
+
+  /*
+   * Create a string_view referencing a character in the source.
+   *
+   * The source must have been traversed up to and including the location of the
+   * character in the source.
+   */
+  std::string_view getCharacterSlice(int loc) {
+    assert(size() > loc); // Character isn't in the source
+    return {&data[loc], 1};
+  }
+
+  std::string_view getCharacterSlice(const Location &loc) {
+    return getCharacterSlice(loc.index());
+  }
+
+  /*
+   * Create a string_view referencing the current character.
+   */
+  std::string_view getCharacterSlice() {
+    assert(idx >= 0);
+    return {&data[idx], 1};
   }
 };
 } // namespace extense

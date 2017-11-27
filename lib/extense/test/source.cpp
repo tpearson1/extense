@@ -27,17 +27,17 @@ SOFTWARE.
 #include <extense/source.h>
 
 #include <catch.hpp>
-#include <cstring>
-#include <sstream>
 
 TEST_CASE("Basic use of Source class", "[Source]") {
   std::string data = "This is a string";
-  std::istringstream s{data};
-  extense::Source source{s};
+  extense::Source source{data};
 
   INFO("Before source");
 
-  auto current = source.currentChar();
+  auto current = source.backChar();
+  REQUIRE(current.isBeforeSource());
+
+  current = source.currentChar();
   REQUIRE(current.isBeforeSource());
 
   current = source.peekPreviousChar();
@@ -61,6 +61,7 @@ TEST_CASE("Basic use of Source class", "[Source]") {
 
   INFO("Slicing");
   REQUIRE(source.getSlice(3, 7) == "s is");
+  REQUIRE(source.getCharacterSlice(3) == "s");
 
   current = source.nextChar();
   REQUIRE(current.isAfterSource());
@@ -77,15 +78,14 @@ TEST_CASE("Basic use of Source class", "[Source]") {
 
   REQUIRE(current == 'g');
   REQUIRE(data.size() - 1 == source.linePosition());
+  REQUIRE(source.getCharacterSlice() == "g");
 
   REQUIRE(source.peekNextChar().isAfterSource());
 }
 
-TEST_CASE("Testing newlines with Source", "[Source]") {
-  std::istringstream stream{"1\n12\n1"};
-  extense::Source source{stream};
+TEST_CASE("Newlines with Source", "[Source]") {
+  extense::Source source{"1\n12\n1"};
 
-  source.nextChar();
   REQUIRE(source.currentChar() == '1');
   REQUIRE(source.lineNumber() == 1);
   REQUIRE(source.linePosition() == 0);
@@ -136,4 +136,9 @@ TEST_CASE("Testing newlines with Source", "[Source]") {
   REQUIRE(source.currentChar() == '\n');
   REQUIRE(source.lineNumber() == 2);
   REQUIRE(source.linePosition() == 2);
+}
+
+TEST_CASE("Empty Source", "[Source]") {
+  INFO("Need to implement");
+  REQUIRE(false);
 }

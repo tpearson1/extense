@@ -3,9 +3,7 @@ set (detail_source_dir ${source_dir}/detail)
 
 set (sources
     ${source_dir}/source.cpp
-    ${source_dir}/token.cpp
-    ${source_dir}/lexer.cpp
-    ${detail_source_dir}/sourcecache.cpp)
+    ${source_dir}/token.cpp)
 
 add_library (api SHARED ${sources})
 target_include_directories (api PUBLIC
@@ -17,9 +15,7 @@ if (ENABLE_TESTS)
 
   set (test_sources
     ${test_dir}/source.cpp
-    ${test_dir}/token.cpp
-    ${test_dir}/lexer.cpp
-    ${detail_test_dir}/sourcecache.cpp)
+    ${test_dir}/token.cpp)
 
   add_executable (api_tests ${test_dir}/runner.cpp ${test_sources})
   target_include_directories (api_tests PUBLIC

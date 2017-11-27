@@ -26,77 +26,83 @@ SOFTWARE.
 
 #include <extense/source.h>
 
-#include <iostream>
-
-extense::Source::Char extense::Source::Char::fromStream(std::istream &is) {
-  auto c = is.get();
-  if (is.eof())
-    return afterSource;
-  return c;
-}
+#include <ostream>
 
 std::ostream &operator<<(std::ostream &os, extense::Source::Char c) {
-  if (c.isBeforeSource()) os << "<before source>";
-  else if (c.isAfterSource()) os << "<after source>";
-  else os << c.get();
+  if (c.isBeforeSource())
+    os << "<before source>";
+  else if (c.isAfterSource())
+    os << "<after source>";
+  else
+    os << c.get();
 
   return os;
 }
 
-extense::Source::Source(std::istream &is)
-    : stream(is), current(Char::BeforeSource()) {}
+extense::Source::Source(std::string source)
+    : data(std::move(source)) {
+  lineStartIndices.push_back(0);
+}
 
 extense::Source::Char extense::Source::nextChar() {
-  if (cache.hasNextChar()) {
-    current = Char{cache.nextChar()};
-    return current;
+  if (atLastChar()) {
+    idx++;
+    return Char::afterSource();
   }
 
-  // No more characters
-  if (current.isAfterSource()) return current;
-
-  current = Char::fromStream(stream);
-  if (current.isAfterSource())
+  auto current = currentChar();
+  if (current.isBeforeSource())
+    return Char{data[idx = 0]};
+  else if (current.isAfterSource())
     return current;
 
-  cache.provideChar(current.get());
-  return Char{cache.nextChar()};
+  auto c = current.get();
+  idx++;
+  if (c == '\n') {
+    lineIdx++;
+    // If we have never passed this newline character before, we need to add the
+    // next character's index into the array of line starts
+    if (lineCount() == lineIdx) lineStartIndices.push_back(idx);
+  }
+
+  return Char{data[idx]};
 }
 
 extense::Source::Char extense::Source::backChar() {
   // No previous characters
-  if (cache.sourceIndex() <= 0) return Char::BeforeSource();
+  if (beforeSource()) return Char::beforeSource();
 
-  if (current.isAfterSource()) {
-    // The cache does not have a concept of "out of source" characters, and so
-    // its current char is the last character in the source
-    current = Char{cache.currentChar()};
-    return current;
+  if (afterSource()) {
+    idx--;
+    return currentChar();
   }
 
-  return (current = Char{cache.backChar()});
+  idx--;
+  auto curr = currentChar();
+  if (curr == '\n') { lineIdx--; }
+
+  return curr;
 }
 
 extense::Source::Char extense::Source::peekNextChar() {
-  if (cache.hasNextChar()) return Char{cache.peekNextChar()};
+  if (atLastChar()) return Char::afterSource();
 
-  // No more characters
-  if (current.isAfterSource()) return current;
+  auto current = currentChar();
+  if (current.isBeforeSource())
+    return Char{data[0]};
+  else if (current.isAfterSource())
+    return current;
 
-  auto c = Char::fromStream(stream);
-  if (c.isAfterSource()) return Char::AfterSource();
-
-  cache.provideChar(c.get());
-  return c;
+  return Char{data[idx + 1]};
 }
 
 extense::Source::Char extense::Source::peekPreviousChar() {
-  if (cache.sourceIndex() > 0)
-    return Char{cache.peekPreviousChar()};
-  return Char::BeforeSource();
+  if (beforeSource() || size() == 0) return Char::beforeSource();
+  return Char{data[idx - 1]};
 }
 
-std::ostream &operator<<(std::ostream &os, const extense::Source::Location &loc) {
+std::ostream &operator<<(std::ostream &os,
+                         const extense::Source::Location &loc) {
   os << loc.lineNumber() << ':' << loc.linePosition();
   return os;
 }
