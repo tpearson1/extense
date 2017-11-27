@@ -172,9 +172,9 @@ public:
     const Source *owner; // Used for error checking when in debug
 #endif
 
-    int idx;
-    int lineNum;
-    int linePos;
+    int idx = -1;
+    int lineNum = 0;
+    int linePos = -1;
 
 #ifdef NDEBUG
     Location(int index, int lineNumber, int linePosition)
@@ -185,6 +185,8 @@ public:
 #endif
 
   public:
+    Location() = default;
+
     int index() const { return idx; }
     int lineNumber() const { return lineNum; }
     int linePosition() const { return linePos; }

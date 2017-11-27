@@ -36,9 +36,9 @@ std::vector<extense::Token> extense::tokenize(extense::Source &source) {
   while (true) {
     skipWhitespace(source);
     auto token = fetchNextToken(source);
-    /* if (token.type() == Token::Type::EndStatement && */
-    /*     tokens.back().type() == Token::Type::EndStatement) */
-    /*   continue; // Collapse multiple EndStatement tokens into one */
+    if (token.type() == Token::Type::EndStatement &&
+        tokens.back().type() == Token::Type::EndStatement)
+      continue; // Collapse multiple EndStatement tokens into one
     if (token.type() == Token::Type::EndSource) break;
 
     tokens.push_back(token);
@@ -54,20 +54,82 @@ std::vector<extense::Token> extense::tokenize(extense::Source &source) {
 static extense::Token fetchNextToken(extense::Source &source) {
   using Token = extense::Token;
 
-  if (source.currentChar().isAfterSource())
+  Token t;
+
+  skipWhitespace(source);
+
+  auto current = source.currentChar();
+  if (current.isAfterSource())
     return {source.location(), "", Token::Type::EndSource};
 
-  auto t = Token{source.location(), source.getCharacterSlice(),
-                 Token::Type::Identifier};
+  auto curr = current.get();
+  if (curr == '\n' || curr == ';')
+    t = {source.location(), source.getCharacterSlice(),
+         Token::Type::EndStatement};
+  else
+    t = {source.location(), source.getCharacterSlice(),
+         Token::Type::Identifier};
   source.nextChar();
   return t;
 }
+
+static void skipWhitespaceOneAttempt(extense::Source &source);
 
 /*
  * Skips all whitespace in the source until the beginning of the next token is
  * reached.
  */
-static void skipWhitespace(extense::Source &source) { (void)source; }
+static void skipWhitespace(extense::Source &source) {
+  // Continue attempting to skip whitespace until no progress was made
+  auto index = source.index();
+  do {
+    skipWhitespaceOneAttempt(source);
+    if (index == source.index()) break;
+    index = source.index();
+  } while (true);
+}
+
+template <typename Pred>
+static void skipUntilNoThrow(extense::Source &source, Pred p) {
+  while (!p(source.currentChar()) && source.currentChar().isValidChar())
+    source.nextChar();
+}
+
+template <typename Pred>
+static void skipUntil(extense::Source &source, Pred p) {
+  skipUntilNoThrow(source, p);
+  if (!source.currentChar().isValidChar())
+    throw extense::LexingError{source.location(), "Unexpected end of source"};
+}
+
+template <typename Pred>
+static void skipToAfterNoThrow(extense::Source &source, Pred p) {
+  skipUntilNoThrow(source, p);
+  source.nextChar();
+}
+
+template <typename Pred>
+static void skipToAfter(extense::Source &source, Pred p) {
+  skipToAfterNoThrow(source, p);
+  if (!source.currentChar().isValidChar())
+    throw extense::LexingError{source.location(), "Unexpected end of source"};
+}
+
+static void skipWhitespaceOneAttempt(extense::Source &source) {
+  auto current = source.currentChar();
+  if (current == '#') {
+    if (source.nextChar() == '{') {
+      // Handle multiline comment
+      skipToAfter(source, [](auto c) { return c == '}'; });
+    } else {
+      // Handle single line comment
+      skipToAfterNoThrow(source, [](auto c) { return c == '\n'; });
+    }
+  } else if (current == ' ' || current == '\t') {
+    // Should not be an error to end file with whitespace
+    skipToAfterNoThrow(source, [](auto c) { return c == ' ' || c == '\t'; });
+  }
+}
 
 static constexpr const char *const tokenTypeEnumStrings[] = {
 #define X(a) #a,

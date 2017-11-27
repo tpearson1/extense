@@ -135,6 +135,7 @@ private:
   Type tokenType;
 
 public:
+  Token() = default;
   Token(Source::Location location, std::string_view text, Type type)
       : loc(location), tokenText(text), tokenType(type) {}
 
@@ -167,14 +168,14 @@ std::vector<Token> tokenize(Source &source);
 /*
  * Exception thrown when tokenize was unable to fetch a token.
  */
-class InvalidTokenError : public std::runtime_error {
+class LexingError : public std::runtime_error {
   Source::Location loc;
 
 public:
-  InvalidTokenError(Source::Location location, const std::string &what)
+  LexingError(Source::Location location, const std::string &what)
       : std::runtime_error(what), loc(location) {}
 
-  InvalidTokenError(Source::Location location, const char *what)
+  LexingError(Source::Location location, const char *what)
       : std::runtime_error(what), loc(location) {}
 
   Source::Location location() const { return loc; }
