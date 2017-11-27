@@ -24,23 +24,24 @@ SOFTWARE.
 -------------------------------------------------------------------------------
 */
 
-#include <iostream>
 #include <fstream>
+#include <iostream>
+#include <sstream>
 
 #include <config.h>
-#include <extense/lexer.h>
+#include <extense/token.h>
 
-int main(int /*argc*/, const char * /*argv*/[]) {
+int main(int /*argc*/, const char * /*argv*/ []) {
   std::cout << "Extense version " << extense::version << '\n';
 
   std::ifstream file{"language.xts"};
-  extense::Source s{file};
-  extense::Lexer l{s};
+  std::stringstream buffer;
+  buffer << file.rdbuf();
+  extense::Source s{buffer.str()};
 
-  do {
-    l.nextToken();
-    std::cout << l.currentToken() << '\n';
-  } while (l.currentToken().type() != extense::Token::Type::EndSource);
+  auto tokens = extense::tokenize(s);
+  for (const auto &token : tokens)
+    std::cout << token.text();
 
   return 0;
 }

@@ -28,6 +28,47 @@ SOFTWARE.
 
 #include <extense/token.h>
 
+static extense::Token fetchNextToken(extense::Source &source);
+static void skipWhitespace(extense::Source &source);
+
+std::vector<extense::Token> extense::tokenize(extense::Source &source) {
+  std::vector<Token> tokens;
+  while (true) {
+    skipWhitespace(source);
+    auto token = fetchNextToken(source);
+    /* if (token.type() == Token::Type::EndStatement && */
+    /*     tokens.back().type() == Token::Type::EndStatement) */
+    /*   continue; // Collapse multiple EndStatement tokens into one */
+    if (token.type() == Token::Type::EndSource) break;
+
+    tokens.push_back(token);
+  }
+
+  return tokens;
+}
+
+/*
+ * Fetches the next token and adds it to the end of tokens.
+ * May throw an InvalidTokenError exception.
+ */
+static extense::Token fetchNextToken(extense::Source &source) {
+  using Token = extense::Token;
+
+  if (source.currentChar().isAfterSource())
+    return {source.location(), "", Token::Type::EndSource};
+
+  auto t = Token{source.location(), source.getCharacterSlice(),
+                 Token::Type::Identifier};
+  source.nextChar();
+  return t;
+}
+
+/*
+ * Skips all whitespace in the source until the beginning of the next token is
+ * reached.
+ */
+static void skipWhitespace(extense::Source &source) { (void)source; }
+
 static constexpr const char *const tokenTypeEnumStrings[] = {
 #define X(a) #a,
     _LIB_EXTENSE__TOKEN__TYPE_ENUM
@@ -35,9 +76,7 @@ static constexpr const char *const tokenTypeEnumStrings[] = {
 };
 
 std::ostream &operator<<(std::ostream &os, const extense::Token &token) {
-  if (token.type() == extense::Token::Type::BeginSource)
-    os << "{Begin source}";
-  else if (token.type() == extense::Token::Type::EndSource)
+  if (token.type() == extense::Token::Type::EndSource)
     os << "{End source}";
   else {
     os << "{location: " << token.location() << ", text: \"" << token.text()

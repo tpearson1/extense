@@ -107,8 +107,7 @@ SOFTWARE.
   X(String) /*   E.g. 'hello' or "hello"   */                                  \
   X(Character) /*   E.g. `a   */                                               \
                                                                                \
-  /* Beginning and end of source */                                            \
-  X(BeginSource)                                                               \
+  /* End of source */                                                          \
   X(EndSource)                                                                 \
                                                                                \
   /* An identifier. Must start with either a letter or _ (no numbers) */       \
@@ -145,18 +144,40 @@ public:
    */
 
   Source::Location location() const {
-    assert(tokenType != Type::BeginSource);
     assert(tokenType != Type::EndSource);
     return loc;
   }
 
   std::string_view text() const {
-    assert(tokenType != Type::BeginSource);
     assert(tokenType != Type::EndSource);
     return tokenText;
   }
 
   Type type() const { return tokenType; }
+};
+
+/*
+ * Tokenizes a source stream.
+ *
+ * May throw an InvalidTokenError exception if the source could not be
+ * tokenized.
+ */
+std::vector<Token> tokenize(Source &source);
+
+/*
+ * Exception thrown when tokenize was unable to fetch a token.
+ */
+class InvalidTokenError : public std::runtime_error {
+  Source::Location loc;
+
+public:
+  InvalidTokenError(Source::Location location, const std::string &what)
+      : std::runtime_error(what), loc(location) {}
+
+  InvalidTokenError(Source::Location location, const char *what)
+      : std::runtime_error(what), loc(location) {}
+
+  Source::Location location() const { return loc; }
 };
 } // namespace extense
 
