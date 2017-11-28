@@ -84,6 +84,7 @@ SOFTWARE.
   X(BitAndEquals) /*   &=   */                                                 \
   X(BitOrEquals) /*   |=   */                                                  \
   X(BitXorEquals) /*   ^=   */                                                 \
+  X(BitNotEquals) /*   ~=   */                                                 \
   X(BitLShiftEquals) /*   <<=   */                                             \
   X(BitRShiftEquals) /*   >>=   */                                             \
                                                                                \
@@ -183,6 +184,40 @@ public:
 
   Source::Location location() const { return loc; }
 };
+
+namespace detail {
+// Gets the next token in the source file
+Token fetchNextToken(Source &source);
+
+/*
+ * Tries to match a string of characters with the source.
+ * The source's current character is the one after the end of the matched string
+ * if the match was successful, and is otherwise not changed.
+ */
+bool tryMatch(Source &source, std::string_view str);
+
+// Skip all whitespace into the source, so that the current character is the
+// beginning of a token
+void skipWhitespace(Source &source);
+
+// Lex a custom operator token. Returns whether it was successful.
+bool lexCustomOperator(Source &source, Token &out);
+
+// EOS = End of Source
+template <typename Pred>
+void skipPastPermitEOS(Source &source, Pred p) {
+  while (!p(source.currentChar()) && source.currentChar().isValidChar())
+    source.nextChar();
+  source.nextChar();
+}
+
+template <typename Pred>
+void skipPast(Source &source, Pred p) {
+  skipPastPermitEOS(source, p);
+  if (!source.currentChar().isValidChar())
+    throw LexingError{source.location(), "Unexpected end of source"};
+}
+} // namespace detail
 } // namespace extense
 
 std::ostream &operator<<(std::ostream &, const extense::Token &);

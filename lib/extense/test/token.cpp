@@ -30,6 +30,73 @@ SOFTWARE.
 
 #include <catch.hpp>
 
+TEST_CASE("tryMatch works", "[detail::tryMatch]") {
+  using namespace extense;
+  Source s{"Find the pattern"};
+
+  bool res = detail::tryMatch(s, "att");
+  REQUIRE(!res);
+  REQUIRE(s.index() == 0);
+
+  res = detail::tryMatch(s, "Fy");
+  REQUIRE(!res);
+  REQUIRE(s.index() == 0);
+
+  res = detail::tryMatch(s, "Fi");
+  REQUIRE(res);
+  REQUIRE(s.index() == 2);
+}
+
+TEST_CASE("skipWhitespace works", "[detail::skipWhitespace]") {
+  using namespace extense;
+  Source s{"\t\t    \t  1        \n   k"};
+
+  detail::skipWhitespace(s);
+  REQUIRE(s.currentChar() == '1');
+
+  detail::skipWhitespace(s);
+  REQUIRE(s.currentChar() == '1');
+
+  s.nextChar();
+
+  detail::skipWhitespace(s);
+  REQUIRE(s.currentChar() == '\n');
+
+  s.nextChar();
+
+  detail::skipWhitespace(s);
+  REQUIRE(s.currentChar() == 'k');
+
+  s.nextChar();
+
+  detail::skipWhitespace(s);
+  REQUIRE(s.currentChar().isAfterSource());
+}
+
+TEST_CASE("Skipping past characters",
+          "[detail::skipPastPermitEOS, detail::skipPast]") {
+  using namespace extense;
+
+  Source s{"Dummy text"};
+  detail::skipPast(s, [](auto c) { return c == 't'; });
+  REQUIRE(s.currentChar() == 'e');
+
+  Source s2{"More dummy text"};
+  detail::skipPastPermitEOS(s2, [](auto c) { return c == 'z'; });
+  REQUIRE(s2.currentChar().isAfterSource());
+
+  SECTION("Testing throwing on failure") {
+    Source s3{"abcdefg"};
+
+    bool correct = false;
+    try {
+      detail::skipPast(s3, [](auto c) { return c == 'h'; });
+    } catch (const LexingError &error) { correct = true; }
+
+    REQUIRE(correct);
+  }
+}
+
 TEST_CASE("Token::Type correct ostream output", "[Token::Type]") {
   std::ostringstream out;
   out << extense::Token::Type::ModEquals;
