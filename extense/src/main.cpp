@@ -39,9 +39,17 @@ int main(int /*argc*/, const char * /*argv*/ []) {
   buffer << file.rdbuf();
   extense::Source s{buffer.str()};
 
-  auto tokens = extense::tokenize(s);
+  std::vector<extense::Token> tokens;
+  try {
+    tokens = extense::tokenize(s);
+  } catch (const extense::LexingError &error) {
+    std::cerr << "Error tokenizing file at " << error.location() << ": \""
+              << error.what() << "\"\n";
+    return 1;
+  }
+
   for (const auto &token : tokens)
-    std::cout << token.text();
+    std::cout << token.text() << ' ';
 
   return 0;
 }

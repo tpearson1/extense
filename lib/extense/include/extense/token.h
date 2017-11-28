@@ -135,9 +135,12 @@ private:
   Type tokenType;
 
 public:
-  Token() = default;
+  Token(Source::Location location) : loc(std::move(location)) {}
   Token(Source::Location location, std::string_view text, Type type)
-      : loc(location), tokenText(text), tokenType(type) {}
+      : loc(std::move(location)), tokenText(text), tokenType(type) {}
+
+  void setText(std::string_view text) { tokenText = std::move(text); }
+  void setType(Type type) { tokenType = std::move(type); }
 
   /*
    * Accessors for the token's location in the source, raw text, and type

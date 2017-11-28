@@ -73,6 +73,14 @@ public:
       return lhs.value != static_cast<int>(rhs);
     }
 
+    friend bool operator==(char lhs, const Char &rhs) {
+      return lhs == static_cast<int>(rhs.value);
+    }
+
+    friend bool operator!=(char lhs, const Char &rhs) {
+      return lhs != static_cast<int>(rhs.value);
+    }
+
   private:
     Char(int val) : value(val) {}
 

@@ -25,6 +25,7 @@ SOFTWARE.
 */
 
 #include <ostream>
+#include <sstream>
 
 #include <extense/token.h>
 
@@ -34,7 +35,6 @@ static void skipWhitespace(extense::Source &source);
 std::vector<extense::Token> extense::tokenize(extense::Source &source) {
   std::vector<Token> tokens;
   while (true) {
-    skipWhitespace(source);
     auto token = fetchNextToken(source);
     if (token.type() == Token::Type::EndStatement &&
         tokens.back().type() == Token::Type::EndStatement)
@@ -52,26 +52,54 @@ std::vector<extense::Token> extense::tokenize(extense::Source &source) {
  * May throw an InvalidTokenError exception.
  */
 static extense::Token fetchNextToken(extense::Source &source) {
-  using Token = extense::Token;
-
-  Token t;
-
   skipWhitespace(source);
+  using extense::Token;
 
   auto current = source.currentChar();
   if (current.isAfterSource())
     return {source.location(), "", Token::Type::EndSource};
 
-  auto curr = current.get();
-  if (curr == '\n' || curr == ';')
-    t = {source.location(), source.getCharacterSlice(),
-         Token::Type::EndStatement};
-  else
-    t = {source.location(), source.getCharacterSlice(),
-         Token::Type::Identifier};
-  source.nextChar();
+  Token t{source.location()};
+
+#define SINGLE_CHAR_TOKEN(type)                                                \
+  t.setText(source.getCharacterSlice());                                       \
+  t.setType(Token::Type::type);                                                \
+  source.nextChar();                                                           \
+  break;
+
+  switch (current.get()) {
+  case '\n':
+  case ';':
+    SINGLE_CHAR_TOKEN(EndStatement)
+  default:
+    std::ostringstream errorMsg;
+    errorMsg << "Unexpected character '" << current.get() << '\'';
+    throw extense::LexingError{source.location(), errorMsg.str()};
+  }
+#undef SINGLE_CHAR_TOKEN
+
   return t;
 }
+
+/*
+ * Tries to match a string of characters.
+ * The source's current character is the one after the end of the matched string
+ * if the match was successful, and is otherwise not changed.
+ */
+/* static bool tryMatch(extense::Source &source, std::string_view str) { */
+/*   for (std::size_t i = 0; i < str.size(); i++) { */
+/*     if (str[i] == source.currentChar()) { */
+/*       source.nextChar(); */
+/*       continue; */
+/*     } */
+
+/*     // Rewind back to beginning */
+/*     for (std::size_t j = 0; j < i; i++) source.backChar(); */
+/*     return false; */
+/*   } */
+
+/*   return true; */
+/* } */
 
 static void skipWhitespaceOneAttempt(extense::Source &source);
 
@@ -89,28 +117,17 @@ static void skipWhitespace(extense::Source &source) {
   } while (true);
 }
 
+// EOS = End of Source
 template <typename Pred>
-static void skipUntilNoThrow(extense::Source &source, Pred p) {
+static void skipPastPermitEOS(extense::Source &source, Pred p) {
   while (!p(source.currentChar()) && source.currentChar().isValidChar())
     source.nextChar();
-}
-
-template <typename Pred>
-static void skipUntil(extense::Source &source, Pred p) {
-  skipUntilNoThrow(source, p);
-  if (!source.currentChar().isValidChar())
-    throw extense::LexingError{source.location(), "Unexpected end of source"};
-}
-
-template <typename Pred>
-static void skipToAfterNoThrow(extense::Source &source, Pred p) {
-  skipUntilNoThrow(source, p);
   source.nextChar();
 }
 
 template <typename Pred>
-static void skipToAfter(extense::Source &source, Pred p) {
-  skipToAfterNoThrow(source, p);
+static void skipPast(extense::Source &source, Pred p) {
+  skipPastPermitEOS(source, p);
   if (!source.currentChar().isValidChar())
     throw extense::LexingError{source.location(), "Unexpected end of source"};
 }
@@ -120,14 +137,14 @@ static void skipWhitespaceOneAttempt(extense::Source &source) {
   if (current == '#') {
     if (source.nextChar() == '{') {
       // Handle multiline comment
-      skipToAfter(source, [](auto c) { return c == '}'; });
+      skipPast(source, [](auto c) { return c == '}'; });
     } else {
       // Handle single line comment
-      skipToAfterNoThrow(source, [](auto c) { return c == '\n'; });
+      skipPastPermitEOS(source, [](auto c) { return c == '\n'; });
     }
   } else if (current == ' ' || current == '\t') {
     // Should not be an error to end file with whitespace
-    skipToAfterNoThrow(source, [](auto c) { return c == ' ' || c == '\t'; });
+    skipPastPermitEOS(source, [](auto c) { return c == ' ' || c == '\t'; });
   }
 }
 
