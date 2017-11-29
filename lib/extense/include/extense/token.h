@@ -48,6 +48,7 @@ SOFTWARE.
   X(CustomOperator) /*   E.g. <=> or |>   */                                   \
                                                                                \
   X(Assign) /*   =   */                                                        \
+  X(Comma) /*   ,   */                                                         \
   X(Dot) /*   .   */                                                           \
   X(DotDot) /*   ..   */                                                       \
   X(Colon) /*   :   */                                                         \
@@ -200,22 +201,46 @@ bool tryMatch(Source &source, std::string_view str);
 // beginning of a token
 void skipWhitespace(Source &source);
 
-// Lex a custom operator token. Returns whether it was successful.
+// Lexes different types of tokens. Returns whether they were successful.
+bool lexCharacter(Source &source, Token &out);
+bool lexString(Source &source, Token &out);
+bool lexLabel(Source &source, Token &out);
+bool lexUnsigned(Source &source);
+bool lexInteger(Source &source, Token &out);
+bool lexNumber(Source &source, Token &out);
+bool lexIdentifier(Source &source, Token &out);
 bool lexCustomOperator(Source &source, Token &out);
 
 // EOS = End of Source
+
+inline void throwUnexpectedEOS(Source &source) {
+  if (source.currentChar().isValidChar()) return;
+  throw LexingError{source.location(), "Unexpected end of source"};
+}
+
+template <typename Pred>
+void skipUntilPermitEOS(Source &source, Pred p) {
+  while (!source.currentChar().isAfterSource() &&
+         !p(source.currentChar().get()))
+    source.nextChar();
+}
+
+template <typename Pred>
+void skipUntil(Source &source, Pred p) {
+  skipUntilPermitEOS(source, p);
+  throwUnexpectedEOS(source);
+}
+
 template <typename Pred>
 void skipPastPermitEOS(Source &source, Pred p) {
-  while (!p(source.currentChar()) && source.currentChar().isValidChar())
-    source.nextChar();
+  skipUntilPermitEOS(source, p);
   source.nextChar();
 }
 
 template <typename Pred>
 void skipPast(Source &source, Pred p) {
   skipPastPermitEOS(source, p);
-  if (!source.currentChar().isValidChar())
-    throw LexingError{source.location(), "Unexpected end of source"};
+  throwUnexpectedEOS(source);
 }
 } // namespace detail
 } // namespace extense

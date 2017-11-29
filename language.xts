@@ -9,6 +9,18 @@ true and false # false
 true and true # true
 not false or false # true or false -> true
 
+# Integers
+-573
++23
+32
+
+# Float
+3.5e2
++3.5e2
+-3.5e2
+-3.5e-2
+
+
 # Relational operators
 1 == 1 # true
 1 != 1 # false
@@ -119,6 +131,10 @@ sayHi
 # To store a function in a variable, precede the function name with a !
 x = !sayHi
 x # Equivalent to calling sayHi
+
+# Characters
+print(`a)
+print(`\n) # Newline character
 
 pigLatin = [
   input = $:0

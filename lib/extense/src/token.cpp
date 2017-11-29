@@ -24,6 +24,7 @@ SOFTWARE.
 -------------------------------------------------------------------------------
 */
 
+#include <cctype>
 #include <ostream>
 #include <sstream>
 
@@ -64,7 +65,6 @@ extense::Token extense::detail::fetchNextToken(extense::Source &source) {
 
 #define SINGLE_CHAR_TOKEN(type)                                                \
   {                                                                            \
-    t.setText(source.getCharacterSlice());                                     \
     t.setType(Token::Type::type);                                              \
     source.nextChar();                                                         \
     break;                                                                     \
@@ -74,7 +74,6 @@ extense::Token extense::detail::fetchNextToken(extense::Source &source) {
   {                                                                            \
     constexpr const char bothChars[] = {c1, c2, '\0'};                         \
     if (tryMatch(source, bothChars)) {                                         \
-      t.setText(source.getSlice(begin, begin + 2));                            \
       t.setType(Token::Type::t2);                                              \
       break;                                                                   \
     }                                                                          \
@@ -82,10 +81,13 @@ extense::Token extense::detail::fetchNextToken(extense::Source &source) {
     if (current == c1) SINGLE_CHAR_TOKEN(t1)                                   \
   }
 
+  auto begin = source.index();
   auto current = currentChar.get();
+
   switch (current) {
   case '\n':
   case ';': SINGLE_CHAR_TOKEN(EndStatement)
+  case ',': SINGLE_CHAR_TOKEN(Comma)
   case '$': SINGLE_CHAR_TOKEN(Dollar)
   case '(': SINGLE_CHAR_TOKEN(LeftParen)
   case ')': SINGLE_CHAR_TOKEN(RightParen)
@@ -94,7 +96,9 @@ extense::Token extense::detail::fetchNextToken(extense::Source &source) {
   case '{': SINGLE_CHAR_TOKEN(LeftBrace)
   case '}': SINGLE_CHAR_TOKEN(RightBrace)
   default: {
-    auto begin = source.index();
+    // Needs to be before the +/- token checks, because else numbers like +42
+    // and -26 would be split into a Plus/Minus token and an Integer token
+    if (lexNumber(source, t)) break;
 
     ONE_TWO_CHAR_TOKENS('=', Assign, '=', Equals)
     ONE_TWO_CHAR_TOKENS('.', Dot, '.', DotDot)
@@ -108,19 +112,16 @@ extense::Token extense::detail::fetchNextToken(extense::Source &source) {
     ONE_TWO_CHAR_TOKENS('~', BitNot, '=', BitNotEquals)
 
     if (tryMatch(source, "<=")) {
-      t.setText(source.getSlice(begin, begin + 2));
       t.setType(Token::Type::LessEquals);
       break;
     }
 
     if (tryMatch(source, "<<=")) {
-      t.setText(source.getSlice(begin, begin + 3));
       t.setType(Token::Type::BitLShiftEquals);
       break;
     }
 
     if (tryMatch(source, "<<")) {
-      t.setText(source.getSlice(begin, begin + 2));
       t.setType(Token::Type::BitLShift);
       break;
     }
@@ -128,19 +129,16 @@ extense::Token extense::detail::fetchNextToken(extense::Source &source) {
     if (current == '<') SINGLE_CHAR_TOKEN(LessThan)
 
     if (tryMatch(source, ">=")) {
-      t.setText(source.getSlice(begin, begin + 2));
       t.setType(Token::Type::GreaterEquals);
       break;
     }
 
     if (tryMatch(source, ">>=")) {
-      t.setText(source.getSlice(begin, begin + 3));
       t.setType(Token::Type::BitRShiftEquals);
       break;
     }
 
     if (tryMatch(source, ">>")) {
-      t.setText(source.getSlice(begin, begin + 2));
       t.setType(Token::Type::BitRShift);
       break;
     }
@@ -148,13 +146,11 @@ extense::Token extense::detail::fetchNextToken(extense::Source &source) {
     if (current == '>') SINGLE_CHAR_TOKEN(GreaterThan)
 
     if (tryMatch(source, "-=")) {
-      t.setText(source.getSlice(begin, begin + 2));
       t.setType(Token::Type::MinusEquals);
       break;
     }
 
     if (tryMatch(source, "->")) {
-      t.setText(source.getSlice(begin, begin + 2));
       t.setType(Token::Type::MapsTo);
       break;
     }
@@ -162,19 +158,16 @@ extense::Token extense::detail::fetchNextToken(extense::Source &source) {
     if (current == '-') SINGLE_CHAR_TOKEN(Minus)
 
     if (tryMatch(source, "*=")) {
-      t.setText(source.getSlice(begin, begin + 2));
       t.setType(Token::Type::MulEquals);
       break;
     }
 
     if (tryMatch(source, "**=")) {
-      t.setText(source.getSlice(begin, begin + 3));
       t.setType(Token::Type::PowEquals);
       break;
     }
 
     if (tryMatch(source, "**")) {
-      t.setText(source.getSlice(begin, begin + 2));
       t.setType(Token::Type::Pow);
       break;
     }
@@ -182,19 +175,16 @@ extense::Token extense::detail::fetchNextToken(extense::Source &source) {
     if (current == '*') SINGLE_CHAR_TOKEN(Mul)
 
     if (tryMatch(source, "/=")) {
-      t.setText(source.getSlice(begin, begin + 2));
       t.setType(Token::Type::DivEquals);
       break;
     }
 
     if (tryMatch(source, "//=")) {
-      t.setText(source.getSlice(begin, begin + 3));
       t.setType(Token::Type::FloorDivEquals);
       break;
     }
 
     if (tryMatch(source, "//")) {
-      t.setText(source.getSlice(begin, begin + 2));
       t.setType(Token::Type::FloorDiv);
       break;
     }
@@ -202,59 +192,36 @@ extense::Token extense::detail::fetchNextToken(extense::Source &source) {
     if (current == '/') SINGLE_CHAR_TOKEN(Div)
 
     if (tryMatch(source, "and")) {
-      t.setText(source.getSlice(begin, begin + 3));
       t.setType(Token::Type::And);
       break;
     }
 
     if (tryMatch(source, "or")) {
-      t.setText(source.getSlice(begin, begin + 2));
       t.setType(Token::Type::Or);
       break;
     }
 
     if (tryMatch(source, "not")) {
-      t.setText(source.getSlice(begin, begin + 3));
       t.setType(Token::Type::Not);
       break;
     }
 
     if (tryMatch(source, "true")) {
-      t.setText(source.getSlice(begin, begin + 4));
       t.setType(Token::Type::Bool);
       break;
     }
 
     if (tryMatch(source, "false")) {
-      t.setText(source.getSlice(begin, begin + 5));
       t.setType(Token::Type::Bool);
       break;
     }
 
-    if (current == '`') {
-      if (source.nextChar().isAfterSource()) {
-        throw extense::LexingError{
-            source.location(),
-            "Expected character after '`', not end of source"};
-      }
+    if (lexString(source, t)) break;
+    if (lexCharacter(source, t)) break;
+    if (lexLabel(source, t)) break;
+    if (lexIdentifier(source, t)) break;
+    if (lexCustomOperator(source, t)) break;
 
-      // TODO: Support character escape codes
-      t.setText(source.getSlice(begin, begin + 2));
-      t.setType(Token::Type::Character);
-      source.nextChar();
-      break;
-    }
-
-    // TODO: Support escape codes
-    if (current == '\'' || current == '"') {
-      source.nextChar();
-      detail::skipPast(source, [current](auto c) { return c == current; });
-      t.setText(source.getSlice(begin, source.index()));
-      t.setType(Token::Type::String);
-      break;
-    }
-
-    SINGLE_CHAR_TOKEN(Identifier) // Temporary
     std::ostringstream errorMsg;
     errorMsg << "Unexpected character '" << current << '\'';
     throw extense::LexingError{source.location(), errorMsg.str()};
@@ -263,6 +230,7 @@ extense::Token extense::detail::fetchNextToken(extense::Source &source) {
 #undef ONE_TWO_CHAR_TOKENS
 #undef SINGLE_CHAR_TOKEN
 
+  t.setText(source.getSlice(begin, source.index()));
   return t;
 }
 
@@ -310,6 +278,129 @@ void extense::detail::skipWhitespace(extense::Source &source) {
     if (index == source.index()) break;
     index = source.index();
   } while (true);
+}
+
+bool extense::detail::lexCharacter(extense::Source &source,
+                                   extense::Token &out) {
+  // TODO: Support for more escape sequences in string and character literals
+  auto current = source.currentChar().get();
+  if (current != '`') return false;
+
+  if (source.nextChar() == '\\') source.nextChar();
+
+  if (source.currentChar().isAfterSource()) {
+    throw extense::LexingError{
+        source.location(), "Expected character after '`', not end of source"};
+  }
+
+  out.setType(Token::Type::Character);
+  source.nextChar();
+  return true;
+}
+
+bool extense::detail::lexString(extense::Source &source, extense::Token &out) {
+  auto current = source.currentChar().get();
+  if (current != '\'' && current != '"') return false;
+
+  source.nextChar();
+  detail::skipPast(source, [ current, previous = ' ' ](auto c) mutable {
+    if (previous == '\\' && c == current) {
+      previous = c;
+      return false; // Escaped '/" should not end string
+    }
+    previous = c;
+    return c == current;
+  });
+
+  out.setType(Token::Type::String);
+  return true;
+}
+
+bool extense::detail::lexLabel(extense::Source &source, extense::Token &out) {
+  auto current = source.currentChar().get();
+  if (current != '@') return false;
+
+  if (source.nextChar().isAfterSource()) {
+    throw extense::LexingError{
+        source.location(), "Expected identifier after '@', not end of source"};
+  }
+
+  if (!lexIdentifier(source, out)) {
+    throw extense::LexingError{source.location(),
+                               "Expected valid identifier after '@'"};
+  }
+
+  out.setType(Token::Type::Label);
+  return true;
+}
+
+static bool safeIsDigit(unsigned char c) { return std::isdigit(c); }
+
+bool extense::detail::lexUnsigned(extense::Source &source) {
+  auto begin = source.index();
+  skipUntilPermitEOS(source, [](auto c) { return !safeIsDigit(c); });
+  return source.index() != begin;
+}
+
+static bool lexIntegerHelper(extense::Source &source) {
+  auto current = source.currentChar().get();
+
+  if (current == '-' || current == '+')
+    source.nextChar();
+  else if (!safeIsDigit(current)) return false;
+
+  if (!extense::detail::lexUnsigned(source)) return false;
+
+  return true;
+}
+
+bool extense::detail::lexInteger(extense::Source &source, extense::Token &out) {
+  bool res = lexIntegerHelper(source);
+  if (res) out.setType(Token::Type::Integer);
+  return res;
+}
+
+bool extense::detail::lexNumber(extense::Source &source, extense::Token &out) {
+  if (!lexInteger(source, out)) return false;
+  if (source.currentChar() != '.') return true; // Is an integer
+
+  source.nextChar();
+  if (!lexUnsigned(source)) {
+    // Is not a float
+    source.backChar();
+    return true;
+  }
+
+  out.setType(Token::Type::Float);
+
+  auto current = source.currentChar();
+  if (current != 'e' && current != 'E') return true;
+
+  source.nextChar();
+  if (!lexIntegerHelper(source)) {
+    // Must be an integer exponent
+    throw LexingError{source.location(), "Expected integer exponent in float"};
+  }
+
+  return true;
+}
+
+bool extense::detail::lexIdentifier(extense::Source &source,
+                                    extense::Token &out) {
+  auto validFirstChar = [](unsigned char c) {
+    return std::isalpha(c) || c == '_';
+  };
+
+  auto validChar = [validFirstChar](unsigned char c) {
+    return validFirstChar(c) || safeIsDigit(c);
+  };
+
+  if (!validFirstChar(source.currentChar().get())) return false;
+
+  skipUntilPermitEOS(source, [validChar](auto c) { return !validChar(c); });
+
+  out.setType(Token::Type::Identifier);
+  return true;
 }
 
 bool extense::detail::lexCustomOperator(extense::Source &source,

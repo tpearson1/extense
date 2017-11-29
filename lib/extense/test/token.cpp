@@ -30,8 +30,9 @@ SOFTWARE.
 
 #include <catch.hpp>
 
+using namespace extense;
+
 TEST_CASE("tryMatch works", "[detail::tryMatch]") {
-  using namespace extense;
   Source s{"Find the pattern"};
 
   bool res = detail::tryMatch(s, "att");
@@ -48,7 +49,6 @@ TEST_CASE("tryMatch works", "[detail::tryMatch]") {
 }
 
 TEST_CASE("skipWhitespace works", "[detail::skipWhitespace]") {
-  using namespace extense;
   Source s{"\t\t    \t  1        \n   k"};
 
   detail::skipWhitespace(s);
@@ -73,10 +73,223 @@ TEST_CASE("skipWhitespace works", "[detail::skipWhitespace]") {
   REQUIRE(s.currentChar().isAfterSource());
 }
 
+TEST_CASE("Lexing detail functions",
+          "[detail::lexCharacter, detail::lexString, detail::lexLabel, "
+          "detail::lexUnsigned, detail::lexInteger, detail::lexNumber, "
+          "detail::lexIdentifier, detail::lexCustomOperator]") {
+  Token t{Source::Location{}};
+
+  SECTION("lexCharacter") {
+    Source s{"`a"};
+    REQUIRE(detail::lexCharacter(s, t));
+    REQUIRE(t.type() == Token::Type::Character);
+    REQUIRE(s.currentChar().isAfterSource());
+    t.setType(Token::Type::Plus);
+
+    Source s2{"`\\nk"};
+    REQUIRE(detail::lexCharacter(s2, t));
+    REQUIRE(t.type() == Token::Type::Character);
+    REQUIRE(s2.currentChar() == 'k');
+    t.setType(Token::Type::Plus);
+
+    Source s3{"Word"};
+    REQUIRE(!detail::lexCharacter(s3, t));
+    REQUIRE(t.type() == Token::Type::Plus);
+    REQUIRE(s3.index() == 0);
+  }
+
+  SECTION("lexString") {
+    Source s{"\"Hello, World!\"_"};
+    REQUIRE(detail::lexString(s, t));
+    REQUIRE(t.type() == Token::Type::String);
+    REQUIRE(s.currentChar() == '_');
+    t.setType(Token::Type::Plus);
+
+    Source s2{"'Hello, World!'_"};
+    REQUIRE(detail::lexString(s2, t));
+    REQUIRE(t.type() == Token::Type::String);
+    REQUIRE(s2.currentChar() == '_');
+    t.setType(Token::Type::Plus);
+
+    Source s3{R"("   \""_)"};
+    REQUIRE(detail::lexString(s3, t));
+    REQUIRE(t.type() == Token::Type::String);
+    REQUIRE(s3.currentChar() == '_');
+    t.setType(Token::Type::Plus);
+
+    Source s4{R"('   \''_)"};
+    REQUIRE(detail::lexString(s4, t));
+    REQUIRE(t.type() == Token::Type::String);
+    REQUIRE(s4.currentChar() == '_');
+    t.setType(Token::Type::Plus);
+
+    Source s5{"Certainly not a string"};
+    REQUIRE(!detail::lexString(s5, t));
+    REQUIRE(t.type() == Token::Type::Plus);
+    REQUIRE(s5.currentChar() == 'C');
+
+    Source s6{"\""};
+    bool correct = false;
+    try {
+      detail::lexString(s6, t);
+    } catch (const LexingError &) { correct = true; }
+    REQUIRE(correct);
+    correct = false;
+
+    Source s7{"'"};
+    try {
+      detail::lexString(s7, t);
+    } catch (const LexingError &) { correct = true; }
+    REQUIRE(correct);
+  }
+
+  SECTION("lexLabel") {
+    Source s{"@_label "};
+    REQUIRE(detail::lexLabel(s, t));
+    REQUIRE(t.type() == Token::Type::Label);
+    REQUIRE(s.currentChar() == ' ');
+    t.setType(Token::Type::Plus);
+
+    Source s2{"@lab3l "};
+    REQUIRE(detail::lexLabel(s2, t));
+    REQUIRE(t.type() == Token::Type::Label);
+    REQUIRE(s2.currentChar() == ' ');
+    t.setType(Token::Type::Plus);
+
+    Source s3{"@1"};
+    bool correct = false;
+    try {
+      detail::lexLabel(s3, t);
+    } catch (const LexingError &) { correct = true; }
+    REQUIRE(correct);
+
+    Source s4{"Not a label"};
+    REQUIRE(!detail::lexLabel(s4, t));
+    REQUIRE(t.type() == Token::Type::Plus);
+    REQUIRE(s4.currentChar() == 'N');
+  }
+
+  SECTION("lexUnsigned") {
+    Source s{"1234_"};
+    REQUIRE(detail::lexUnsigned(s));
+    REQUIRE(s.currentChar() == '_');
+
+    Source s2{"-1234"};
+    REQUIRE(!detail::lexUnsigned(s2));
+    REQUIRE(s2.currentChar() == '-');
+
+    Source s3{"seventy"};
+    REQUIRE(!detail::lexUnsigned(s3));
+    REQUIRE(s3.currentChar() == 's');
+  }
+
+  SECTION("lexInteger") {
+    Source s{"1234_"};
+    REQUIRE(detail::lexInteger(s, t));
+    REQUIRE(s.currentChar() == '_');
+    REQUIRE(t.type() == Token::Type::Integer);
+    t.setType(Token::Type::Plus);
+
+    Source s2{"-1234."};
+    REQUIRE(detail::lexInteger(s2, t));
+    REQUIRE(s2.currentChar() == '.');
+    REQUIRE(t.type() == Token::Type::Integer);
+    t.setType(Token::Type::Plus);
+
+    Source s3{"seventy"};
+    REQUIRE(!detail::lexInteger(s3, t));
+    REQUIRE(s3.currentChar() == 's');
+    REQUIRE(t.type() == Token::Type::Plus);
+
+    Source s4{"+1."};
+    REQUIRE(detail::lexInteger(s4, t));
+    REQUIRE(s4.currentChar() == '.');
+    REQUIRE(t.type() == Token::Type::Integer);
+    t.setType(Token::Type::Plus);
+  }
+
+  SECTION("lexNumber") {
+    Source s{"1234_"};
+    REQUIRE(detail::lexNumber(s, t));
+    REQUIRE(s.currentChar() == '_');
+    REQUIRE(t.type() == Token::Type::Integer);
+    t.setType(Token::Type::Plus);
+
+    Source s2{"-1234."};
+    REQUIRE(detail::lexNumber(s2, t));
+    REQUIRE(s2.currentChar() == '.');
+    REQUIRE(t.type() == Token::Type::Integer);
+    t.setType(Token::Type::Plus);
+
+    Source s3{"seventy"};
+    REQUIRE(!detail::lexNumber(s3, t));
+    REQUIRE(s3.currentChar() == 's');
+    REQUIRE(t.type() == Token::Type::Plus);
+
+    Source s4{"-3.26|"};
+    REQUIRE(detail::lexNumber(s4, t));
+    REQUIRE(s4.currentChar() == '|');
+    REQUIRE(t.type() == Token::Type::Float);
+    t.setType(Token::Type::Plus);
+
+    Source s5{"-3.26e2|"};
+    REQUIRE(detail::lexNumber(s5, t));
+    REQUIRE(s5.currentChar() == '|');
+    REQUIRE(t.type() == Token::Type::Float);
+    t.setType(Token::Type::Plus);
+
+    Source s6{"-3.26e-2|"};
+    REQUIRE(detail::lexNumber(s6, t));
+    REQUIRE(s6.currentChar() == '|');
+    REQUIRE(t.type() == Token::Type::Float);
+    t.setType(Token::Type::Plus);
+
+    Source s7{"-3.-26e2|"};
+    REQUIRE(detail::lexNumber(s7, t));
+    REQUIRE(s7.currentChar() == '.');
+    REQUIRE(t.type() == Token::Type::Integer);
+    t.setType(Token::Type::Plus);
+
+    Source s8{"-3.26eHi|"};
+    bool correct = false;
+    try {
+      detail::lexNumber(s8, t);
+    } catch (const LexingError &) { correct = true; }
+    REQUIRE(correct);
+  }
+
+  SECTION("lexIdentifier") {
+    Source s{"_ident "};
+    REQUIRE(detail::lexIdentifier(s, t));
+    REQUIRE(t.type() == Token::Type::Identifier);
+    REQUIRE(s.currentChar() == ' ');
+    t.setType(Token::Type::Plus);
+
+    Source s2{"id3nt "};
+    REQUIRE(detail::lexIdentifier(s2, t));
+    REQUIRE(t.type() == Token::Type::Identifier);
+    REQUIRE(s2.currentChar() == ' ');
+    t.setType(Token::Type::Plus);
+
+    Source s3{"1"};
+    REQUIRE(!detail::lexIdentifier(s3, t));
+    REQUIRE(t.type() == Token::Type::Plus);
+    REQUIRE(s3.currentChar() == '1');
+
+    Source s4{"Not an identifier"}; // 'Not' actually could be an identifier
+    REQUIRE(detail::lexIdentifier(s4, t));
+    REQUIRE(t.type() == Token::Type::Identifier);
+    REQUIRE(s4.currentChar() == ' ');
+  }
+
+  SECTION("lexCustomOperator") {
+    INFO("Not yet implemented");
+    REQUIRE(false);
+  }
+}
+
 TEST_CASE("Skipping past characters",
           "[detail::skipPastPermitEOS, detail::skipPast]") {
-  using namespace extense;
-
   Source s{"Dummy text"};
   detail::skipPast(s, [](auto c) { return c == 't'; });
   REQUIRE(s.currentChar() == 'e');
@@ -99,6 +312,6 @@ TEST_CASE("Skipping past characters",
 
 TEST_CASE("Token::Type correct ostream output", "[Token::Type]") {
   std::ostringstream out;
-  out << extense::Token::Type::ModEquals;
+  out << Token::Type::ModEquals;
   REQUIRE(out.str() == "ModEquals");
 }
