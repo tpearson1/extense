@@ -139,6 +139,12 @@ TEST_CASE("Newlines with Source", "[Source]") {
 }
 
 TEST_CASE("Empty Source", "[Source]") {
-  INFO("Need to implement");
-  REQUIRE(false);
+  extense::Source s{""};
+
+  INFO(s.currentChar());
+  REQUIRE(s.currentChar().isAfterSource());
+
+  s.backChar();
+  INFO(s.currentChar());
+  REQUIRE(s.currentChar().isBeforeSource());
 }
