@@ -24,6 +24,8 @@ SOFTWARE.
 -------------------------------------------------------------------------------
 */
 
+#include <algorithm>
+#include <array>
 #include <cctype>
 #include <ostream>
 #include <sstream>
@@ -70,17 +72,6 @@ extense::Token extense::detail::fetchNextToken(extense::Source &source) {
     break;                                                                     \
   }
 
-#define ONE_TWO_CHAR_TOKENS(c1, t1, c2, t2)                                    \
-  {                                                                            \
-    constexpr const char bothChars[] = {c1, c2, '\0'};                         \
-    if (tryMatch(source, bothChars)) {                                         \
-      t.setType(Token::Type::t2);                                              \
-      break;                                                                   \
-    }                                                                          \
-                                                                               \
-    if (current == c1) SINGLE_CHAR_TOKEN(t1)                                   \
-  }
-
   auto begin = source.index();
   auto current = currentChar.get();
 
@@ -96,138 +87,22 @@ extense::Token extense::detail::fetchNextToken(extense::Source &source) {
   case '{': SINGLE_CHAR_TOKEN(LeftBrace)
   case '}': SINGLE_CHAR_TOKEN(RightBrace)
   default: {
-    // Needs to be before the +/- token checks, because else numbers like +42
-    // and -26 would be split into a Plus/Minus token and an Integer token
+    // Needs to be before the +/- token checks in lexOperator, because else
+    // numbers like +42 and -26 would be split into a Plus/Minus token and an
+    // Integer token
     if (lexNumber(source, t)) break;
 
-    ONE_TWO_CHAR_TOKENS('=', Assign, '=', Equals)
-    ONE_TWO_CHAR_TOKENS('.', Dot, '.', DotDot)
-    ONE_TWO_CHAR_TOKENS(':', Colon, ':', ColonColon)
-    ONE_TWO_CHAR_TOKENS('+', Plus, '=', PlusEquals)
-    ONE_TWO_CHAR_TOKENS('%', Mod, '=', ModEquals)
-    ONE_TWO_CHAR_TOKENS('!', Exclamation, '=', NotEquals)
-    ONE_TWO_CHAR_TOKENS('&', BitAnd, '=', BitAndEquals)
-    ONE_TWO_CHAR_TOKENS('|', BitOr, '=', BitOrEquals)
-    ONE_TWO_CHAR_TOKENS('^', BitXor, '=', BitXorEquals)
-    ONE_TWO_CHAR_TOKENS('~', BitNot, '=', BitNotEquals)
-
-    if (tryMatch(source, "<=")) {
-      t.setType(Token::Type::LessEquals);
-      break;
-    }
-
-    if (tryMatch(source, "<<=")) {
-      t.setType(Token::Type::BitLShiftEquals);
-      break;
-    }
-
-    if (tryMatch(source, "<<")) {
-      t.setType(Token::Type::BitLShift);
-      break;
-    }
-
-    if (current == '<') SINGLE_CHAR_TOKEN(LessThan)
-
-    if (tryMatch(source, ">=")) {
-      t.setType(Token::Type::GreaterEquals);
-      break;
-    }
-
-    if (tryMatch(source, ">>=")) {
-      t.setType(Token::Type::BitRShiftEquals);
-      break;
-    }
-
-    if (tryMatch(source, ">>")) {
-      t.setType(Token::Type::BitRShift);
-      break;
-    }
-
-    if (current == '>') SINGLE_CHAR_TOKEN(GreaterThan)
-
-    if (tryMatch(source, "-=")) {
-      t.setType(Token::Type::MinusEquals);
-      break;
-    }
-
-    if (tryMatch(source, "->")) {
-      t.setType(Token::Type::MapsTo);
-      break;
-    }
-
-    if (current == '-') SINGLE_CHAR_TOKEN(Minus)
-
-    if (tryMatch(source, "*=")) {
-      t.setType(Token::Type::MulEquals);
-      break;
-    }
-
-    if (tryMatch(source, "**=")) {
-      t.setType(Token::Type::PowEquals);
-      break;
-    }
-
-    if (tryMatch(source, "**")) {
-      t.setType(Token::Type::Pow);
-      break;
-    }
-
-    if (current == '*') SINGLE_CHAR_TOKEN(Mul)
-
-    if (tryMatch(source, "/=")) {
-      t.setType(Token::Type::DivEquals);
-      break;
-    }
-
-    if (tryMatch(source, "//=")) {
-      t.setType(Token::Type::FloorDivEquals);
-      break;
-    }
-
-    if (tryMatch(source, "//")) {
-      t.setType(Token::Type::FloorDiv);
-      break;
-    }
-
-    if (current == '/') SINGLE_CHAR_TOKEN(Div)
-
-    if (tryMatch(source, "and")) {
-      t.setType(Token::Type::And);
-      break;
-    }
-
-    if (tryMatch(source, "or")) {
-      t.setType(Token::Type::Or);
-      break;
-    }
-
-    if (tryMatch(source, "not")) {
-      t.setType(Token::Type::Not);
-      break;
-    }
-
-    if (tryMatch(source, "true")) {
-      t.setType(Token::Type::Bool);
-      break;
-    }
-
-    if (tryMatch(source, "false")) {
-      t.setType(Token::Type::Bool);
-      break;
-    }
-
+    if (lexOperator(source, t)) break;
     if (lexString(source, t)) break;
     if (lexCharacter(source, t)) break;
     if (lexLabel(source, t)) break;
     if (lexIdentifier(source, t)) break;
-    if (lexCustomOperator(source, t)) break;
 
     std::ostringstream errorMsg;
     errorMsg << "Unexpected character '" << current << '\'';
     throw extense::LexingError{source.location(), errorMsg.str()};
   }
   }
-#undef ONE_TWO_CHAR_TOKENS
 #undef SINGLE_CHAR_TOKEN
 
   t.setText(source.getSlice(begin, source.index()));
@@ -345,11 +220,19 @@ bool extense::detail::lexUnsigned(extense::Source &source) {
 static bool lexIntegerHelper(extense::Source &source) {
   auto current = source.currentChar().get();
 
-  if (current == '-' || current == '+')
+  bool hasSign = current == '-' || current == '+';
+  if (hasSign)
     source.nextChar();
-  else if (!safeIsDigit(current)) return false;
+  else if (!safeIsDigit(current))
+    return false;
 
-  if (!extense::detail::lexUnsigned(source)) return false;
+  if (!extense::detail::lexUnsigned(source)) {
+    // If there is a sign character we need to go back so we haven't consumed
+    // any characters on failure
+    if (hasSign) source.backChar();
+
+    return false;
+  }
 
   return true;
 }
@@ -385,6 +268,34 @@ bool extense::detail::lexNumber(extense::Source &source, extense::Token &out) {
   return true;
 }
 
+static bool lexBool(std::string_view text, extense::Token &out) {
+  if (text == "true" || text == "false") {
+    out.setType(extense::Token::Type::Bool);
+    return true;
+  }
+
+  return false;
+}
+
+static bool lexLogicalOperator(std::string_view text, extense::Token &out) {
+  if (text == "and") {
+    out.setType(extense::Token::Type::And);
+    return true;
+  }
+
+  if (text == "or") {
+    out.setType(extense::Token::Type::Or);
+    return true;
+  }
+
+  if (text == "not") {
+    out.setType(extense::Token::Type::Not);
+    return true;
+  }
+
+  return false;
+}
+
 bool extense::detail::lexIdentifier(extense::Source &source,
                                     extense::Token &out) {
   auto validFirstChar = [](unsigned char c) {
@@ -397,21 +308,95 @@ bool extense::detail::lexIdentifier(extense::Source &source,
 
   if (!validFirstChar(source.currentChar().get())) return false;
 
+  auto begin = source.index();
   skipUntilPermitEOS(source, [validChar](auto c) { return !validChar(c); });
+
+  // Here we check for a bool/logical operator
+  auto text = source.getSlice(begin, source.index());
+  if (lexBool(text, out)) return true;
+  if (lexLogicalOperator(text, out)) return true;
 
   out.setType(Token::Type::Identifier);
   return true;
 }
 
-bool extense::detail::lexCustomOperator(extense::Source &source,
-                                        extense::Token &out) {
-  constexpr const auto permittedChars = "&|^*<>%?";
-  // TODO
-  (void)source;
-  (void)out;
-  (void)permittedChars;
-  return false;
+#define MATCH_TOKEN(tokenText, type)                                           \
+  if (text == tokenText) {                                                     \
+    out.setType(Token::Type::type);                                            \
+    return true;                                                               \
+  }
+bool extense::detail::lexOperator(extense::Source &source,
+                                  extense::Token &out) {
+  constexpr const std::array permittedOpChars = {'&', '|', '~', '^', '<', '>',
+                                                 '?', '+', '-', '*', '/', '%',
+                                                 '!', ':', '.', '='};
+
+  auto isNotValidOpChar = [&](char c) {
+    return std::none_of(std::begin(permittedOpChars),
+                        std::end(permittedOpChars),
+                        [=](char c2) { return c2 == c; });
+  };
+
+  auto begin = source.index();
+  skipUntilPermitEOS(source, isNotValidOpChar);
+  if (begin == source.index()) return false;
+
+  auto text = source.getSlice(begin, source.index());
+
+  // Miscellaneous operators
+  MATCH_TOKEN("=", Assign)
+  MATCH_TOKEN(".", Dot)
+  MATCH_TOKEN("..", DotDot)
+  MATCH_TOKEN(":", Colon)
+  MATCH_TOKEN("::", ColonColon)
+  MATCH_TOKEN("->", MapsTo)
+  MATCH_TOKEN("!", Exclamation)
+
+  // Comparison operators
+  MATCH_TOKEN("==", Equals)
+  MATCH_TOKEN("!=", NotEquals)
+  MATCH_TOKEN("<=", LessEquals)
+  MATCH_TOKEN(">=", GreaterEquals)
+  MATCH_TOKEN("<", LessThan)
+  MATCH_TOKEN(">", GreaterThan)
+
+  // Mathematical operators
+  MATCH_TOKEN("+", Plus)
+  MATCH_TOKEN("-", Minus)
+  MATCH_TOKEN("*", Mul)
+  MATCH_TOKEN("**", Pow)
+  MATCH_TOKEN("/", Div)
+  MATCH_TOKEN("//", FloorDiv)
+  MATCH_TOKEN("%", Mod)
+
+  MATCH_TOKEN("+=", PlusEquals)
+  MATCH_TOKEN("-=", MinusEquals)
+  MATCH_TOKEN("*=", MulEquals)
+  MATCH_TOKEN("**=", PowEquals)
+  MATCH_TOKEN("/=", DivEquals)
+  MATCH_TOKEN("//=", FloorDivEquals)
+  MATCH_TOKEN("%=", ModEquals)
+
+  // Bitwise operators
+  MATCH_TOKEN("&", BitAnd)
+  MATCH_TOKEN("|", BitOr)
+  MATCH_TOKEN("^", BitXor)
+  MATCH_TOKEN("~", BitNot)
+  MATCH_TOKEN(">>", BitRShift)
+  MATCH_TOKEN("<<", BitLShift)
+
+  MATCH_TOKEN("&=", BitAndEquals)
+  MATCH_TOKEN("|=", BitOrEquals)
+  MATCH_TOKEN("^=", BitXorEquals)
+  MATCH_TOKEN("~=", BitNotEquals)
+  MATCH_TOKEN("<<=", BitLShiftEquals)
+  MATCH_TOKEN(">>=", BitRShiftEquals)
+
+  // Is otherwise considered to be a custom operator
+  out.setType(Token::Type::CustomOperator);
+  return true;
 }
+#undef SINGLE_CHAR_TOKEN
 
 static constexpr const char *const tokenTypeEnumStrings[] = {
 #define X(a) #a,

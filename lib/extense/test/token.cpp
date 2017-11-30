@@ -76,7 +76,7 @@ TEST_CASE("skipWhitespace works", "[detail::skipWhitespace]") {
 TEST_CASE("Lexing detail functions",
           "[detail::lexCharacter, detail::lexString, detail::lexLabel, "
           "detail::lexUnsigned, detail::lexInteger, detail::lexNumber, "
-          "detail::lexIdentifier, detail::lexCustomOperator]") {
+          "detail::lexIdentifier, detail::lexOperator]") {
   Token t{Source::Location{}};
 
   SECTION("lexCharacter") {
@@ -206,6 +206,11 @@ TEST_CASE("Lexing detail functions",
     REQUIRE(s4.currentChar() == '.');
     REQUIRE(t.type() == Token::Type::Integer);
     t.setType(Token::Type::Plus);
+
+    Source s5{"+|"};
+    REQUIRE(!detail::lexInteger(s5, t));
+    REQUIRE(s5.currentChar() == '+');
+    REQUIRE(t.type() == Token::Type::Plus);
   }
 
   SECTION("lexNumber") {
@@ -280,11 +285,83 @@ TEST_CASE("Lexing detail functions",
     REQUIRE(detail::lexIdentifier(s4, t));
     REQUIRE(t.type() == Token::Type::Identifier);
     REQUIRE(s4.currentChar() == ' ');
+    t.setType(Token::Type::Plus);
+
+    SECTION("boolean values") {
+      Source s{"true|"};
+      REQUIRE(detail::lexIdentifier(s, t));
+      REQUIRE(s.currentChar() == '|');
+      REQUIRE(t.type() == Token::Type::Bool);
+      t.setType(Token::Type::Plus);
+
+      Source s2{"false "};
+      REQUIRE(detail::lexIdentifier(s2, t));
+      REQUIRE(s2.currentChar() == ' ');
+      REQUIRE(t.type() == Token::Type::Bool);
+      t.setType(Token::Type::Plus);
+
+      Source s3{"falseeslaf"};
+      REQUIRE(detail::lexIdentifier(s3, t));
+      REQUIRE(s3.currentChar().isAfterSource());
+      REQUIRE(t.type() == Token::Type::Identifier);
+      t.setType(Token::Type::Plus);
+    }
+
+    SECTION("logical operators") {
+      Source s{"and|"};
+      REQUIRE(detail::lexIdentifier(s, t));
+      REQUIRE(s.currentChar() == '|');
+      REQUIRE(t.type() == Token::Type::And);
+      t.setType(Token::Type::Plus);
+
+      Source s2{"andy^"};
+      REQUIRE(detail::lexIdentifier(s2, t));
+      REQUIRE(s2.currentChar() == '^');
+      REQUIRE(t.type() == Token::Type::Identifier);
+      t.setType(Token::Type::Plus);
+
+      Source s3{"or"};
+      REQUIRE(detail::lexIdentifier(s3, t));
+      REQUIRE(s3.currentChar().isAfterSource());
+      REQUIRE(t.type() == Token::Type::Or);
+      t.setType(Token::Type::Plus);
+
+      Source s4{"not&"};
+      REQUIRE(detail::lexIdentifier(s4, t));
+      REQUIRE(s4.currentChar() == '&');
+      REQUIRE(t.type() == Token::Type::Not);
+      t.setType(Token::Type::Plus);
+
+      Source s5{"no"};
+      REQUIRE(detail::lexIdentifier(s5, t));
+      REQUIRE(s5.currentChar().isAfterSource());
+      REQUIRE(t.type() == Token::Type::Identifier);
+    }
   }
 
-  SECTION("lexCustomOperator") {
-    INFO("Not yet implemented");
-    REQUIRE(false);
+  SECTION("lexOperator") {
+    Source s{"= "};
+    REQUIRE(detail::lexOperator(s, t));
+    REQUIRE(t.type() == Token::Type::Assign);
+    REQUIRE(s.currentChar() == ' ');
+    t.setType(Token::Type::Identifier);
+
+    Source s2{"+ "};
+    REQUIRE(detail::lexOperator(s2, t));
+    REQUIRE(t.type() == Token::Type::Plus);
+    REQUIRE(s2.currentChar() == ' ');
+    t.setType(Token::Type::Identifier);
+
+    Source s3{"-> "};
+    REQUIRE(detail::lexOperator(s3, t));
+    REQUIRE(t.type() == Token::Type::MapsTo);
+    REQUIRE(s3.currentChar() == ' ');
+    t.setType(Token::Type::Identifier);
+
+    Source s4{"operator"};
+    REQUIRE(!detail::lexOperator(s4, t));
+    REQUIRE(t.type() == Token::Type::Identifier);
+    REQUIRE(s4.currentChar() == 'o');
   }
 }
 

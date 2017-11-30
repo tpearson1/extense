@@ -208,11 +208,11 @@ bool lexLabel(Source &source, Token &out);
 bool lexUnsigned(Source &source);
 bool lexInteger(Source &source, Token &out);
 bool lexNumber(Source &source, Token &out);
+bool lexOperator(Source &source, Token &out);
+// Also lexes booleans and logical operators
 bool lexIdentifier(Source &source, Token &out);
-bool lexCustomOperator(Source &source, Token &out);
 
 // EOS = End of Source
-
 inline void throwUnexpectedEOS(Source &source) {
   if (source.currentChar().isValidChar()) return;
   throw LexingError{source.location(), "Unexpected end of source"};
