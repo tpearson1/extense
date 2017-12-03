@@ -49,10 +49,13 @@ int main(int /*argc*/, const char * /*argv*/ []) {
   }
 
   for (const auto &token : tokens) {
-    auto disp = token.text();
-    if (disp == "\n") disp = "\\n";
-    std::cout << disp << '|' << token.type() << '\n';
+    if (token.text() == "\n")
+      std::cout << '\n';
+    else
+      std::cout << '|' << token.text() << '/' << token.type();
   }
+
+  std::cout << '\n';
 
   return 0;
 }
