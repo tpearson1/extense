@@ -53,7 +53,7 @@ extense::Source::Char extense::Source::nextChar() {
   auto current = currentChar();
   if (current.isBeforeSource())
     return Char{data[idx = 0]};
-  else if (current.isAfterSource())
+  if (current.isAfterSource())
     return current;
 
   auto c = current.get();
@@ -90,7 +90,7 @@ extense::Source::Char extense::Source::peekNextChar() {
   auto current = currentChar();
   if (current.isBeforeSource())
     return Char{data[0]};
-  else if (current.isAfterSource())
+  if (current.isAfterSource())
     return current;
 
   return Char{data[idx + 1]};
