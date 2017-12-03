@@ -64,7 +64,7 @@ z |= 8 # 0010 | 1000 = 1010 (10)
 z ^= 5 # 1010 ^ 0101 = 1111 (15)
 
 # Multiple statements on one line
-x = 1; x += 3; println x # 4
+x = 1, x += 3, println x # 4
 
 # Escape characters
 println "' \"" # ' "
@@ -74,7 +74,7 @@ println '" \'' # " '
   References
 
   Basic datatypes like integers, and strings have their values copied by default
-  when '=' is used. Sets and arrays are referenced by default, and can be copied
+  when '=' is used. Sets and lists are referenced by default, and can be copied
   using the 'copy' function.
 }
 x = 8
@@ -83,17 +83,17 @@ a = 5
 println a # 5
 println x # 8
 
-# Arrays
-array = (1,2,3,4,5)
-array:1 # 2
-array:(1,3) # (2,3)
+# Lists
+list = (1,2,3,4,5)
+list:1 # 2
+list:(1,3) # (2,3)
 (1..5) # (1,2,3,4,5)
-array2 = (true,17,'Hi') # Can store different types
+list2 = (true,17,'Hi') # Can store different types
 
 #{
   Scopes:
   A scope is enclosed in square brackets
-  ; or \n separate each statement
+  , or \n separate each statement
 }
 [] # Empty scope
 
@@ -181,56 +181,66 @@ println (min (3.6,2)) # 2
 
 # Sets
 data = {
-  a = 7,
-  b = 'Hi'
-}
-
-# Or, for using any key -> value we can do the following:
-data2 = {
-  7 -> 'Hello',
-  'Woop' -> true,
+  7 -> 'Hello'
+  'Woop' -> true
   # With this syntax, the identifier 'data' is actually substituted for its
   # value, and so the following is equivalent to:
-  # {a = 7, b = 'Hi'} -> (7,2)
+  # {a -> 7, b -> 'Hi'} -> (7,2)
   data -> (7,2)
 }
 
-println data:a # 7
-println data:b # Hi
+# As some syntactic sugar we can map keys with valid identifier names (a and b)
+# as follows
+data2 = {
+  a -> 7
+  b -> 'Hi'
+}
 
-println (data.has 'a') # true
+# We can also combine the two syntaxes
+data3 = {
+  a -> 7
+  "test" -> true
+}
+
+println data:7 # Hello
+println data2:a # 7
+println data2:'a' # 7
+println data2:b # Hi
+println data3:test # true
+
+println (data2.has 'a') # true
 
 #{
   Doing the following adds the 'c' member to 'data'
 }
-data += {c = true}
+data.join {c -> true}
 
 # OOP
 
 # Create a constructor - function returning a set
 Person = [{
-  name = $:0,
-  age = $:1,
-  height = $:2
+  name -> $:0
+  age -> $:1
+  height -> $:2
 }]
 
-speak = [println ['Hi, I\'m ',$:name]]
+speak = [println ('Hi, I\'m ',$:name)]
 
 jack = Person ('Jack',15,172)
 println (speak jack)
 
 # Inheritance
-Mutant = [Person $ + {power = $:3}]
+Mutant = [(Person $).concat {power -> $:3}]
 hulk = Mutant ('Hulk',25,378,'Strength')
 println (speak hulk)
 
 # Can also add functions to a set, which can act as member functions or
 # essentially a namespace equivalent
 Fruit = [{
-  color = $,
-  sayColor = [println ('I am ' + $:color)]
-  betterColor = [println ($:0:color + ' is a better color than ' + $:1)]
-  tasty = [true] # Function which does not take self or any argument
+  color -> $
+  sayColor -> [println ('I am ' + $:color)]
+  betterColor -> [println ($:0:color + ' is a better color than ' + $:1)]
+  tasty -> [true] # Function which does not take self or any argument
 }]
 
 apple = Fruit 'red'
@@ -255,14 +265,14 @@ x = [apple::sayColor]
 
 # Example of a 'namespace'
 namespace = {
-  constant = 7,
-  foo = [print 1]
+  constant -> 7
+  foo -> [print 1]
 }
 
 println (namespace:constant) # 7
 namespace:foo # 1
 
-# Reference semantics with an array
+# Reference semantics with a list
 a = (1,2,3)
 b = a # 'b' holds a reference to 'a'
 b:1 = 5 # Since 'b' references 'a', both 'a' and 'b' are now (1,5,3)
@@ -286,8 +296,35 @@ scope # Runs the code
 
 # Can create a list of tokens also
 tokens = tokenize "3 * (4 - 2) + 1"
-print tokens
+println tokens
 # Can also create a scope from a list of tokens
 mathScope = makeScope tokens
-print !mathScope # Displays AST
-print mathScope # Prints 7
+println !mathScope # Displays AST
+println mathScope # Prints 7
+
+#{
+  Using 'is'
+
+  The following types can be used with 'is':
+  - Int
+  - Float
+  - Bool
+  - Char
+  - String
+  - List
+  - Set
+}
+a = 7
+println (a is Int) # true
+a = 'Hello'
+println (a is String) # true
+a = true
+println (a is Float) # false
+
+#{
+  Custom operators
+
+  They are defined inside parentheses and always take two arguments.
+}
+(++) = [$:0 + 2 * $:1]
+println (7 ++ 2) # 7 + 2 * 2 = 11

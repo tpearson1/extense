@@ -48,13 +48,12 @@ SOFTWARE.
   X(CustomOperator) /*   E.g. <=> or |>   */                                   \
                                                                                \
   X(Assign) /*   =   */                                                        \
-  X(Comma) /*   ,   */                                                         \
   X(Dot) /*   .   */                                                           \
   X(DotDot) /*   ..   */                                                       \
   X(Colon) /*   :   */                                                         \
   X(ColonColon) /*   ::   */                                                   \
   X(Exclamation) /* ! */                                                       \
-  X(EndStatement) /*   ; or a newline   */                                     \
+  X(EndStatement) /*   , or a newline   */                                     \
   X(MapsTo) /* -> */                                                           \
                                                                                \
   X(LeftParen) /*   (   */                                                     \
@@ -101,6 +100,9 @@ SOFTWARE.
   X(And) /*   and   */                                                         \
   X(Or) /*   or   */                                                           \
   X(Not) /*   not   */                                                         \
+                                                                               \
+  /* Querying the type of a variable */                                        \
+  X(Is)                                                                        \
                                                                                \
   /* Literals */                                                               \
   X(Integer) /*   E.g. 1234   */                                               \
@@ -209,7 +211,7 @@ bool lexUnsigned(Source &source);
 bool lexInteger(Source &source, Token &out);
 bool lexNumber(Source &source, Token &out);
 bool lexOperator(Source &source, Token &out);
-// Also lexes booleans and logical operators
+// Also lexes booleans and textual operators
 bool lexIdentifier(Source &source, Token &out);
 
 // EOS = End of Source

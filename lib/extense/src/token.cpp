@@ -35,7 +35,7 @@ SOFTWARE.
 std::vector<extense::Token> extense::tokenize(extense::Source &source) {
   std::vector<Token> tokens;
   auto lastTokenIsEndStatement = [&tokens] {
-    if (tokens.size() == 0) return false;
+    if (tokens.empty()) return false;
     return tokens.back().type() == Token::Type::EndStatement;
   };
 
@@ -77,8 +77,7 @@ extense::Token extense::detail::fetchNextToken(extense::Source &source) {
 
   switch (current) {
   case '\n':
-  case ';': SINGLE_CHAR_TOKEN(EndStatement)
-  case ',': SINGLE_CHAR_TOKEN(Comma)
+  case ',': SINGLE_CHAR_TOKEN(EndStatement)
   case '$': SINGLE_CHAR_TOKEN(Dollar)
   case '(': SINGLE_CHAR_TOKEN(LeftParen)
   case ')': SINGLE_CHAR_TOKEN(RightParen)
@@ -139,9 +138,17 @@ static void skipWhitespaceOneAttempt(extense::Source &source) {
       // an EndStatement token
       if (!source.currentChar().isAfterSource()) source.backChar();
     }
-  } else if (current == ' ' || current == '\t') {
+  }
+
+  if (current == ' ' || current == '\t') {
     // Should not be an error to end file with whitespace
     skipPastPermitEOS(source, [](auto c) { return c == ' ' || c == '\t'; });
+  }
+
+  if (current == '\\') {
+    // Ignore the \ and the following character
+    source.nextChar();
+    source.nextChar();
   }
 }
 
@@ -209,7 +216,9 @@ bool extense::detail::lexLabel(extense::Source &source, extense::Token &out) {
   return true;
 }
 
-static bool safeIsDigit(unsigned char c) { return std::isdigit(c); }
+static bool safeIsDigit(unsigned char c) {
+  return static_cast<bool>(std::isdigit(c));
+}
 
 bool extense::detail::lexUnsigned(extense::Source &source) {
   auto begin = source.index();
@@ -277,29 +286,23 @@ static bool lexBool(std::string_view text, extense::Token &out) {
   return false;
 }
 
-static bool lexLogicalOperator(std::string_view text, extense::Token &out) {
-  if (text == "and") {
-    out.setType(extense::Token::Type::And);
-    return true;
+#define MATCH_TOKEN(tokenText, type)                                           \
+  if (text == std::string_view{tokenText}) {                                   \
+    out.setType(extense::Token::Type::type);                                            \
+    return true;                                                               \
   }
-
-  if (text == "or") {
-    out.setType(extense::Token::Type::Or);
-    return true;
-  }
-
-  if (text == "not") {
-    out.setType(extense::Token::Type::Not);
-    return true;
-  }
-
+static bool lexTextualOperator(std::string_view text, extense::Token &out) {
+  MATCH_TOKEN("and", And);
+  MATCH_TOKEN("or", Or);
+  MATCH_TOKEN("not", Not);
+  MATCH_TOKEN("is", Is);
   return false;
 }
 
 bool extense::detail::lexIdentifier(extense::Source &source,
                                     extense::Token &out) {
   auto validFirstChar = [](unsigned char c) {
-    return std::isalpha(c) || c == '_';
+    return static_cast<bool>(std::isalpha(c)) || c == '_';
   };
 
   auto validChar = [validFirstChar](unsigned char c) {
@@ -314,22 +317,17 @@ bool extense::detail::lexIdentifier(extense::Source &source,
   // Here we check for a bool/logical operator
   auto text = source.getSlice(begin, source.index());
   if (lexBool(text, out)) return true;
-  if (lexLogicalOperator(text, out)) return true;
+  if (lexTextualOperator(text, out)) return true;
 
   out.setType(Token::Type::Identifier);
   return true;
 }
 
-#define MATCH_TOKEN(tokenText, type)                                           \
-  if (text == tokenText) {                                                     \
-    out.setType(Token::Type::type);                                            \
-    return true;                                                               \
-  }
 bool extense::detail::lexOperator(extense::Source &source,
                                   extense::Token &out) {
-  constexpr const std::array permittedOpChars = {'&', '|', '~', '^', '<', '>',
-                                                 '?', '+', '-', '*', '/', '%',
-                                                 '!', ':', '.', '='};
+  constexpr const std::array permittedOpChars{'&', '|', '~', '^', '<', '>',
+                                              '?', '+', '-', '*', '/', '%',
+                                              '!', ':', '.', '='};
 
   auto isNotValidOpChar = [&](char c) {
     return std::none_of(std::begin(permittedOpChars),
@@ -398,7 +396,7 @@ bool extense::detail::lexOperator(extense::Source &source,
 }
 #undef SINGLE_CHAR_TOKEN
 
-static constexpr const char *const tokenTypeEnumStrings[] = {
+static constexpr std::array tokenTypeEnumStrings{
 #define X(a) #a,
     _LIB_EXTENSE__TOKEN__TYPE_ENUM
 #undef X
@@ -416,6 +414,6 @@ std::ostream &operator<<(std::ostream &os, const extense::Token &token) {
 }
 
 std::ostream &operator<<(std::ostream &os, extense::Token::Type type) {
-  os << tokenTypeEnumStrings[static_cast<int>(type)];
+  os << tokenTypeEnumStrings.at(static_cast<int>(type));
   return os;
 }
