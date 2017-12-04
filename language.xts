@@ -328,3 +328,35 @@ println (a is Float) # false
 }
 (++) = [$:0 + 2 * $:1]
 println (7 ++ 2) # 7 + 2 * 2 = 11
+
+#{
+ Overriding operators for sets.
+
+ The operator string maps to a function.
+ When two sets are taken as operands, the function in the first one is used
+ for the operators functionality
+}
+Vector2 = [{
+  x -> $:0
+  y -> $:1
+
+  '+' -> [Vector2 ($:0:x + $:1:x, $:0:y + $:1:y)]
+}]
+
+sum = Vector2 (1, 3) + Vector2 (7, 4)
+println (sum:x, ',', sum:y) # 8,7
+
+Vector3 = [{
+  x -> $:0
+  y -> $:1
+  z -> $:2
+
+  '+' -> [Vector3 ($:0:x + $:1:x, $:0:y + $:1:y, $:0:z + $:1:z)]
+}]
+
+# Since the left set's '+' member is used for the addition,
+# sum is a Vector2. Switching the order of Vector2 and Vector3 in the addition
+# expression would be an error because the Vector3's '+' member would be used,
+# expecting a 'z' member in the Vector2 operand which is not present.
+sum = Vector2 (2, 4) + Vector3 (6, 5, 19)
+println (sum:x, ',', sum:y) # 8,9
