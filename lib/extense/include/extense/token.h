@@ -111,6 +111,8 @@ SOFTWARE.
   X(String) /*   E.g. 'hello' or "hello"   */                                  \
   X(Character) /*   E.g. `a   */                                               \
                                                                                \
+  X(None) /*   None   */                                                       \
+                                                                               \
   /* End of source */                                                          \
   X(EndSource)                                                                 \
                                                                                \
@@ -211,7 +213,7 @@ bool lexUnsigned(Source &source);
 bool lexInteger(Source &source, Token &out);
 bool lexNumber(Source &source, Token &out);
 bool lexOperator(Source &source, Token &out);
-// Also lexes booleans and textual operators
+// Also lexes booleans and textual tokens
 bool lexIdentifier(Source &source, Token &out);
 
 // EOS = End of Source

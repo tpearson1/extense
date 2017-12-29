@@ -73,8 +73,8 @@ println '" \'' # " '
 #{
   References
 
-  Basic datatypes like integers, and strings have their values copied by default
-  when '=' is used. Sets and lists are referenced by default, and can be copied
+  Basic datatypes like Int and Char have their values copied by default
+  when '=' is used. Sets, Strings and lists are referenced by default, and can be copied
   using the 'copy' function.
 }
 x = 8
@@ -313,6 +313,7 @@ println mathScope # Prints 7
   - String
   - List
   - Set
+  - None
 }
 a = 7
 println (a is Int) # true
@@ -320,6 +321,10 @@ a = 'Hello'
 println (a is String) # true
 a = true
 println (a is Float) # false
+
+a = None
+println (a is None) # true
+println (a == None) # true
 
 #{
   Custom operators
@@ -360,3 +365,8 @@ Vector3 = [{
 # expecting a 'z' member in the Vector2 operand which is not present.
 sum = Vector2 (2, 4) + Vector3 (6, 5, 19)
 println (sum:x, ',', sum:y) # 8,9
+
+# Casting. Bool, string and other type names are just functions which convert
+# the given value to that type
+a = Bool 1.7 # a = true
+a = String `a # a == "a"

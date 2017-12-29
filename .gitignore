@@ -22,6 +22,7 @@ tags
 /.ycm_extra_conf.py
 /vgcore.*
 /include/config.h
+.clang_complete
 
 # Other files
 todo

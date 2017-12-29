@@ -291,11 +291,12 @@ static bool lexBool(std::string_view text, extense::Token &out) {
     out.setType(extense::Token::Type::type);                                            \
     return true;                                                               \
   }
-static bool lexTextualOperator(std::string_view text, extense::Token &out) {
+static bool lexTextualToken(std::string_view text, extense::Token &out) {
   MATCH_TOKEN("and", And);
   MATCH_TOKEN("or", Or);
   MATCH_TOKEN("not", Not);
   MATCH_TOKEN("is", Is);
+  MATCH_TOKEN("None", None);
   return false;
 }
 
@@ -314,10 +315,10 @@ bool extense::detail::lexIdentifier(extense::Source &source,
   auto begin = source.index();
   skipUntilPermitEOS(source, [validChar](auto c) { return !validChar(c); });
 
-  // Here we check for a bool/logical operator
+  // Here we check for a bool/textual token
   auto text = source.getSlice(begin, source.index());
   if (lexBool(text, out)) return true;
-  if (lexTextualOperator(text, out)) return true;
+  if (lexTextualToken(text, out)) return true;
 
   out.setType(Token::Type::Identifier);
   return true;

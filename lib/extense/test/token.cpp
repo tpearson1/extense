@@ -336,6 +336,20 @@ TEST_CASE("Lexing detail functions",
       REQUIRE(detail::lexIdentifier(s5, t));
       REQUIRE(s5.currentChar().isAfterSource());
       REQUIRE(t.type() == Token::Type::Identifier);
+      t.setType(Token::Type::Plus);
+    }
+
+    SECTION("None") {
+      Source s{"Nones|"};
+      REQUIRE(detail::lexIdentifier(s, t));
+      REQUIRE(s.currentChar() == '|');
+      REQUIRE(t.type() == Token::Type::Identifier);
+      t.setType(Token::Type::Plus);
+
+      Source s2{"None|"};
+      REQUIRE(detail::lexIdentifier(s2, t));
+      REQUIRE(s2.currentChar() == '|');
+      REQUIRE(t.type() == Token::Type::None);
     }
   }
 
