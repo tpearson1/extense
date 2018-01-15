@@ -31,28 +31,19 @@ SOFTWARE.
 #include <ostream>
 #include <sstream>
 #include <string>
-#include <variant>
 #include <vector>
 
 #include <extense/detail/valuetypebase.h>
 
 namespace extense {
-struct None {
-  bool operator==(None) const { return true; }
-  bool operator!=(None) const { return false; }
-  bool operator<=(None) const { return true; }
-  bool operator>=(None) const { return true; }
-  bool operator<(None) const { return false; }
-  bool operator>(None) const { return false; }
-};
-
+struct None {};
 struct Int;
 struct Float;
 struct Bool;
 struct Char;
-struct String;
-struct Set;
-struct List;
+class String;
+class Set;
+class List;
 
 class Reference;
 
@@ -86,27 +77,55 @@ inline constexpr bool isFlatValueType =
 template <typename T>
 inline constexpr bool isValueType =
     isFlatValueType<T> || std::is_same_v<T, Reference>;
+
+template <typename T>
+constexpr std::string_view typeAsString() {
+  static_assert(detail::isValueType<T>,
+                "Invalid type passed to 'extense::typeAsString'");
+  if (std::is_same_v<None, T>) return "None";
+  if (std::is_same_v<Int, T>) return "Int";
+  if (std::is_same_v<Float, T>) return "Float";
+  if (std::is_same_v<Bool, T>) return "Bool";
+  if (std::is_same_v<Char, T>) return "Char";
+  if (std::is_same_v<List, T>) return "List";
+  if (std::is_same_v<String, T>) return "String";
+  if (std::is_same_v<Set, T>) return "Set";
+  if (std::is_same_v<Reference, T>) return "Reference";
+}
 } // namespace detail
 
-struct Int : public detail::ValueTypeBase<Int, std::int64_t> {
+template <typename ValueType>
+inline constexpr std::string_view
+    typeAsString = detail::typeAsString<ValueType>();
+
+struct Int : detail::ValueTypeBase<Int, std::int64_t> {
   using Base::Base;
   explicit Int(std::int32_t v) : Base(static_cast<ValueType>(v)) {}
 };
 
-struct Float : public detail::ValueTypeBase<Float, double> {
+struct Float : detail::ValueTypeBase<Float, double> {
   using Base::Base;
   explicit Float(float v) : Base(static_cast<ValueType>(v)) {}
 };
 
-struct Bool : public detail::ValueTypeBase<Bool, bool> {
+struct Bool : detail::ValueTypeBase<Bool, bool> {
+  using Base::Base;
+
+  static const Bool t;
+  static const Bool f;
+
+  operator bool() const { return value; }
+};
+
+inline const Bool Bool::t{true};
+inline const Bool Bool::f{false};
+
+struct Char : detail::ValueTypeBase<Char, char> {
   using Base::Base;
 };
 
-struct Char : public detail::ValueTypeBase<Char, char> {
-  using Base::Base;
-};
-
-struct String : public detail::ValueTypeBase<String, std::string> {
+class String : public detail::ValueTypeBase<String, std::string> {
+public:
   using Base::Base;
 };
 
@@ -117,25 +136,48 @@ class BasicFlatValue;
 
 namespace detail {
 using SetKeyType = BasicFlatValue<Int, Float, Bool, Char, String>;
+
+struct SetCompare {
+  bool operator()(const SetKeyType &lhs, const SetKeyType &rhs) const;
+};
+
 // Using a map instead of an unordered_map, even though ordering is not needed,
 // because unordered_map requires Value to be a complete type
-using SetValueType = std::map<SetKeyType, Value>;
+using SetValueType = std::map<SetKeyType, Value, SetCompare>;
 } // namespace detail
 
-struct Set : detail::ValueTypeBase<Set, detail::SetValueType> {
+class Set : public detail::ValueTypeBase<Set, detail::SetValueType> {
+public:
   using Base::Base;
   using KeyType = detail::SetKeyType;
 
   Set(std::initializer_list<ValueType::value_type> kvps);
+
+  // Access an element
+  const Value &operator[](const KeyType &i) const;
+  Value &operator[](const KeyType &i);
+
+  // Returns a reference to the element associated with the given key, creating
+  // the element if not present
+  Value &insertOrAccess(const KeyType &i);
 };
 
-struct List : detail::ValueTypeBase<List, std::vector<Value>> {
+class List : public detail::ValueTypeBase<List, std::vector<Value>> {
+public:
   using Base::Base;
 
-  List(std::initializer_list<Value> values)
-      : Base{ValueType{std::move(values)}} {}
+  List();
+
+  List(std::initializer_list<Value> values);
+
+  Value &operator[](Int i) {
+    return const_cast<Value &>(static_cast<const List &>(*this)[i]);
+  }
+
+  const Value &operator[](Int i) const;
+
+  List operator[](const List &i) const;
 };
-} // namespace extense
 
 std::ostream &operator<<(std::ostream &, const extense::Value &);
 
@@ -172,7 +214,7 @@ inline std::ostream &operator<<(std::ostream &os, const extense::String &v) {
 std::ostream &operator<<(std::ostream &, const extense::Set &);
 std::ostream &operator<<(std::ostream &, const extense::List &);
 
-namespace extense::detail {
+namespace detail {
 /*
  * It is perfectly fine to convert from any type which implements operator<< to
  * a String.
@@ -211,6 +253,7 @@ struct Convert<Char, String> {
   struct Implicitly {};
   String operator()(Char c) { return String{std::string(1, c.value)}; }
 };
-} // namespace extense::detail
+} // namespace detail
+} // namespace extense
 
 #endif // _LIB_EXTENSE_DETAIL__TYPES_H

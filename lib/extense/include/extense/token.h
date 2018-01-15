@@ -102,7 +102,7 @@ SOFTWARE.
   X(Not) /*   not   */                                                         \
                                                                                \
   /* Querying the type of a variable */                                        \
-  X(Is)                                                                        \
+  X(Is) /*   is   */                                                           \
                                                                                \
   /* Literals */                                                               \
   X(Integer) /*   E.g. 1234   */                                               \

@@ -26,19 +26,13 @@ SOFTWARE.
 
 #include <extense/value.h>
 
+#include "../common.h"
 #include <catch.hpp>
-#include <cmath>
 
 using namespace extense;
 
 TEST_CASE("Construction and conversion for types",
           "[ValueTypeBase, Reference, FlatValue, BasicFlatValue, Value]") {
-  constexpr const auto floatTolerance = 0.00000001;
-
-  auto nearlyEquals = [](double a, double b) {
-    return std::abs(a - b) < floatTolerance;
-  };
-
   SECTION("None") {
     // None type contains no state
     auto n = None{};

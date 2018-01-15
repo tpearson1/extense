@@ -110,13 +110,6 @@ struct ValueTypeBase {
     *static_cast<Derived *>(this) = convert<T, Derived>(std::move(v));
   }
 
-  bool operator==(ValueTypeBase other) const { return value == other.value; }
-  bool operator!=(ValueTypeBase other) const { return value != other.value; }
-  bool operator<=(ValueTypeBase other) const { return value <= other.value; }
-  bool operator>=(ValueTypeBase other) const { return value >= other.value; }
-  bool operator<(ValueTypeBase other) const { return value < other.value; }
-  bool operator>(ValueTypeBase other) const { return value > other.value; }
-
 protected:
   using Base = ValueTypeBase;
 };

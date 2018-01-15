@@ -81,7 +81,7 @@ x = 8
 a = !x
 a = 5
 println a # 5
-println x # 8
+println x # 5
 
 # Lists
 list = (1,2,3,4,5)

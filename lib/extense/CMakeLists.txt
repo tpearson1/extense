@@ -5,7 +5,8 @@ set (sources
     ${source_dir}/source.cpp
     ${source_dir}/token.cpp
     ${source_dir}/value.cpp
-    ${detail_source_dir}/types.cpp)
+    ${detail_source_dir}/types.cpp
+    ${detail_source_dir}/operations.cpp)
 
 add_library (api SHARED ${sources})
 target_include_directories (api PUBLIC
@@ -19,7 +20,8 @@ if (ENABLE_TESTS)
     ${test_dir}/source.cpp
     ${test_dir}/token.cpp
     ${test_dir}/value.cpp
-    ${detail_test_dir}/types.cpp)
+    ${detail_test_dir}/types.cpp
+    ${detail_test_dir}/operations.cpp)
 
   add_executable (api_tests ${test_dir}/runner.cpp ${test_sources})
   target_include_directories (api_tests PUBLIC

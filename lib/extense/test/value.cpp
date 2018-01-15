@@ -26,15 +26,9 @@ SOFTWARE.
 
 #include <extense/value.h>
 
+#include "common.h"
 #include <catch.hpp>
-#include <cmath>
 #include <sstream>
-
-constexpr const auto floatTolerance = 0.00000001;
-
-bool nearlyEquals(double a, double b) {
-  return std::abs(a - b) < floatTolerance;
-}
 
 using namespace extense;
 
