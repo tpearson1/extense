@@ -24,7 +24,7 @@ SOFTWARE.
 -------------------------------------------------------------------------------
 */
 
-#include <extense/source.h>
+#include <extense/source.hpp>
 
 #include <catch.hpp>
 

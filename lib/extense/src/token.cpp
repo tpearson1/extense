@@ -30,7 +30,7 @@ SOFTWARE.
 #include <ostream>
 #include <sstream>
 
-#include <extense/token.h>
+#include <extense/token.hpp>
 
 std::vector<extense::Token> extense::tokenize(extense::Source &source) {
   std::vector<Token> tokens;
@@ -288,7 +288,7 @@ static bool lexBool(std::string_view text, extense::Token &out) {
 
 #define MATCH_TOKEN(tokenText, type)                                           \
   if (text == std::string_view{tokenText}) {                                   \
-    out.setType(extense::Token::Type::type);                                            \
+    out.setType(extense::Token::Type::type);                                   \
     return true;                                                               \
   }
 static bool lexTextualToken(std::string_view text, extense::Token &out) {

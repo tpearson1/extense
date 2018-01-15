@@ -24,7 +24,7 @@ SOFTWARE.
 -------------------------------------------------------------------------------
 */
 
-#include <extense/value.h>
+#include <extense/value.hpp>
 
 const char *extense::InvalidConversion::what() const noexcept {
   std::ostringstream os;

@@ -24,12 +24,12 @@ SOFTWARE.
 -------------------------------------------------------------------------------
 */
 
-#ifndef _LIB_EXTENSE__TOKEN_H
-#define _LIB_EXTENSE__TOKEN_H
+#ifndef _LIB_EXTENSE__TOKEN_HPP
+#define _LIB_EXTENSE__TOKEN_HPP
 
 #include <iosfwd>
 
-#include <extense/source.h>
+#include <extense/source.hpp>
 
 #define _LIB_EXTENSE__TOKEN__TYPE_ENUM                                         \
   X(Dollar) /*   $   */                                                        \
@@ -252,4 +252,4 @@ void skipPast(Source &source, Pred p) {
 std::ostream &operator<<(std::ostream &, const extense::Token &);
 std::ostream &operator<<(std::ostream &, extense::Token::Type);
 
-#endif // _LIB_EXTENSE__TOKEN_H
+#endif // _LIB_EXTENSE__TOKEN_HPP

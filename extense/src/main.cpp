@@ -28,8 +28,8 @@ SOFTWARE.
 #include <iostream>
 #include <sstream>
 
-#include <config.h>
-#include <extense/token.h>
+#include <config.hpp>
+#include <extense/token.hpp>
 
 int main(int /*argc*/, const char * /*argv*/ []) {
   std::cout << "Extense version " << extense::version << '\n';

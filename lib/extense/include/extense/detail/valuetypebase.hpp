@@ -24,8 +24,8 @@ SOFTWARE.
 -------------------------------------------------------------------------------
 */
 
-#ifndef _LIB_EXTENSE_DETAIL__VALUE_TYPE_BASE_H
-#define _LIB_EXTENSE_DETAIL__VALUE_TYPE_BASE_H
+#ifndef _LIB_EXTENSE_DETAIL__VALUE_TYPE_BASE_HPP
+#define _LIB_EXTENSE_DETAIL__VALUE_TYPE_BASE_HPP
 
 #include <type_traits>
 #include <utility>
@@ -116,4 +116,4 @@ protected:
 } // namespace detail
 } // namespace extense
 
-#endif /* _LIB_EXTENSE_DETAIL__VALUE_TYPE_BASE_H */
+#endif /* _LIB_EXTENSE_DETAIL__VALUE_TYPE_BASE_HPP */

@@ -24,8 +24,8 @@ SOFTWARE.
 -------------------------------------------------------------------------------
 */
 
-#ifndef _LIB_EXTENSE__VALUE_H
-#define _LIB_EXTENSE__VALUE_H
+#ifndef _LIB_EXTENSE__VALUE_HPP
+#define _LIB_EXTENSE__VALUE_HPP
 
 #include <cstdint>
 #include <memory>
@@ -33,7 +33,7 @@ SOFTWARE.
 #include <type_traits>
 #include <variant>
 
-#include <extense/detail/operations.h>
+#include <extense/detail/operations.hpp>
 
 namespace extense {
 /*
@@ -408,4 +408,4 @@ std::ostream &operator<<(std::ostream &, const Value &);
 std::ostream &operator<<(std::ostream &, const Reference &);
 } // namespace extense
 
-#endif // _LIB_EXTENSE__VALUE_H
+#endif // _LIB_EXTENSE__VALUE_HPP

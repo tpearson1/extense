@@ -24,9 +24,9 @@
   -------------------------------------------------------------------------------
 */
 
-#include <extense/value.h>
+#include <extense/value.hpp>
 
-#include "../common.h"
+#include "../common.hpp"
 #include <catch.hpp>
 
 using namespace extense;

@@ -30,10 +30,10 @@ if (ENABLE_TESTS)
   target_include_directories(catch INTERFACE ${HEADER_ONLY_DEPENDS})
 endif ()
 
-# Configure config.h
+# Configure config.hpp
 configure_file (
-  ${PROJECT_SOURCE_DIR}/include/config.h.in
-  ${PROJECT_BINARY_DIR}/include/config.h
+  ${PROJECT_SOURCE_DIR}/include/config.hpp.in
+  ${PROJECT_BINARY_DIR}/include/config.hpp
 )
 
 

@@ -24,8 +24,8 @@ SOFTWARE.
 -------------------------------------------------------------------------------
 */
 
-#ifndef _EXTENSE__CONFIG_H
-#define _EXTENSE__CONFIG_H
+#ifndef _EXTENSE__CONFIG_HPP
+#define _EXTENSE__CONFIG_HPP
 
 namespace extense {
 constexpr auto version = "@PROJECT_VERSION@";
@@ -34,4 +34,4 @@ constexpr auto versionMinor = @EXTENSE_VERSION_MINOR@;
 constexpr auto versionPatch = @EXTENSE_VERSION_PATCH@;
 } // namespace extense
 
-#endif // _EXTENSE__CONFIG_H
+#endif // _EXTENSE__CONFIG_HPP

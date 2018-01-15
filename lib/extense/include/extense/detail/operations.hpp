@@ -24,12 +24,12 @@
   -------------------------------------------------------------------------------
 */
 
-#ifndef _LIB_EXTENSE_DETAIL__OPERATIONS_H
-#define _LIB_EXTENSE_DETAIL__OPERATIONS_H
+#ifndef _LIB_EXTENSE_DETAIL__OPERATIONS_HPP
+#define _LIB_EXTENSE_DETAIL__OPERATIONS_HPP
 
 #include <cmath>
 
-#include <extense/detail/types.h>
+#include <extense/detail/types.hpp>
 
 namespace extense {
 // TODO: Exception hierarchy for execution, with base Exception class
@@ -523,4 +523,4 @@ auto operator!=(const VT1 &a, const VT2 &b) {
 }
 } // namespace extense
 
-#endif /* _LIB_EXTENSE_DETAIL__OPERATIONS_H */
+#endif /* _LIB_EXTENSE_DETAIL__OPERATIONS_HPP */

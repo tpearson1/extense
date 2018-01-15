@@ -24,8 +24,8 @@
   -------------------------------------------------------------------------------
 */
 
-#ifndef _LIB_EXTENSE_TEST__COMMON_H
-#define _LIB_EXTENSE_TEST__COMMON_H
+#ifndef _LIB_EXTENSE_TEST__COMMON_HPP
+#define _LIB_EXTENSE_TEST__COMMON_HPP
 
 #include <cmath>
 
@@ -36,4 +36,4 @@ inline bool nearlyEquals(double a, double b,
   return std::abs(a - b) < tolerance;
 }
 
-#endif /* _LIB_EXTENSE_TEST__COMMON_H */
+#endif /* _LIB_EXTENSE_TEST__COMMON_HPP */

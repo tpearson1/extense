@@ -24,8 +24,8 @@ SOFTWARE.
 -------------------------------------------------------------------------------
 */
 
-#ifndef _LIB_EXTENSE__SOURCE_H
-#define _LIB_EXTENSE__SOURCE_H
+#ifndef _LIB_EXTENSE__SOURCE_HPP
+#define _LIB_EXTENSE__SOURCE_HPP
 
 #include <iosfwd>
 
@@ -268,4 +268,4 @@ public:
 std::ostream &operator<<(std::ostream &, extense::Source::Char);
 std::ostream &operator<<(std::ostream &, const extense::Source::Location &);
 
-#endif // _LIB_EXTENSE__SOURCE_H
+#endif // _LIB_EXTENSE__SOURCE_HPP

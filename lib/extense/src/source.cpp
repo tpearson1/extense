@@ -24,7 +24,7 @@ SOFTWARE.
 -------------------------------------------------------------------------------
 */
 
-#include <extense/source.h>
+#include <extense/source.hpp>
 
 #include <ostream>
 
@@ -39,8 +39,7 @@ std::ostream &operator<<(std::ostream &os, extense::Source::Char c) {
   return os;
 }
 
-extense::Source::Source(std::string source)
-    : data(std::move(source)) {
+extense::Source::Source(std::string source) : data(std::move(source)) {
   lineStartIndices.push_back(0);
 }
 
@@ -51,10 +50,8 @@ extense::Source::Char extense::Source::nextChar() {
   }
 
   auto current = currentChar();
-  if (current.isBeforeSource())
-    return Char{data[idx = 0]};
-  if (current.isAfterSource())
-    return current;
+  if (current.isBeforeSource()) return Char{data[idx = 0]};
+  if (current.isAfterSource()) return current;
 
   auto c = current.get();
   idx++;
@@ -88,10 +85,8 @@ extense::Source::Char extense::Source::peekNextChar() {
   if (atLastChar()) return Char::afterSource();
 
   auto current = currentChar();
-  if (current.isBeforeSource())
-    return Char{data[0]};
-  if (current.isAfterSource())
-    return current;
+  if (current.isBeforeSource()) return Char{data[0]};
+  if (current.isAfterSource()) return current;
 
   return Char{data[idx + 1]};
 }

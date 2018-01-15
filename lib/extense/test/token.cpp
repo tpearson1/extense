@@ -26,7 +26,7 @@ SOFTWARE.
 
 #include <ostream>
 
-#include <extense/token.h>
+#include <extense/token.hpp>
 
 #include <catch.hpp>
 

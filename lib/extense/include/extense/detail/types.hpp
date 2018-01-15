@@ -24,8 +24,8 @@ SOFTWARE.
 -------------------------------------------------------------------------------
 */
 
-#ifndef _LIB_EXTENSE_DETAIL__TYPES_H
-#define _LIB_EXTENSE_DETAIL__TYPES_H
+#ifndef _LIB_EXTENSE_DETAIL__TYPES_HPP
+#define _LIB_EXTENSE_DETAIL__TYPES_HPP
 
 #include <map>
 #include <ostream>
@@ -33,7 +33,7 @@ SOFTWARE.
 #include <string>
 #include <vector>
 
-#include <extense/detail/valuetypebase.h>
+#include <extense/detail/valuetypebase.hpp>
 
 namespace extense {
 struct None {};
@@ -256,4 +256,4 @@ struct Convert<Char, String> {
 } // namespace detail
 } // namespace extense
 
-#endif // _LIB_EXTENSE_DETAIL__TYPES_H
+#endif // _LIB_EXTENSE_DETAIL__TYPES_HPP

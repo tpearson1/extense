@@ -24,7 +24,7 @@
   -------------------------------------------------------------------------------
 */
 
-#include <extense/value.h>
+#include <extense/value.hpp>
 
 #include <numeric>
 

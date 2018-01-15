@@ -24,7 +24,7 @@
   -------------------------------------------------------------------------------
 */
 
-#include <extense/value.h>
+#include <extense/value.hpp>
 
 bool extense::detail::SetCompare::operator()(const SetKeyType &lhs,
                                              const SetKeyType &rhs) const {
