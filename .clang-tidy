@@ -1,1 +1,6 @@
 Checks: '*,-google*,-readability-braces-around-statements,-clang-diagnostic-missing-braces'
+CheckOptions:
+  - key: language
+    value: c++
+  - key: std
+    value: c++17

@@ -15,7 +15,7 @@ set (EXTENSE_VERSION_PATCH 1)
 
 # Default compiler flags
 set (CMAKE_CXX_FLAGS
-  "${CMAKE_CXX_FLAGS} -std=c++1z -Wall -Werror -pedantic -g -Og -Wfatal-errors")
+  "${CMAKE_CXX_FLAGS} -std=c++1z -Wall -Werror -pedantic -g -Og")
 
 # Add Catch2 single header
 if (ENABLE_TESTS)
