@@ -30,6 +30,7 @@ SOFTWARE.
 #include <catch.hpp>
 
 using namespace extense;
+using namespace extense::literals;
 
 TEST_CASE("Construction and conversion for types",
           "[ValueTypeBase, Reference, FlatValue, BasicFlatValue, Value]") {
@@ -97,25 +98,25 @@ TEST_CASE("Construction and conversion for types",
   }
 
   SECTION("List") {
-    auto l = List{Int{3}, String{"Hi"}, Bool{true}};
+    auto l = List{3_ei, "Hi"_es, Bool::t};
     // Explicit conversion to String
     REQUIRE(String{l}.value == "(3,\"Hi\",true)");
 
     // Explicit conversions to list
-    auto l2 = List{Int{7}};
-    l2 = List{Bool{true}};
-    l2 = List{String{"This is a string"}};
+    auto l2 = List{7_ei};
+    l2 = List{Bool::t};
+    l2 = List{"This is a string"_es};
 
     REQUIRE(String{l2}.value == "(\"This is a string\",)");
   }
 
   SECTION("Reference") {
     SECTION("to an Int") {
-      auto v = Value{Int{7}};
+      auto v = Value{7_ei};
       REQUIRE(get<Int>(v).value == 7);
       auto ref = Reference{v};
       REQUIRE(get<Int>(*ref).value == 7);
-      *ref = Int{6}; // Implicitly constructs a FlatValue
+      *ref = 6_ei; // Implicitly constructs a FlatValue
       REQUIRE(get<Int>(v).value == 6);
       get<Int>(*ref).value = 5;
       REQUIRE(get<Int>(v).value == 5);
@@ -130,11 +131,11 @@ TEST_CASE("Construction and conversion for types",
     }
 
     SECTION("Automatic reference-on-copy types") {
-      auto v = Value{String{"Copy"}};
+      auto v = Value{"Copy"_es};
       REQUIRE(get<String>(v).value == "Copy");
       auto ref = Reference{v};
       REQUIRE(get<String>(*ref).value == "Copy");
-      *ref = String{"Set"}; // Implicitly constructs Value
+      *ref = "Set"_es; // Implicitly constructs Value
       REQUIRE(get<String>(*ref).value == "Set");
       REQUIRE(get<String>(v).value == "Set");
 
@@ -142,10 +143,10 @@ TEST_CASE("Construction and conversion for types",
 
       auto v2 = v;
       REQUIRE(get<String>(v2).value == "Set");
-      get<String>(v2) = String{"Set again"};
+      get<String>(v2) = "Set again"_es;
       REQUIRE(get<String>(v2).value == "Set again");
       REQUIRE(get<String>(v).value == "Set again");
-      v2 = String{"Set thrice"};
+      v2 = "Set thrice"_es;
       REQUIRE(get<String>(v2).value == "Set thrice");
       // This assignment constructs a new string and so v1 is unchanged
       REQUIRE(get<String>(v).value == "Set again");

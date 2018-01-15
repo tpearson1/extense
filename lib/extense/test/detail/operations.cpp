@@ -30,6 +30,7 @@
 #include <catch.hpp>
 
 using namespace extense;
+using namespace extense::literals;
 
 TEST_CASE("Operation functions", "[extense::ops]") {
   SECTION("Incrementing and decrementing") {
@@ -47,170 +48,167 @@ TEST_CASE("Operation functions", "[extense::ops]") {
   }
 
   SECTION("Addition") {
-    auto isum = ops::add(Int{7}, Int{3});
+    auto isum = ops::add(7_ei, 3_ei);
     REQUIRE(isum.value == 10);
-    REQUIRE(ops::addEquals(isum, Int{4}).value == 14);
+    REQUIRE(ops::addEquals(isum, 4_ei).value == 14);
     REQUIRE(isum.value == 14);
 
-    auto fsum = ops::add(Float{3.5}, Float{4.5});
+    auto fsum = ops::add(3.5_ef, 4.5_ef);
     REQUIRE(nearlyEquals(fsum.value, 8.0));
-    REQUIRE(nearlyEquals(ops::addEquals(fsum, Float{5.0}).value, 13.0));
+    REQUIRE(nearlyEquals(ops::addEquals(fsum, 5.0_ef).value, 13.0));
     REQUIRE(nearlyEquals(fsum.value, 13.0));
 
-    auto ssum = ops::add(String{"Hello, "}, String{"World!"});
+    auto ssum = ops::add("Hello, "_es, "World!"_es);
     REQUIRE(ssum.value == "Hello, World!");
-    REQUIRE(ops::addEquals(ssum, String{" I'm here."}).value ==
+    REQUIRE(ops::addEquals(ssum, " I'm here."_es).value ==
             "Hello, World! I'm here.");
     REQUIRE(ssum.value == "Hello, World! I'm here.");
 
-    auto lsum = ops::add(List{Int{3}, Bool{false}}, List{String{"Hi"}});
-    REQUIRE(lsum == List{Int{3}, Bool{false}, String{"Hi"}});
-    List expected = {Int{3}, Bool{false}, String{"Hi"}, Char{'a'}, Float{1.0}};
-    REQUIRE(ops::addEquals(lsum, List{Char{'a'}, Float{1.0}}) == expected);
+    auto lsum = ops::add(List{3_ei, Bool::f}, List{"Hi"_es});
+    REQUIRE(lsum == List{3_ei, Bool::f, "Hi"_es});
+    List expected = {3_ei, Bool::f, "Hi"_es, 'a'_ec, 1.0_ef};
+    REQUIRE(ops::addEquals(lsum, List{'a'_ec, 1.0_ef}) == expected);
     REQUIRE(lsum == expected);
   }
 
   SECTION("Unary plus") {
-    auto i = ops::add(Int{17});
+    auto i = ops::add(17_ei);
     REQUIRE(i.value == 17);
-    i = ops::add(Int{-17});
+    i = ops::add(-17_ei);
     REQUIRE(i.value == -17);
 
-    auto f = ops::add(Float{5.0});
+    auto f = ops::add(5.0_ef);
     REQUIRE(f.value == 5.0);
-    f = ops::add(Float{-5.0});
+    f = ops::add(-5.0_ef);
     REQUIRE(f.value == -5.0);
   }
 
   SECTION("Unary minus") {
-    auto i = ops::sub(Int{6});
+    auto i = ops::sub(6_ei);
     REQUIRE(i.value == -6);
-    i = ops::sub(Int{-6});
+    i = ops::sub(-6_ei);
     REQUIRE(i.value == 6);
 
-    auto f = ops::sub(Float{8.0});
+    auto f = ops::sub(8.0_ef);
     REQUIRE(f.value == -8.0);
-    f = ops::sub(Float{-8.0});
+    f = ops::sub(-8.0_ef);
     REQUIRE(f.value == 8.0);
   }
 
   SECTION("Subtraction") {
-    auto idiff = ops::sub(Int{7}, Int{3});
+    auto idiff = ops::sub(7_ei, 3_ei);
     REQUIRE(idiff.value == 4);
-    REQUIRE(ops::subEquals(idiff, Int{5}).value == -1);
+    REQUIRE(ops::subEquals(idiff, 5_ei).value == -1);
     REQUIRE(idiff.value == -1);
 
-    auto fdiff = ops::sub(Float{3.5}, Float{4.5});
+    auto fdiff = ops::sub(3.5_ef, 4.5_ef);
     REQUIRE(nearlyEquals(fdiff.value, -1.0));
-    REQUIRE(nearlyEquals(ops::subEquals(fdiff, Float{5.0}).value, -6.0));
+    REQUIRE(nearlyEquals(ops::subEquals(fdiff, 5.0_ef).value, -6.0));
     REQUIRE(nearlyEquals(fdiff.value, -6.0));
   }
 
   SECTION("Multiplication") {
-    auto iprod = ops::mul(Int{7}, Int{3});
+    auto iprod = ops::mul(7_ei, 3_ei);
     REQUIRE(iprod.value == 21);
-    REQUIRE(ops::mulEquals(iprod, Int{5}).value == 105);
+    REQUIRE(ops::mulEquals(iprod, 5_ei).value == 105);
     REQUIRE(iprod.value == 105);
 
-    auto fprod = ops::mul(Float{3.5}, Float{4.5});
+    auto fprod = ops::mul(3.5_ef, 4.5_ef);
     REQUIRE(nearlyEquals(fprod.value, 3.5 * 4.5));
     REQUIRE(nearlyEquals(ops::mulEquals(fprod, Float{1.0 / 3.5}).value, 4.5));
     REQUIRE(nearlyEquals(fprod.value, 4.5));
 
-    auto repeatedString = ops::mul(String{"abc"}, Int{4});
+    auto repeatedString = ops::mul("abc"_es, 4_ei);
     REQUIRE(repeatedString.value == "abcabcabcabc");
-    REQUIRE(ops::mulEquals(repeatedString, Int{0}).value == "");
+    REQUIRE(ops::mulEquals(repeatedString, 0_ei).value == "");
     REQUIRE(repeatedString.value == "");
 
-    auto repeatedList = ops::mul(List{Int{1}, Bool{true}}, Int{2});
-    auto expected = List{Int{1}, Bool{true}, Int{1}, Bool{true}};
+    auto repeatedList = ops::mul(List{1_ei, Bool::t}, 2_ei);
+    auto expected = List{1_ei, Bool::t, 1_ei, Bool::t};
     REQUIRE(repeatedList == expected);
-    REQUIRE(ops::mulEquals(repeatedList, Int{1}) == expected);
+    REQUIRE(ops::mulEquals(repeatedList, 1_ei) == expected);
     REQUIRE(repeatedList == expected);
-    REQUIRE(ops::mulEquals(repeatedList, Int{0}) == List{});
+    REQUIRE(ops::mulEquals(repeatedList, 0_ei) == List{});
     REQUIRE(repeatedList == List{});
   }
 
   SECTION("Division") {
-    auto quotient = ops::div(Float{18.6}, Float{6.0});
+    auto quotient = ops::div(18.6_ef, 6.0_ef);
     auto expected = 18.6 / 6.0;
     REQUIRE(nearlyEquals(quotient.value, expected));
     expected /= 2.0;
-    REQUIRE(nearlyEquals(ops::divEquals(quotient, Float{2.0}).value, expected));
+    REQUIRE(nearlyEquals(ops::divEquals(quotient, 2.0_ef).value, expected));
     REQUIRE(nearlyEquals(quotient.value, expected));
   }
 
   SECTION("Modulo") {
-    auto iremainder = ops::mod(Int{83}, Int{17});
+    auto iremainder = ops::mod(83_ei, 17_ei);
     auto iexpected = 83 % 17;
     REQUIRE(iremainder.value == iexpected);
     iexpected %= 4;
-    REQUIRE(ops::modEquals(iremainder, Int{4}).value == iexpected);
+    REQUIRE(ops::modEquals(iremainder, 4_ei).value == iexpected);
     REQUIRE(iremainder.value == iexpected);
 
-    auto fremainder = ops::mod(Float{12.4}, Float{3.2});
+    auto fremainder = ops::mod(12.4_ef, 3.2_ef);
     auto fexpected = std::fmod(12.4, 3.2);
     REQUIRE(nearlyEquals(fremainder.value, fexpected));
     fexpected = std::fmod(fexpected, 1.3);
-    REQUIRE(
-        nearlyEquals(ops::modEquals(fremainder, Float{1.3}).value, fexpected));
+    REQUIRE(nearlyEquals(ops::modEquals(fremainder, 1.3_ef).value, fexpected));
     REQUIRE(nearlyEquals(fremainder.value, fexpected));
   }
 
   SECTION("Floor division") {
-    auto iresult = ops::floorDiv(Int{-83}, Int{17});
+    auto iresult = ops::floorDiv(-83_ei, 17_ei);
     REQUIRE(iresult.value == -5);
-    REQUIRE(ops::floorDivEquals(iresult, Int{-3}).value == 1);
+    REQUIRE(ops::floorDivEquals(iresult, -3_ei).value == 1);
     REQUIRE(iresult.value == 1);
 
-    auto fresult = ops::floorDiv(Float{-37.6}, Float{8.4});
+    auto fresult = ops::floorDiv(-37.6_ef, 8.4_ef);
     auto expected = std::floor(-37.6 / 8.4);
     REQUIRE(nearlyEquals(fresult.value, expected));
     expected = std::floor(expected / 1.4);
-    REQUIRE(ops::floorDivEquals(fresult, Float{1.4}).value == expected);
+    REQUIRE(ops::floorDivEquals(fresult, 1.4_ef).value == expected);
     REQUIRE(fresult.value == expected);
   }
 
   SECTION("Exponentiation") {
     // Float exponent
-    auto result = ops::pow(Float{3.9}, Float{2.4});
+    auto result = ops::pow(3.9_ef, 2.4_ef);
     auto expected = std::pow(3.9, 2.4);
     REQUIRE(nearlyEquals(result.value, expected));
     expected = std::pow(expected, 0.5);
-    REQUIRE(nearlyEquals(ops::powEquals(result, Float{0.5}).value, expected));
+    REQUIRE(nearlyEquals(ops::powEquals(result, 0.5_ef).value, expected));
     REQUIRE(nearlyEquals(result.value, expected));
 
     // Int exponent
-    result = ops::pow(Float{3.9}, Int{2});
+    result = ops::pow(3.9_ef, 2_ei);
     expected = 3.9 * 3.9;
     REQUIRE(nearlyEquals(result.value, expected));
     expected = 1.0 / expected;
-    REQUIRE(nearlyEquals(ops::powEquals(result, Int{-1}).value, expected));
+    REQUIRE(nearlyEquals(ops::powEquals(result, -1_ei).value, expected));
     REQUIRE(nearlyEquals(result.value, expected));
   }
 
   // TODO
 
   SECTION("Dot dot") {
-    REQUIRE(ops::dotDot(Int{-1}, Int{4}) ==
-            List{Int{-1}, Int{0}, Int{1}, Int{2}, Int{3}, Int{4}});
+    REQUIRE(ops::dotDot(-1_ei, 4_ei) ==
+            List{-1_ei, 0_ei, 1_ei, 2_ei, 3_ei, 4_ei});
   }
 
   SECTION("Index") {
-    List l = {Int{3}, Bool::t, Char{'a'}};
-    auto v = ops::index(l, Int{1});
+    List l = {3_ei, Bool::t, 'a'_ec};
+    auto v = ops::index(l, 1_ei);
     REQUIRE(v.is<Bool>());
     REQUIRE(get<Bool>(v) == Bool::t);
 
-    Set s = {{String{"key"}, String{"value"}},
-             {Char{'c'}, Bool::f},
-             {Int{3}, Bool::t}};
-    REQUIRE(ops::index(s, Char{'c'}) == Bool::f);
-    REQUIRE(ops::index(s, String{"key"}) == String{"value"});
+    Set s = {{"key"_es, "value"_es}, {'c'_ec, Bool::f}, {3_ei, Bool::t}};
+    REQUIRE(ops::index(s, 'c'_ec) == Bool::f);
+    REQUIRE(ops::index(s, "key"_es) == "value"_es);
   }
 
   SECTION("Reference") {
-    Value i = Int{42};
+    Value i = 42_ei;
     auto ref = ops::ref(i);
     REQUIRE(ref->is<Int>());
 
@@ -227,14 +225,14 @@ TEST_CASE("Operation functions", "[extense::ops]") {
     // & 01101101
     // ----------
     //   01001001
-    auto i = ops::bitAnd(Int{0b11011001}, Int{0b01101101});
+    auto i = ops::bitAnd(0b11011001_ei, 0b01101101_ei);
     REQUIRE(i.value == 0b01001001);
 
     //   01001001
     // & 11000001
     // ----------
     //   01000001
-    REQUIRE(ops::bitAndEquals(i, Int{0b11000001}).value == 0b01000001);
+    REQUIRE(ops::bitAndEquals(i, 0b11000001_ei).value == 0b01000001);
     REQUIRE(i.value == 0b01000001);
   }
 
@@ -243,14 +241,14 @@ TEST_CASE("Operation functions", "[extense::ops]") {
     // | 01101101
     // ----------
     //   11111101
-    auto i = ops::bitOr(Int{0b11011001}, Int{0b01101101});
+    auto i = ops::bitOr(0b11011001_ei, 0b01101101_ei);
     REQUIRE(i.value == 0b11111101);
 
     //   11111101
     // | 11000001
     // ----------
     //   11111101
-    REQUIRE(ops::bitOrEquals(i, Int{0b11000001}).value == 0b11111101);
+    REQUIRE(ops::bitOrEquals(i, 0b11000001_ei).value == 0b11111101);
     REQUIRE(i.value == 0b11111101);
   }
 
@@ -259,35 +257,35 @@ TEST_CASE("Operation functions", "[extense::ops]") {
     // ^ 01101101
     // ----------
     //   10110100
-    auto i = ops::bitXor(Int{0b11011001}, Int{0b01101101});
+    auto i = ops::bitXor(0b11011001_ei, 0b01101101_ei);
     REQUIRE(i.value == 0b10110100);
 
     //   10110100
     // ^ 11000001
     // ----------
     //   01110101
-    REQUIRE(ops::bitXorEquals(i, Int{0b11000001}).value == 0b01110101);
+    REQUIRE(ops::bitXorEquals(i, 0b11000001_ei).value == 0b01110101);
     REQUIRE(i.value == 0b01110101);
   }
 
   SECTION("Bitwise not") {
     //  ~10011000
     // = 01100111
-    auto i = ops::bitNot(Int{0b10011000});
+    auto i = ops::bitNot(0b10011000_ei);
     // We only consider the last 8 bits
     REQUIRE((i.value & 0xFF) == 0b01100111);
   }
 
   // << <<= >> >>=
   SECTION("Bit shifting") {
-    auto shifted = ops::bitLShift(Int{1}, Int{3});
+    auto shifted = ops::bitLShift(1_ei, 3_ei);
     REQUIRE(shifted.value == 8);
-    REQUIRE(ops::bitLShiftEquals(shifted, Int{4}).value == 128);
+    REQUIRE(ops::bitLShiftEquals(shifted, 4_ei).value == 128);
     REQUIRE(shifted.value == 128);
 
-    shifted = ops::bitRShift(Int{24}, Int{2});
+    shifted = ops::bitRShift(24_ei, 2_ei);
     REQUIRE(shifted.value == 6);
-    REQUIRE(ops::bitRShiftEquals(shifted, Int{1}).value == 3);
+    REQUIRE(ops::bitRShiftEquals(shifted, 1_ei).value == 3);
     REQUIRE(shifted.value == 3);
   }
 
@@ -309,40 +307,40 @@ TEST_CASE("Operation functions", "[extense::ops]") {
 
   // < <= > >= == !=
   SECTION("Comparison operators") {
-    REQUIRE(ops::lessThan(Int{7}, Int{14}));
-    REQUIRE(!ops::lessThan(Int{21}, Int{14}));
-    REQUIRE(ops::lessThan(Float{3.2}, Float{4.6}));
-    REQUIRE(!ops::lessThan(Float{13.2}, Float{4.6}));
+    REQUIRE(ops::lessThan(7_ei, 14_ei));
+    REQUIRE(!ops::lessThan(21_ei, 14_ei));
+    REQUIRE(ops::lessThan(3.2_ef, 4.6_ef));
+    REQUIRE(!ops::lessThan(13.2_ef, 4.6_ef));
 
-    REQUIRE(ops::lessEquals(Int{7}, Int{14}));
-    REQUIRE(ops::lessEquals(Int{14}, Int{14}));
-    REQUIRE(ops::lessEquals(Float{3.2}, Float{4.6}));
-    REQUIRE(ops::lessEquals(Float{4.5}, Float{4.5}));
+    REQUIRE(ops::lessEquals(7_ei, 14_ei));
+    REQUIRE(ops::lessEquals(14_ei, 14_ei));
+    REQUIRE(ops::lessEquals(3.2_ef, 4.6_ef));
+    REQUIRE(ops::lessEquals(4.5_ef, 4.5_ef));
 
-    REQUIRE(ops::greaterThan(Int{7}, Int{4}));
-    REQUIRE(!ops::greaterThan(Int{1}, Int{14}));
-    REQUIRE(ops::greaterThan(Float{13.2}, Float{4.6}));
-    REQUIRE(!ops::greaterThan(Float{1.2}, Float{4.6}));
+    REQUIRE(ops::greaterThan(7_ei, 4_ei));
+    REQUIRE(!ops::greaterThan(1_ei, 14_ei));
+    REQUIRE(ops::greaterThan(13.2_ef, 4.6_ef));
+    REQUIRE(!ops::greaterThan(1.2_ef, 4.6_ef));
 
-    REQUIRE(ops::greaterEquals(Int{22}, Int{14}));
-    REQUIRE(ops::greaterEquals(Int{14}, Int{14}));
-    REQUIRE(ops::greaterEquals(Float{36.2}, Float{4.6}));
-    REQUIRE(ops::greaterEquals(Float{4.5}, Float{4.5}));
+    REQUIRE(ops::greaterEquals(22_ei, 14_ei));
+    REQUIRE(ops::greaterEquals(14_ei, 14_ei));
+    REQUIRE(ops::greaterEquals(36.2_ef, 4.6_ef));
+    REQUIRE(ops::greaterEquals(4.5_ef, 4.5_ef));
 
     REQUIRE(ops::equal(None{}, None{}));
     REQUIRE(ops::equal(Bool::t, Bool::t));
-    REQUIRE(ops::equal(Int{5}, Int{5}));
-    REQUIRE(ops::equal(Float{3.5}, Float{3.5}));
-    REQUIRE(ops::equal(Char{'c'}, Char{'c'}));
-    REQUIRE(ops::equal(String{"hello"}, String{"hello"}));
-    REQUIRE(ops::equal(List{Int{4}, Bool::t}, List{Float{4.0}, Bool::t}));
-    auto s = Set{{Char{'a'}, String{"hi"}}, {Bool::t, Int{3}}};
+    REQUIRE(ops::equal(5_ei, 5_ei));
+    REQUIRE(ops::equal(3.5_ef, 3.5_ef));
+    REQUIRE(ops::equal('c'_ec, 'c'_ec));
+    REQUIRE(ops::equal("hello"_es, "hello"_es));
+    REQUIRE(ops::equal(List{4_ei, Bool::t}, List{4.0_ef, Bool::t}));
+    auto s = Set{{'a'_ec, "hi"_es}, {Bool::t, 3_ei}};
     REQUIRE(ops::equal(s, s));
 
-    REQUIRE(ops::equal(Value{Int{2}}, Value{Int{2}}));
-    REQUIRE(ops::equal(Value{Int{2}}, Value{Float{2.0}}));
+    REQUIRE(ops::equal(Value{2_ei}, Value{2_ei}));
+    REQUIRE(ops::equal(Value{2_ei}, Value{2.0_ef}));
 
-    REQUIRE(ops::notEqual(Int{3}, Int{17}));
+    REQUIRE(ops::notEqual(3_ei, 17_ei));
   }
 }
 
@@ -350,6 +348,6 @@ TEST_CASE("Operations via C++ operators", "[extense::ops]") {
   // The operators just use the named types in the extense::ops namespace, so
   // comprehensive testing is unnecessary
   REQUIRE(!Bool::f);
-  REQUIRE(Int{7} + Int{3} == Int{10});
-  REQUIRE(Int{3} < Int{29});
+  REQUIRE(7_ei + 3_ei == 10_ei);
+  REQUIRE(3_ei < 29_ei);
 }

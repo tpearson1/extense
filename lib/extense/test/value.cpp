@@ -31,9 +31,10 @@ SOFTWARE.
 #include <sstream>
 
 using namespace extense;
+using namespace extense::literals;
 
 TEST_CASE("Storing, accessing and converting Values", "[Value]") {
-  Value v{Int{7}};
+  Value v{7_ei};
   REQUIRE(v.is<Int>());
   REQUIRE(v.typeAsString() == "Int");
   REQUIRE(get<Int>(v).value == 7);
@@ -58,16 +59,16 @@ TEST_CASE("Storing, accessing and converting Values", "[Value]") {
 
 TEST_CASE("Testing try-conversion functions",
           "[tryConvertImplicitly, tryConvert]") {
-  auto f = tryConvertImplicitly<Int, Float>(Int{7});
+  auto f = tryConvertImplicitly<Int, Float>(7_ei);
   REQUIRE(nearlyEquals(f.value, 7.0));
 
-  auto i = tryConvert<Float, Int>(Float{3.2});
+  auto i = tryConvert<Float, Int>(3.2_ef);
   REQUIRE(i.value == 3);
 
   // Should throw as cannot implicitly convert from Float to Int
   bool threw = false;
   try {
-    tryConvertImplicitly<Float, Int>(Float{6.4});
+    tryConvertImplicitly<Float, Int>(6.4_ef);
   } catch (const InvalidConversion &e) {
     REQUIRE(e.attemptedImplicit());
     threw = true;
@@ -77,7 +78,7 @@ TEST_CASE("Testing try-conversion functions",
   // Should throw as cannot convert from List to Char
   threw = false;
   try {
-    tryConvert<List, Char>(List{Int{7}, Char{'c'}});
+    tryConvert<List, Char>(List{7_ei, 'c'_ec});
   } catch (const InvalidConversion &e) {
     REQUIRE(!e.attemptedImplicit());
     threw = true;
@@ -86,7 +87,7 @@ TEST_CASE("Testing try-conversion functions",
 }
 
 TEST_CASE("Visiting values", "[Value, FlatValue]") {
-  Value v{Int{7}};
+  Value v{7_ei};
   REQUIRE(get<Int>(v).value == 7);
 
   visit(
@@ -98,7 +99,7 @@ TEST_CASE("Visiting values", "[Value, FlatValue]") {
       },
       v);
 
-  Value v2{Float{2.5}};
+  Value v2{2.5_ef};
 
   visit(
       [](const auto &a1, const auto &a2) {
@@ -125,38 +126,38 @@ TEST_CASE("Showing values literally", "[Value, BasicFlatValue, Char, String]") {
   std::ostringstream os;
 
   // No special behavior
-  os << LiteralShow{Int{7}};
+  os << LiteralShow{7_ei};
   REQUIRE(os.str() == "7");
   os.str("");
 
   // TODO: Escape sequences for Char and String
-  os << LiteralShow{Char{'a'}};
+  os << LiteralShow{'a'_ec};
   REQUIRE(os.str() == "`a");
   os.str("");
 
-  os << LiteralShow{String{"Testing"}};
+  os << LiteralShow{"Testing"_es};
   REQUIRE(os.str() == "\"Testing\"");
   os.str("");
 
-  os << LiteralShow{Int{7}};
+  os << LiteralShow{7_ei};
   REQUIRE(os.str() == "7");
   os.str("");
 
   // With Value and FlatValue
 
-  os << LiteralShow{Value{Int{7}}};
+  os << LiteralShow{Value{7_ei}};
   REQUIRE(os.str() == "7");
   os.str("");
 
-  os << LiteralShow{Value{Char{'a'}}};
+  os << LiteralShow{Value{'a'_ec}};
   REQUIRE(os.str() == "`a");
   os.str("");
 
-  os << LiteralShow{FlatValue{Int{7}}};
+  os << LiteralShow{FlatValue{7_ei}};
   REQUIRE(os.str() == "7");
   os.str("");
 
-  os << LiteralShow{FlatValue{Char{'a'}}};
+  os << LiteralShow{FlatValue{'a'_ec}};
   REQUIRE(os.str() == "`a");
 }
 
@@ -165,5 +166,3 @@ TEST_CASE("typeAsString", "[typeAsString]") {
   REQUIRE(typeAsString<String> == "String");
   REQUIRE(typeAsString<Reference> == "Reference");
 }
-
-TEST_CASE("Using operators with Value", "[Value]") {}

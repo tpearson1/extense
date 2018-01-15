@@ -114,7 +114,7 @@ struct Bool : detail::ValueTypeBase<Bool, bool> {
   static const Bool t;
   static const Bool f;
 
-  operator bool() const { return value; }
+  operator bool() const noexcept { return value; }
 };
 
 inline const Bool Bool::t{true};
@@ -128,6 +128,15 @@ class String : public detail::ValueTypeBase<String, std::string> {
 public:
   using Base::Base;
 };
+
+// Can compare directly with a std::string_view to encourage users not to
+// create dynamically allocated Strings for comparison operations
+inline Bool operator==(const String &a, std::string_view b) {
+  return Bool{a.value == b};
+}
+inline Bool operator==(std::string_view a, const String &b) {
+  return Bool{a == b.value};
+}
 
 class Value;
 
@@ -178,6 +187,22 @@ public:
 
   List operator[](const List &i) const;
 };
+
+namespace literals {
+inline Int operator"" _ei(unsigned long long v) {
+  return Int{static_cast<Int::ValueType>(v)};
+}
+
+inline Float operator"" _ef(long double v) {
+  return Float{static_cast<Float::ValueType>(v)};
+}
+
+inline Char operator"" _ec(char v) { return Char{v}; }
+
+inline String operator"" _es(const char *str, std::size_t len) {
+  return String{std::string(str, len)};
+}
+} // namespace literals
 
 std::ostream &operator<<(std::ostream &, const extense::Value &);
 
