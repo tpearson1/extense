@@ -86,8 +86,6 @@ using enableValidOpArgs =
 } // namespace detail
 
 namespace ops {
-// TODO: Implement operators for Set once functions are implemented as Values
-
 // Increment/decrement operators (only for the API; not accessible within the
 // language)
 inline Int &inc(Int &a) {
@@ -340,8 +338,58 @@ inline Bool notEqual(const VT1 &a, const VT2 &b) {
   return Bool{!equal(a, b).value};
 }
 
-// is - not implemented as an operation here because it doesn't depend on any
-// arguments
+// Set overload operations.
+// The following operations cannot be overloaded:
+//   : :: !
+Value add(Set &a, Value &b);
+Value addEquals(Set &a, Value &b);
+Value add(Set &a);
+
+Value sub(Set &a, Value &b);
+Value subEquals(Set &a, Value &b);
+Value sub(Set &a);
+
+Value mul(Set &a, Value &b);
+Value mulEquals(Set &a, Value &b);
+
+Value div(Set &a, Value &b);
+Value divEquals(Set &a, Value &b);
+
+Value mod(Set &a, Value &b);
+Value modEquals(Set &a, Value &b);
+
+Value floorDiv(Set &a, Value &b);
+Value floorDivEquals(Set &a, Value &b);
+
+Value pow(Set &a, Value &b);
+Value powEquals(Set &a, Value &b);
+
+Value dotDot(Set &a, Value &b);
+
+Value bitAnd(Set &a, Value &b);
+Value bitAndEquals(Set &a, Value &b);
+
+Value bitOr(Set &a, Value &b);
+Value bitOrEquals(Set &a, Value &b);
+
+Value bitXor(Set &a, Value &b);
+Value bitXorEquals(Set &a, Value &b);
+
+Value bitNot(Set &a);
+
+Value bitLShift(Set &a, Value &b);
+Value bitLShiftEquals(Set &a, Value &b);
+
+Value bitRShift(Set &a, Value &b);
+Value bitRShiftEquals(Set &a, Value &b);
+
+Value lessThan(Set &a, Value &b);
+Value lessEquals(Set &a, Value &b);
+Value greaterThan(Set &a, Value &b);
+Value greaterEquals(Set &a, Value &b);
+
+Value equal(Set &a, Value &b);
+Value notEqual(Set &a, Value &b);
 } // namespace ops
 
 template <typename VT, detail::enableValidOpArgs<VT> * = nullptr>

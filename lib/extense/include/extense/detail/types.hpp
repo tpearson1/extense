@@ -27,6 +27,7 @@ SOFTWARE.
 #ifndef _LIB_EXTENSE_DETAIL__TYPES_HPP
 #define _LIB_EXTENSE_DETAIL__TYPES_HPP
 
+#include <functional>
 #include <map>
 #include <ostream>
 #include <sstream>
@@ -44,6 +45,7 @@ struct Char;
 class String;
 class Set;
 class List;
+class Scope;
 
 class Reference;
 
@@ -70,7 +72,7 @@ struct Convert<Char, String>;
 // String
 template <typename T>
 inline constexpr bool isFlatValueType =
-    detail::isAnyOf<T, None, Int, Float, Bool, Char, List, String, Set>;
+    detail::isAnyOf<T, None, Int, Float, Bool, Char, List, String, Set, Scope>;
 
 // Whether or not T is a valid type for a Value - either a FlatValue type or a
 // Reference
@@ -87,9 +89,10 @@ constexpr std::string_view typeAsString() {
   if (std::is_same_v<Float, T>) return "Float";
   if (std::is_same_v<Bool, T>) return "Bool";
   if (std::is_same_v<Char, T>) return "Char";
-  if (std::is_same_v<List, T>) return "List";
   if (std::is_same_v<String, T>) return "String";
+  if (std::is_same_v<List, T>) return "List";
   if (std::is_same_v<Set, T>) return "Set";
+  if (std::is_same_v<Scope, T>) return "Scope";
   if (std::is_same_v<Reference, T>) return "Reference";
 }
 } // namespace detail
@@ -188,6 +191,38 @@ public:
   List operator[](const List &i) const;
 };
 
+class Scope {
+  Scope *outer_;
+
+public:
+  using FunctionSignature = Value(Scope &, const Value &);
+  using Function = std::function<FunctionSignature>;
+
+private:
+  Function func;
+
+public:
+  Scope(Function f, Scope *outer = nullptr)
+      : outer_(outer), func(std::move(f)) {}
+
+  const Scope *outer() const { return outer_; }
+  Scope *outer() { return outer_; }
+
+  const Function &function() const { return func; }
+  Function &function() { return func; }
+
+  Value operator()();
+  Value operator()(std::initializer_list<Value> values);
+
+  // Convenience function which construct a std::initializer_list from the
+  // arguments and calls operator() with it if there is more than one argument,
+  // or otherwise just calls func with the single argument.
+  // This function is defined in value.hpp since the definition requires Value
+  // to be defined.
+  template <typename... Values>
+  Value operator()(Values &&... values);
+};
+
 namespace literals {
 inline Int operator"" _ei(unsigned long long v) {
   return Int{static_cast<Int::ValueType>(v)};
@@ -204,40 +239,46 @@ inline String operator"" _es(const char *str, std::size_t len) {
 }
 } // namespace literals
 
-std::ostream &operator<<(std::ostream &, const extense::Value &);
+std::ostream &operator<<(std::ostream &, const Value &);
 
-inline std::ostream &operator<<(std::ostream &os, extense::None) {
+inline std::ostream &operator<<(std::ostream &os, None) {
   os << "None";
   return os;
 }
 
-inline std::ostream &operator<<(std::ostream &os, const extense::Int &v) {
+inline std::ostream &operator<<(std::ostream &os, const Int &v) {
   os << v.value;
   return os;
 }
 
-inline std::ostream &operator<<(std::ostream &os, const extense::Float &v) {
+inline std::ostream &operator<<(std::ostream &os, const Float &v) {
   os << v.value;
   return os;
 }
 
-inline std::ostream &operator<<(std::ostream &os, const extense::Bool &v) {
+inline std::ostream &operator<<(std::ostream &os, const Bool &v) {
   os << (v.value ? "true" : "false");
   return os;
 }
 
-inline std::ostream &operator<<(std::ostream &os, const extense::Char &v) {
+inline std::ostream &operator<<(std::ostream &os, const Char &v) {
   os << v.value;
   return os;
 }
 
-inline std::ostream &operator<<(std::ostream &os, const extense::String &v) {
+inline std::ostream &operator<<(std::ostream &os, const String &v) {
   os << v.value;
   return os;
 }
 
-std::ostream &operator<<(std::ostream &, const extense::Set &);
-std::ostream &operator<<(std::ostream &, const extense::List &);
+std::ostream &operator<<(std::ostream &, const Set &);
+std::ostream &operator<<(std::ostream &, const List &);
+
+// TODO: Print AST for scope
+inline std::ostream &operator<<(std::ostream &os, const Scope &) {
+  os << "<Scope>";
+  return os;
+}
 
 namespace detail {
 /*

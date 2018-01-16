@@ -335,17 +335,37 @@ println (a == None) # true
 println (7 ++ 2) # 7 + 2 * 2 = 11
 
 #{
- Overriding operators for sets.
+  Overriding operators for sets.
 
- The operator string maps to a function.
- When two sets are taken as operands, the function in the first one is used
- for the operators functionality
+  For binary operators:
+    When a set is the left operand of an expression, the Set is indexed with the
+    operator as a String (e.g. "+"). The mapped value should be a function, and
+    if it isn't, an exception is thrown. The mapped function is called with the
+    Set and the right operand (which doesn't need to be a Set).
+
+  For unary operators:
+    Similarly to the case with binary operators, the Set is indexed with the
+    operator's corresponding String, and then called with the Set as it's
+    argument.
+
+  For both operator types the arguments may be modified, although this may not
+  be a very good design choice.
+
+  Note that automatically overloading an operator such as '+' does not mean '+='
+  can now be used with the type. To avoid repetition it is possible to implement
+  one in terms of the other (as seen in the example of Vector2).
+
+  Some operators are reserved for sets, and cannot be overloaded, such as the
+  indexing (and reflexive indexing) operations.
 }
 Vector2 = [{
   x -> $:0
   y -> $:1
 
+  # Note that this example would crash if the unary plus operator were to be used
+  # on this set, since $ would be a Set and not a List
   '+' -> [Vector2 ($:0:x + $:1:x, $:0:y + $:1:y)]
+  '+=' -> [$:0 = $:0 + $:1]
 }]
 
 sum = Vector2 (1, 3) + Vector2 (7, 4)
@@ -368,5 +388,4 @@ println (sum:x, ',', sum:y) # 8,9
 
 # Casting. Bool, string and other type names are just functions which convert
 # the given value to that type
-a = Bool 1.7 # a = true
 a = String `a # a == "a"

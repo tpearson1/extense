@@ -189,8 +189,6 @@ TEST_CASE("Operation functions", "[extense::ops]") {
     REQUIRE(nearlyEquals(result.value, expected));
   }
 
-  // TODO
-
   SECTION("Dot dot") {
     REQUIRE(ops::dotDot(-1_ei, 4_ei) ==
             List{-1_ei, 0_ei, 1_ei, 2_ei, 3_ei, 4_ei});

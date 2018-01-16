@@ -75,7 +75,7 @@ To tryConvert(const From &f) {
 }
 
 using FlatValue =
-    BasicFlatValue<None, Int, Float, Bool, Char, String, List, Set>;
+    BasicFlatValue<None, Int, Float, Bool, Char, String, List, Set, Scope>;
 
 namespace detail {
 // Used to expose the internal data representation of a BasicFlatValue/Value to
@@ -406,6 +406,14 @@ std::ostream &operator<<(std::ostream &os,
 
 std::ostream &operator<<(std::ostream &, const Value &);
 std::ostream &operator<<(std::ostream &, const Reference &);
+
+template <typename... Values>
+Value Scope::operator()(Values &&... values) {
+  if constexpr (sizeof...(Values) == 1)
+    return func(*this, values...);
+  else
+    return (*this)({std::forward<Values>(values)...});
+}
 } // namespace extense
 
 #endif // _LIB_EXTENSE__VALUE_HPP

@@ -57,14 +57,17 @@ bool extense::detail::SetCompare::operator()(const SetKeyType &lhs,
 extense::Set::Set(std::initializer_list<ValueType::value_type> kvps)
     : Base{ValueType(std::move(kvps))} {}
 
-const extense::Value &extense::Set::
-operator[](const extense::Set::KeyType &i) const {
+const extense::Value &extense::Set::operator[](const Set::KeyType &i) const {
   try {
     return value.at(i);
   } catch (std::out_of_range &) {
     throw InvalidOperation{"Set", "Set's key type",
                            "Element not present in map"};
   }
+}
+
+extense::Value &extense::Set::operator[](const Set::KeyType &i) {
+  return const_cast<Value &>(static_cast<const Set &>(*this)[i]);
 }
 
 extense::Value &extense::Set::insertOrAccess(const extense::Set::KeyType &i) {
@@ -114,6 +117,12 @@ extense::List extense::List::operator[](const extense::List &i) const {
   std::copy(begin + lowerBound, begin + upperBound,
             std::back_inserter(sublist.value));
   return sublist;
+}
+
+extense::Value extense::Scope::operator()() { return (*this)(None{}); }
+
+extense::Value extense::Scope::operator()(std::initializer_list<Value> values) {
+  return (*this)(Value{List(values)});
 }
 
 std::ostream &extense::operator<<(std::ostream &os, const List &v) {

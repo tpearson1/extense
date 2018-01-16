@@ -1,6 +1,7 @@
 # Generated files/folders
-depend
+/depend
 /compile_commands.json
+/include/config.hpp
 
 # CMake files
 /CMakeCache.txt
