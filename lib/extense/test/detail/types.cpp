@@ -35,7 +35,7 @@ using namespace extense::literals;
 TEST_CASE("Construction and conversion for types",
           "[ValueTypeBase, Reference, FlatValue, BasicFlatValue, Value]") {
   SECTION("None") {
-    // None type contains no state
+    // None contains no state
     auto n = None{};
     (void)n;
     None n2;
@@ -87,13 +87,13 @@ TEST_CASE("Construction and conversion for types",
   }
 
   SECTION("Set") {
-    Set s = {
-        // Each entry into a set can have keys and values of differing types
-        {String{"set"}, Int{7}},
-        {Bool{false}, List{Int{7}, Bool{true}}}};
+    auto s =
+        Set{// Each entry into a set can have keys and values of differing
+            // types
+            Mapping{"set"_es, 7_ei}, Mapping{Bool::f, List{7_ei, Bool::t}}};
     // Explicit conversion to String
     REQUIRE(String{s}.value == "{\nfalse -> (7,true)\n\"set\" -> 7\n}");
-    auto s2 = Set{{}};
+    auto s2 = Set{};
     REQUIRE(String{s2}.value == "{}");
   }
 
@@ -116,7 +116,7 @@ TEST_CASE("Construction and conversion for types",
       REQUIRE(get<Int>(v).value == 7);
       auto ref = Reference{v};
       REQUIRE(get<Int>(*ref).value == 7);
-      *ref = 6_ei; // Implicitly constructs a FlatValue
+      *ref = FlatValue{6_ei};
       REQUIRE(get<Int>(v).value == 6);
       get<Int>(*ref).value = 5;
       REQUIRE(get<Int>(v).value == 5);
@@ -135,7 +135,7 @@ TEST_CASE("Construction and conversion for types",
       REQUIRE(get<String>(v).value == "Copy");
       auto ref = Reference{v};
       REQUIRE(get<String>(*ref).value == "Copy");
-      *ref = "Set"_es; // Implicitly constructs Value
+      *ref = FlatValue{"Set"_es};
       REQUIRE(get<String>(*ref).value == "Set");
       REQUIRE(get<String>(v).value == "Set");
 

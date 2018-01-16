@@ -43,7 +43,12 @@ std::string extense::Value::typeAsString() const {
                       *this);
 }
 
-std::ostream &operator<<(std::ostream &os, const extense::Reference &v) {
+std::ostream &extense::operator<<(std::ostream &os, const Reference &v) {
   os << "Reference to " << *v;
+  return os;
+}
+
+std::ostream &extense::operator<<(std::ostream &os, const Value &v) {
+  std::visit([&os](const auto &arg) { os << arg; }, v.data);
   return os;
 }

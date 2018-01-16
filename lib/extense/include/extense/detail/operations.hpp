@@ -325,6 +325,7 @@ inline Bool equal(const String &a, const String &b) {
 }
 Bool equal(const Set &a, const Set &b);
 Bool equal(const List &a, const List &b);
+inline Bool equal(const Scope &, const Scope &) { return Bool{false}; }
 
 template <typename... ValueTypes>
 Bool equal(const BasicFlatValue<ValueTypes...> &,
@@ -341,55 +342,55 @@ inline Bool notEqual(const VT1 &a, const VT2 &b) {
 // Set overload operations.
 // The following operations cannot be overloaded:
 //   : :: !
-Value add(Set &a, Value &b);
-Value addEquals(Set &a, Value &b);
+Value add(Set &a, const Value &b);
+Value addEquals(Set &a, const Value &b);
 Value add(Set &a);
 
-Value sub(Set &a, Value &b);
-Value subEquals(Set &a, Value &b);
+Value sub(Set &a, const Value &b);
+Value subEquals(Set &a, const Value &b);
 Value sub(Set &a);
 
-Value mul(Set &a, Value &b);
-Value mulEquals(Set &a, Value &b);
+Value mul(Set &a, const Value &b);
+Value mulEquals(Set &a, const Value &b);
 
-Value div(Set &a, Value &b);
-Value divEquals(Set &a, Value &b);
+Value div(Set &a, const Value &b);
+Value divEquals(Set &a, const Value &b);
 
-Value mod(Set &a, Value &b);
-Value modEquals(Set &a, Value &b);
+Value mod(Set &a, const Value &b);
+Value modEquals(Set &a, const Value &b);
 
-Value floorDiv(Set &a, Value &b);
-Value floorDivEquals(Set &a, Value &b);
+Value floorDiv(Set &a, const Value &b);
+Value floorDivEquals(Set &a, const Value &b);
 
-Value pow(Set &a, Value &b);
-Value powEquals(Set &a, Value &b);
+Value pow(Set &a, const Value &b);
+Value powEquals(Set &a, const Value &b);
 
-Value dotDot(Set &a, Value &b);
+Value dotDot(Set &a, const Value &b);
 
-Value bitAnd(Set &a, Value &b);
-Value bitAndEquals(Set &a, Value &b);
+Value bitAnd(Set &a, const Value &b);
+Value bitAndEquals(Set &a, const Value &b);
 
-Value bitOr(Set &a, Value &b);
-Value bitOrEquals(Set &a, Value &b);
+Value bitOr(Set &a, const Value &b);
+Value bitOrEquals(Set &a, const Value &b);
 
-Value bitXor(Set &a, Value &b);
-Value bitXorEquals(Set &a, Value &b);
+Value bitXor(Set &a, const Value &b);
+Value bitXorEquals(Set &a, const Value &b);
 
 Value bitNot(Set &a);
 
-Value bitLShift(Set &a, Value &b);
-Value bitLShiftEquals(Set &a, Value &b);
+Value bitLShift(Set &a, const Value &b);
+Value bitLShiftEquals(Set &a, const Value &b);
 
-Value bitRShift(Set &a, Value &b);
-Value bitRShiftEquals(Set &a, Value &b);
+Value bitRShift(Set &a, const Value &b);
+Value bitRShiftEquals(Set &a, const Value &b);
 
-Value lessThan(Set &a, Value &b);
-Value lessEquals(Set &a, Value &b);
-Value greaterThan(Set &a, Value &b);
-Value greaterEquals(Set &a, Value &b);
+Value lessThan(Set &a, const Value &b);
+Value lessEquals(Set &a, const Value &b);
+Value greaterThan(Set &a, const Value &b);
+Value greaterEquals(Set &a, const Value &b);
 
-Value equal(Set &a, Value &b);
-Value notEqual(Set &a, Value &b);
+Value equal(Set &a, const Value &b);
+Value notEqual(Set &a, const Value &b);
 } // namespace ops
 
 template <typename VT, detail::enableValidOpArgs<VT> * = nullptr>

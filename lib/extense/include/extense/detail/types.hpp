@@ -38,6 +38,8 @@ SOFTWARE.
 
 namespace extense {
 struct None {};
+inline None none;
+
 struct Int;
 struct Float;
 struct Bool;
@@ -156,31 +158,72 @@ struct SetCompare {
 // Using a map instead of an unordered_map, even though ordering is not needed,
 // because unordered_map requires Value to be a complete type
 using SetValueType = std::map<SetKeyType, Value, SetCompare>;
+
+// Wraps any value
+template <typename T>
+struct Wrap {
+  T value;
+};
+
+template <typename T>
+Wrap(T)->Wrap<T>;
 } // namespace detail
+
+struct Mapping;
 
 class Set : public detail::ValueTypeBase<Set, detail::SetValueType> {
 public:
   using Base::Base;
   using KeyType = detail::SetKeyType;
 
-  Set(std::initializer_list<ValueType::value_type> kvps);
-
-  // Access an element
+private:
   const Value &operator[](const KeyType &i) const;
   Value &operator[](const KeyType &i);
 
-  // Returns a reference to the element associated with the given key, creating
-  // the element if not present
+  // Avoid language weirdness with std::initializer_list
+  Set(detail::Wrap<std::initializer_list<ValueType::value_type>> kvps);
+
+public:
+  // Defined in value.hpp
+  Set();
+
+  Set(const Set &) = default;
+  Set &operator=(const Set &) = default;
+  Set(Set &&) = default;
+  Set &operator=(Set &&) = default;
+
+  // Forwards to initializer_list constructor. Defined in value.hpp.
+  template <
+      typename... Mappings,
+      std::enable_if_t<(std::is_same_v<Mapping, Mappings> || ...)> * = nullptr>
+  explicit Set(Mappings &&... mappings);
+
+  // Access an element. Defined in value.hpp.
+  template <typename VT>
+  const Value &operator[](const VT &i) const;
+  template <typename VT>
+  Value &operator[](const VT &i);
+
+  // Returns a reference to the element associated with the given key,
+  // creating the element if not present
   Value &insertOrAccess(const KeyType &i);
 };
 
 class List : public detail::ValueTypeBase<List, std::vector<Value>> {
+  // Using detail::Wrap to avoid language complications with
+  // std::initializer_list
+  List(detail::Wrap<std::initializer_list<Value>> values);
+
 public:
   using Base::Base;
 
+  // Defined in value.hpp
   List();
 
-  List(std::initializer_list<Value> values);
+  // Automatically converts to Value to avoid excessive verbosity when
+  // constructing. Defined in value.hpp
+  template <typename... Elems>
+  explicit List(Elems &&... elems);
 
   Value &operator[](Int i) {
     return const_cast<Value &>(static_cast<const List &>(*this)[i]);
@@ -192,18 +235,17 @@ public:
 };
 
 class Scope {
-  Scope *outer_;
-
 public:
   using FunctionSignature = Value(Scope &, const Value &);
   using Function = std::function<FunctionSignature>;
 
 private:
   Function func;
+  Scope *outer_;
 
 public:
   Scope(Function f, Scope *outer = nullptr)
-      : outer_(outer), func(std::move(f)) {}
+      : func(std::move(f)), outer_(outer) {}
 
   const Scope *outer() const { return outer_; }
   Scope *outer() { return outer_; }
@@ -212,13 +254,11 @@ public:
   Function &function() { return func; }
 
   Value operator()();
-  Value operator()(std::initializer_list<Value> values);
 
-  // Convenience function which construct a std::initializer_list from the
-  // arguments and calls operator() with it if there is more than one argument,
-  // or otherwise just calls func with the single argument.
-  // This function is defined in value.hpp since the definition requires Value
-  // to be defined.
+  // Convenience function. If there is one argument, the function is called with
+  // that argument (as a Value). Otherwise, a List is constructed from the
+  // arguments and the function is called with the List. This function is
+  // defined in value.hpp since the definition requires Value to be defined.
   template <typename... Values>
   Value operator()(Values &&... values);
 };
@@ -282,8 +322,8 @@ inline std::ostream &operator<<(std::ostream &os, const Scope &) {
 
 namespace detail {
 /*
- * It is perfectly fine to convert from any type which implements operator<< to
- * a String.
+ * It is perfectly fine to convert from any type which implements operator<<
+ * to a String.
  */
 template <typename T>
 struct Convert<T, String> {

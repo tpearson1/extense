@@ -31,6 +31,7 @@ SOFTWARE.
 #include <memory>
 #include <tuple>
 #include <type_traits>
+#include <utility>
 #include <variant>
 
 #include <extense/detail/operations.hpp>
@@ -99,11 +100,11 @@ class BasicFlatValue {
   Data data;
 
 public:
-  // Initializes with None
+  // Initializes with first ValueType
   BasicFlatValue() = default;
 
   template <typename T>
-  BasicFlatValue(T v) : data(std::move(v)) {
+  explicit BasicFlatValue(T v) : data(std::move(v)) {
     static_assert(supportsType<T>, "Cannot construct an instance of this "
                                    "template instantiation of a BasicFlatValue "
                                    "with a value of the given type");
@@ -160,7 +161,7 @@ Reference makeReference(Args &&... args) {
 
 template <typename VT>
 inline constexpr bool isReferencedOnCopy =
-    detail::isAnyOf<VT, String, List, Set>;
+    detail::isAnyOf<VT, String, List, Set, Scope>;
 
 class Value {
   using Data = std::variant<FlatValue, Reference>;
@@ -174,19 +175,22 @@ public:
   Value() = default;
 
   template <typename T>
-  Value(T v) {
+  explicit Value(T v) {
     if constexpr (std::is_same_v<T, Reference>)
       data = v;
     else if constexpr (isReferencedOnCopy<T>) {
       auto newVal = makeReference(std::move(v));
       data = newVal;
     } else
-      data = FlatValue{std::move(v)};
+      data = FlatValue(std::move(v));
   }
 
   template <typename T>
   Value &operator=(T v) {
-    *this = Value{std::move(v)};
+    if constexpr (std::is_same_v<T, Reference>)
+      data = std::move(v);
+    else
+      *this = Value(std::move(v));
     return *this;
   }
 
@@ -223,10 +227,7 @@ public:
   template <typename T, typename TValue>
   friend const T &get(const TValue &v);
 
-  friend std::ostream &operator<<(std::ostream &os, const extense::Value &v) {
-    std::visit([&os](const auto &arg) { os << arg; }, v.data);
-    return os;
-  }
+  friend std::ostream &operator<<(std::ostream &os, const Value &v);
 
   friend Bool ops::equal(const Value &, const Value &);
 };
@@ -238,7 +239,7 @@ template <typename TValue>
 using TestInput = std::conditional_t<
     std::is_same_v<TValue, Value>,
     // If the first type is a Value the function should be
-    // able to handle a None type
+    // able to handle a None object
     None,
     // Otherwise, it should be able to handle the first
     // possible type in the BasicFlatValue
@@ -404,15 +405,62 @@ std::ostream &operator<<(std::ostream &os,
   return os;
 }
 
-std::ostream &operator<<(std::ostream &, const Value &);
 std::ostream &operator<<(std::ostream &, const Reference &);
+
+std::ostream &operator<<(std::ostream &os, const Value &v);
+
+inline const Value noneValue{none};
 
 template <typename... Values>
 Value Scope::operator()(Values &&... values) {
   if constexpr (sizeof...(Values) == 1)
-    return func(*this, values...);
+    return func(*this, static_cast<Value>(std::forward<Values>(values))...);
   else
-    return (*this)({std::forward<Values>(values)...});
+    return func(*this, Value{List{std::forward<Values>(values)...}});
+}
+
+struct Mapping {
+  // Converts value types to the necessary types for convenience
+  template <typename K, typename V>
+  Mapping(const K &k, const V &v)
+      : key(detail::SetKeyType(k)), value(Value(v)) {}
+
+  std::pair<const detail::SetKeyType, Value> toPair() {
+    return std::make_pair<const detail::SetKeyType, Value>(std::move(key),
+                                                           std::move(value));
+  }
+
+private:
+  const detail::SetKeyType key;
+  Value value;
+};
+
+inline List::List() : Base(ValueType()) {}
+
+inline Set::Set() : Base(ValueType()) {}
+
+template <typename... Elems>
+List::List(Elems &&... elems)
+    : List(detail::Wrap{std::initializer_list<Value>{
+          static_cast<Value>(std::forward<Elems>(elems))...}}) {}
+
+template <typename... Mappings,
+          std::enable_if_t<(std::is_same_v<Mapping, Mappings> || ...)> *>
+Set::Set(Mappings &&... mappings)
+    : Set(detail::Wrap{std::initializer_list<ValueType::value_type>(
+          {(std::forward<Mappings>(mappings).toPair())...})}) {}
+
+template <typename VT>
+const Value &Set::operator[](const VT &i) const {
+  static_assert(KeyType::supportsType<VT>,
+                "Cannot index with an object of the given type");
+  return (*this)[KeyType{i}];
+}
+template <typename VT>
+Value &Set::operator[](const VT &i) {
+  static_assert(KeyType::supportsType<VT>,
+                "Cannot index with an object of the given type");
+  return (*this)[KeyType{i}];
 }
 } // namespace extense
 

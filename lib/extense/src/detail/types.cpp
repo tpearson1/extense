@@ -54,8 +54,9 @@ bool extense::detail::SetCompare::operator()(const SetKeyType &lhs,
       v);
 }
 
-extense::Set::Set(std::initializer_list<ValueType::value_type> kvps)
-    : Base{ValueType(std::move(kvps))} {}
+extense::Set::Set(
+    detail::Wrap<std::initializer_list<ValueType::value_type>> kvps)
+    : Base{ValueType(std::move(kvps).value)} {}
 
 const extense::Value &extense::Set::operator[](const Set::KeyType &i) const {
   try {
@@ -74,10 +75,8 @@ extense::Value &extense::Set::insertOrAccess(const extense::Set::KeyType &i) {
   return value[i];
 }
 
-extense::List::List() : Base(ValueType()) {}
-
-extense::List::List(std::initializer_list<extense::Value> values)
-    : Base{ValueType(std::move(values))} {}
+extense::List::List(detail::Wrap<std::initializer_list<Value>> values)
+    : Base{ValueType(std::move(values).value)} {}
 
 const extense::Value &extense::List::operator[](extense::Int i) const {
   if (i.value >= static_cast<Int::ValueType>(value.size()) || i.value < 0)
@@ -119,11 +118,7 @@ extense::List extense::List::operator[](const extense::List &i) const {
   return sublist;
 }
 
-extense::Value extense::Scope::operator()() { return (*this)(None{}); }
-
-extense::Value extense::Scope::operator()(std::initializer_list<Value> values) {
-  return (*this)(Value{List(values)});
-}
+extense::Value extense::Scope::operator()() { return (*this)(noneValue); }
 
 std::ostream &extense::operator<<(std::ostream &os, const List &v) {
   auto &list = v.value;

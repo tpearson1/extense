@@ -66,7 +66,7 @@ TEST_CASE("Operation functions", "[extense::ops]") {
 
     auto lsum = ops::add(List{3_ei, Bool::f}, List{"Hi"_es});
     REQUIRE(lsum == List{3_ei, Bool::f, "Hi"_es});
-    List expected = {3_ei, Bool::f, "Hi"_es, 'a'_ec, 1.0_ef};
+    auto expected = List{3_ei, Bool::f, "Hi"_es, 'a'_ec, 1.0_ef};
     REQUIRE(ops::addEquals(lsum, List{'a'_ec, 1.0_ef}) == expected);
     REQUIRE(lsum == expected);
   }
@@ -195,18 +195,19 @@ TEST_CASE("Operation functions", "[extense::ops]") {
   }
 
   SECTION("Index") {
-    List l = {3_ei, Bool::t, 'a'_ec};
+    auto l = List{3_ei, Bool::t, 'a'_ec};
     auto v = ops::index(l, 1_ei);
     REQUIRE(v.is<Bool>());
     REQUIRE(get<Bool>(v) == Bool::t);
 
-    Set s = {{"key"_es, "value"_es}, {'c'_ec, Bool::f}, {3_ei, Bool::t}};
-    REQUIRE(ops::index(s, 'c'_ec) == Bool::f);
-    REQUIRE(ops::index(s, "key"_es) == "value"_es);
+    auto s = Set{Mapping{"key"_es, "value"_es}, Mapping{'c'_ec, Bool::f},
+                 Mapping{3_ei, Bool::t}};
+    REQUIRE(ops::index(s, 'c'_ec) == Value{Bool::f});
+    REQUIRE(ops::index(s, "key"_es) == Value{"value"_es});
   }
 
   SECTION("Reference") {
-    Value i = 42_ei;
+    auto i = Value{42_ei};
     auto ref = ops::ref(i);
     REQUIRE(ref->is<Int>());
 
@@ -325,14 +326,14 @@ TEST_CASE("Operation functions", "[extense::ops]") {
     REQUIRE(ops::greaterEquals(36.2_ef, 4.6_ef));
     REQUIRE(ops::greaterEquals(4.5_ef, 4.5_ef));
 
-    REQUIRE(ops::equal(None{}, None{}));
+    REQUIRE(ops::equal(none, none));
     REQUIRE(ops::equal(Bool::t, Bool::t));
     REQUIRE(ops::equal(5_ei, 5_ei));
     REQUIRE(ops::equal(3.5_ef, 3.5_ef));
     REQUIRE(ops::equal('c'_ec, 'c'_ec));
     REQUIRE(ops::equal("hello"_es, "hello"_es));
     REQUIRE(ops::equal(List{4_ei, Bool::t}, List{4.0_ef, Bool::t}));
-    auto s = Set{{'a'_ec, "hi"_es}, {Bool::t, 3_ei}};
+    auto s = Set{Mapping{'a'_ec, "hi"_es}, Mapping{Bool::t, 3_ei}};
     REQUIRE(ops::equal(s, s));
 
     REQUIRE(ops::equal(Value{2_ei}, Value{2_ei}));
