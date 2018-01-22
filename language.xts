@@ -13,6 +13,9 @@ not false or false # true or false -> true
 -573
 +23
 32
+-046 # Octal: 4*8 + 6 = 38
+0x3A # Hexadecimal: 3*16 + 10 = 58
+0b10011 # Binary: 16 + 2 + 1 = 19
 
 # Float
 3.5

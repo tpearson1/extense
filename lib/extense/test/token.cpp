@@ -237,6 +237,45 @@ TEST_CASE("Lexing detail functions",
       REQUIRE(s4.currentChar() == '.');
       REQUIRE(t.type() == Token::Type::Integer);
       t.setType(Token::Type::Plus);
+
+      Source s5{"-034!"};
+      REQUIRE(detail::lexNumber(s5, t));
+      REQUIRE(s5.currentChar() == '!');
+      REQUIRE(t.type() == Token::Type::Integer);
+      t.setType(Token::Type::Plus);
+
+      Source s6{"-0xA4!"};
+      REQUIRE(detail::lexNumber(s6, t));
+      REQUIRE(s6.currentChar() == '!');
+      REQUIRE(t.type() == Token::Type::Integer);
+      t.setType(Token::Type::Plus);
+
+      Source s7{"-0b11034!"};
+      REQUIRE(detail::lexNumber(s7, t));
+      REQUIRE(s7.currentChar() == '3');
+      REQUIRE(t.type() == Token::Type::Integer);
+      t.setType(Token::Type::Plus);
+
+      Source s8{"0x7.4|"};
+      REQUIRE(detail::lexNumber(s8, t));
+      REQUIRE(s8.currentChar() == '.');
+      REQUIRE(t.type() == Token::Type::Integer);
+
+      Source s9{"0x"};
+      bool correct = false;
+      try {
+        detail::lexNumber(s9, t);
+      } catch (const LexingError &) { correct = true; }
+      REQUIRE(correct);
+
+      Source s10{"0b"};
+      correct = false;
+      try {
+        detail::lexNumber(s10, t);
+      } catch (const LexingError &) { correct = true; }
+      REQUIRE(correct);
+
+      t.setType(Token::Type::Plus);
     }
 
     SECTION("Float") {
