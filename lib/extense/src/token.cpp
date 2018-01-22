@@ -254,20 +254,22 @@ bool extense::detail::lexInteger(extense::Source &source, extense::Token &out) {
 
 bool extense::detail::lexNumber(extense::Source &source, extense::Token &out) {
   if (!lexInteger(source, out)) return false;
-  if (source.currentChar() != '.') return true; // Is an integer
 
-  source.nextChar();
-  if (!lexUnsigned(source)) {
-    // Is not a float
-    source.backChar();
-    return true;
+  if (source.currentChar() == '.') {
+    source.nextChar();
+    if (!lexUnsigned(source)) {
+      // Is not a Float
+      source.backChar();
+      return true;
+    }
+
+    out.setType(Token::Type::Float);
   }
-
-  out.setType(Token::Type::Float);
 
   auto current = source.currentChar();
   if (current != 'e' && current != 'E') return true;
 
+  out.setType(Token::Type::Float);
   source.nextChar();
   if (!lexIntegerHelper(source)) {
     // Must be an integer exponent
