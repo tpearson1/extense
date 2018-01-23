@@ -480,12 +480,14 @@ TEST_CASE(
       REQUIRE(detail::lexIdentifier(s, t));
       REQUIRE(s.currentChar() == '|');
       REQUIRE(t.type() == Token::Type::Bool);
+      REQUIRE(variantEquals(t.data(), true));
       t.setType(Token::Type::Plus);
 
       Source s2{"false "};
       REQUIRE(detail::lexIdentifier(s2, t));
       REQUIRE(s2.currentChar() == ' ');
       REQUIRE(t.type() == Token::Type::Bool);
+      REQUIRE(variantEquals(t.data(), false));
       t.setType(Token::Type::Plus);
 
       Source s3{"falseeslaf"};

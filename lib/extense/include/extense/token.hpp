@@ -137,8 +137,8 @@ public:
 #undef X
   };
 
-  using Data =
-      std::variant<std::monostate, std::int64_t, double, char, std::string>;
+  using Data = std::variant<std::monostate, bool, std::int64_t, double, char,
+                            std::string>;
 
 private:
   Source::Location loc;
@@ -154,6 +154,7 @@ public:
   void setText(std::string_view text) { tokenText = std::move(text); }
   void setType(Type type) { tokenType = std::move(type); }
 
+  void setData(bool b) { data_ = b; }
   void setData(std::int64_t i) { data_ = i; }
   void setData(double d) { data_ = d; }
   void setData(char c) { data_ = c; }

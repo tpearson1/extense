@@ -480,8 +480,15 @@ bool extense::detail::lexNumber(Source &source, Token &out) {
 }
 
 static bool lexBool(std::string_view text, extense::Token &out) {
-  if (text == "true" || text == "false") {
+  if (text == "true") {
     out.setType(extense::Token::Type::Bool);
+    out.setData(true);
+    return true;
+  }
+
+  if (text == "false") {
+    out.setType(extense::Token::Type::Bool);
+    out.setData(false);
     return true;
   }
 
