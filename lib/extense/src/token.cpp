@@ -28,6 +28,7 @@ SOFTWARE.
 #include <array>
 #include <cassert>
 #include <cctype>
+#include <cmath>
 #include <ostream>
 #include <sstream>
 
@@ -277,14 +278,14 @@ void extense::detail::lexEscapeSequence(Source &source, char &out) {
   source.nextChar();
 }
 
-// TODO: Store data in token
 bool extense::detail::lexCharacter(Source &source, Token &out) {
   if (source.currentChar().get() != '`') return false;
 
   if (source.nextChar() == '\\') {
-    char ignore;
-    lexEscapeSequence(source, ignore);
+    char value;
+    lexEscapeSequence(source, value);
     out.setType(Token::Type::Character);
+    out.setData(value);
     return true;
   }
 
@@ -294,16 +295,17 @@ bool extense::detail::lexCharacter(Source &source, Token &out) {
   }
 
   out.setType(Token::Type::Character);
+  out.setData(source.currentChar().get());
   source.nextChar();
   return true;
 }
 
-// TODO: Store data in token
 bool extense::detail::lexString(Source &source, Token &out) {
   auto stringBegin = source.currentChar().get();
   if (stringBegin != '\'' && stringBegin != '"') return false;
 
   source.nextChar();
+  std::string value;
   while (true) {
     if (source.currentChar().isAfterSource()) {
       throw LexingError{source.location(),
@@ -312,16 +314,19 @@ bool extense::detail::lexString(Source &source, Token &out) {
 
     char c = source.currentChar().get();
     if (c == '\\') {
-      char ignore;
-      lexEscapeSequence(source, ignore);
+      char processed;
+      lexEscapeSequence(source, processed);
+      value += processed;
       continue;
     }
 
     source.nextChar();
     if (c == stringBegin) break;
+    value += c;
   }
 
   out.setType(Token::Type::String);
+  out.setData(value);
   return true;
 }
 
@@ -361,37 +366,66 @@ static bool lexPossibleSign(extense::Source &source, bool &negative) {
   return safeIsDigit(current);
 }
 
-// TODO: Store data in token
+static double powTen(std::int64_t v) {
+  double multiplier = 10.0;
+  if (v < 0) {
+    multiplier = 0.1;
+    v *= -1;
+  }
+
+  double result = 1.0;
+  for (std::int64_t i = 0; i < v; i++) result *= multiplier;
+  return result;
+}
+
+static double calculateFloatLiteral(std::int64_t wholePart,
+                                    std::int64_t decimalPart,
+                                    int numDecimalDigits,
+                                    std::int64_t exponent) {
+  // 12.34 -> 1234
+  auto shiftedToRemoveDecimal =
+      static_cast<double>(wholePart) * powTen(numDecimalDigits) +
+      static_cast<double>(decimalPart);
+
+  auto finalExponent = exponent - numDecimalDigits;
+  return shiftedToRemoveDecimal * powTen(finalExponent);
+}
+
 // Only lexes positive numbers. Numbers with signs are considered to be two
 // tokens: '-/+' and the number.
 bool extense::detail::lexNumber(Source &source, Token &out) {
-  std::int64_t ignore;
   // We could have a hexadecimal or octal literal, in which case a Float would
   // no longer be possible
   if (source.currentChar().get() == '0') {
     out.setType(Token::Type::Integer);
+    std::int64_t value;
 
     if (source.nextChar() == 'x') {
       // Hexadecimal literal
       source.nextChar();
-      lexHexadecimalNumber(source, ignore);
+      lexHexadecimalNumber(source, value);
+      out.setData(value);
       return true;
     }
 
     if (source.currentChar() == 'b') {
       // Binary literal
       source.nextChar();
-      lexBinaryNumber(source, ignore);
+      lexBinaryNumber(source, value);
+      out.setData(value);
       return true;
     }
 
     // Could just be 0
     if (source.currentChar().isAfterSource() ||
-        !safeIsDigit(source.currentChar().get()))
+        !safeIsDigit(source.currentChar().get())) {
+      out.setData(0L);
       return true;
+    }
 
     // Octal literal
-    lexOctalNumber(source, ignore);
+    lexOctalNumber(source, value);
+    out.setData(value);
     return true;
   }
 
@@ -400,18 +434,24 @@ bool extense::detail::lexNumber(Source &source, Token &out) {
   if (!safeIsDigit(source.currentChar().get())) return false;
 
   // At this point the token is either a decimal literal or a Float
-  lexDecimalNumber(source, ignore);
+
+  int numDecimalDigits = 0;
+  std::int64_t wholePart, decimalPart = 0, exponent;
+  lexDecimalNumber(source, wholePart);
   out.setType(Token::Type::Integer);
 
   if (source.currentChar() == '.') {
     if (!source.nextChar().isAfterSource() &&
         safeIsDigit(source.currentChar().get())) {
       // There is a number after the '.'
-      lexDecimalNumber(source, ignore);
+      auto firstDecimalDigit = source.index();
+      lexDecimalNumber(source, decimalPart);
+      numDecimalDigits = source.index() - firstDecimalDigit;
     } else {
       // Go back to make '.' the current character again, as this token is an
       // integer
       source.backChar();
+      out.setData(wholePart);
       return true;
     }
 
@@ -419,13 +459,23 @@ bool extense::detail::lexNumber(Source &source, Token &out) {
   }
 
   auto current = source.currentChar();
-  if (current != 'e' && current != 'E') return true;
+  if (current != 'e' && current != 'E') {
+    if (out.type() == Token::Type::Float) {
+      out.setData(
+          calculateFloatLiteral(wholePart, decimalPart, numDecimalDigits, 0));
+    } else
+      out.setData(wholePart);
+    return true;
+  }
 
   out.setType(Token::Type::Float);
   source.nextChar();
   bool exponentNegative;
   lexPossibleSign(source, exponentNegative);
-  lexDecimalNumber(source, ignore);
+  lexDecimalNumber(source, exponent);
+  if (exponentNegative) exponent *= -1;
+  out.setData(calculateFloatLiteral(wholePart, decimalPart, numDecimalDigits,
+                                    exponent));
   return true;
 }
 

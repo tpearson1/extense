@@ -28,12 +28,20 @@
 #define _LIB_EXTENSE_TEST__COMMON_HPP
 
 #include <cmath>
+#include <variant>
 
 constexpr const auto floatTolerance = 0.00000001;
 
 inline bool nearlyEquals(double a, double b,
                          double tolerance = floatTolerance) {
   return std::abs(a - b) < tolerance;
+}
+
+template <typename T, typename TVariant,
+          typename EqFunc = bool (*)(const T &, const T &)>
+inline bool variantEquals(const TVariant &v, const T &t,
+                          EqFunc eq = [](auto a, auto b) { return a == b; }) {
+  return std::holds_alternative<T>(v) && eq(std::get<T>(v), t);
 }
 
 #endif /* _LIB_EXTENSE_TEST__COMMON_HPP */

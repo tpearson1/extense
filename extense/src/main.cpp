@@ -27,6 +27,7 @@ SOFTWARE.
 #include <fstream>
 #include <iostream>
 #include <sstream>
+#include <type_traits>
 
 #include <config.hpp>
 #include <extense/token.hpp>
@@ -53,6 +54,15 @@ int main(int /*argc*/, const char * /*argv*/ []) {
       std::cout << '\n';
     else
       std::cout << '|' << token.text() << '/' << token.type();
+
+    // If there is any data in the token, print it
+    std::visit(
+        [](const auto &data) {
+          if constexpr (!std::is_same_v<std::decay_t<decltype(data)>,
+                                        std::monostate>)
+            std::cout << '/' << data;
+        },
+        token.data());
   }
 
   std::cout << '\n';

@@ -26,6 +26,7 @@ SOFTWARE.
 
 #include <ostream>
 
+#include "common.hpp"
 #include <extense/token.hpp>
 
 #include <catch.hpp>
@@ -221,18 +222,21 @@ TEST_CASE(
     REQUIRE(detail::lexCharacter(s, t));
     REQUIRE(t.type() == Token::Type::Character);
     REQUIRE(s.currentChar().isAfterSource());
+    REQUIRE(variantEquals(t.data(), 'a'));
     t.setType(Token::Type::Plus);
 
     Source s2{"`\\nk"};
     REQUIRE(detail::lexCharacter(s2, t));
     REQUIRE(t.type() == Token::Type::Character);
     REQUIRE(s2.currentChar() == 'k');
+    REQUIRE(variantEquals(t.data(), '\n'));
     t.setType(Token::Type::Plus);
 
     Source s3{"`\\x52l"};
     REQUIRE(detail::lexCharacter(s3, t));
     REQUIRE(t.type() == Token::Type::Character);
     REQUIRE(s3.currentChar() == 'l');
+    REQUIRE(variantEquals(t.data(), '\x52'));
     t.setType(Token::Type::Plus);
 
     Source s4{"Word"};
@@ -246,24 +250,28 @@ TEST_CASE(
     REQUIRE(detail::lexString(s, t));
     REQUIRE(t.type() == Token::Type::String);
     REQUIRE(s.currentChar() == '_');
+    REQUIRE(variantEquals(t.data(), std::string("Hello, World!")));
     t.setType(Token::Type::Plus);
 
     Source s2{"'Hello, World!'_"};
     REQUIRE(detail::lexString(s2, t));
     REQUIRE(t.type() == Token::Type::String);
     REQUIRE(s2.currentChar() == '_');
+    REQUIRE(variantEquals(t.data(), std::string("Hello, World!")));
     t.setType(Token::Type::Plus);
 
     Source s3{R"("   \""_)"};
     REQUIRE(detail::lexString(s3, t));
     REQUIRE(t.type() == Token::Type::String);
     REQUIRE(s3.currentChar() == '_');
+    REQUIRE(variantEquals(t.data(), std::string("   \"")));
     t.setType(Token::Type::Plus);
 
     Source s4{R"('   \''_)"};
     REQUIRE(detail::lexString(s4, t));
     REQUIRE(t.type() == Token::Type::String);
     REQUIRE(s4.currentChar() == '_');
+    REQUIRE(variantEquals(t.data(), std::string("   '")));
     t.setType(Token::Type::Plus);
 
     Source s5{"Certainly not a string"};
@@ -289,6 +297,7 @@ TEST_CASE(
     Source s8{"'This is a tab: \t' "};
     REQUIRE(detail::lexString(s8, t));
     REQUIRE(t.type() == Token::Type::String);
+    REQUIRE(variantEquals(t.data(), std::string("This is a tab: \t")));
     REQUIRE(s8.currentChar() == ' ');
   }
 
@@ -324,12 +333,14 @@ TEST_CASE(
       REQUIRE(detail::lexNumber(s, t));
       REQUIRE(s.currentChar() == '_');
       REQUIRE(t.type() == Token::Type::Integer);
+      REQUIRE(variantEquals<std::int64_t>(t.data(), 1234));
       t.setType(Token::Type::Plus);
 
       Source s2{"1234."};
       REQUIRE(detail::lexNumber(s2, t));
       REQUIRE(s2.currentChar() == '.');
       REQUIRE(t.type() == Token::Type::Integer);
+      REQUIRE(variantEquals<std::int64_t>(t.data(), 1234));
       t.setType(Token::Type::Plus);
 
       Source s3{"seventy"};
@@ -341,30 +352,35 @@ TEST_CASE(
       REQUIRE(detail::lexNumber(s4, t));
       REQUIRE(s4.currentChar() == '.');
       REQUIRE(t.type() == Token::Type::Integer);
+      REQUIRE(variantEquals<std::int64_t>(t.data(), 3));
       t.setType(Token::Type::Plus);
 
       Source s5{"034!"};
       REQUIRE(detail::lexNumber(s5, t));
       REQUIRE(s5.currentChar() == '!');
       REQUIRE(t.type() == Token::Type::Integer);
+      REQUIRE(variantEquals<std::int64_t>(t.data(), 3 * 8 + 4));
       t.setType(Token::Type::Plus);
 
       Source s6{"0xA4!"};
       REQUIRE(detail::lexNumber(s6, t));
       REQUIRE(s6.currentChar() == '!');
       REQUIRE(t.type() == Token::Type::Integer);
+      REQUIRE(variantEquals<std::int64_t>(t.data(), 10 * 16 + 4));
       t.setType(Token::Type::Plus);
 
       Source s7{"0b11034!"};
       REQUIRE(detail::lexNumber(s7, t));
       REQUIRE(s7.currentChar() == '3');
       REQUIRE(t.type() == Token::Type::Integer);
+      REQUIRE(variantEquals<std::int64_t>(t.data(), 4 + 2));
       t.setType(Token::Type::Plus);
 
       Source s8{"0x7.4|"};
       REQUIRE(detail::lexNumber(s8, t));
       REQUIRE(s8.currentChar() == '.');
       REQUIRE(t.type() == Token::Type::Integer);
+      REQUIRE(variantEquals<std::int64_t>(t.data(), 7));
 
       Source s9{"0x"};
       bool correct = false;
@@ -384,34 +400,47 @@ TEST_CASE(
     }
 
     SECTION("Float") {
+      // The function nearlyEquals doesn't have two arguments, but instead has
+      // three with a default argument. To use with variantEquals, we need to
+      // wrap nearlyEquals with a function that really only takes two arguments.
+      auto wrappedNearlyEquals = [](auto a, auto b) {
+        return nearlyEquals(a, b);
+      };
+
       Source s{"3.26|"};
       REQUIRE(detail::lexNumber(s, t));
       REQUIRE(s.currentChar() == '|');
       REQUIRE(t.type() == Token::Type::Float);
+      INFO(std::get<double>(t.data()));
+      REQUIRE(variantEquals<double>(t.data(), 3.26, wrappedNearlyEquals));
       t.setType(Token::Type::Plus);
 
       Source s2{"3.26e2|"};
       REQUIRE(detail::lexNumber(s2, t));
       REQUIRE(s2.currentChar() == '|');
       REQUIRE(t.type() == Token::Type::Float);
+      REQUIRE(variantEquals<double>(t.data(), 326.0, wrappedNearlyEquals));
       t.setType(Token::Type::Plus);
 
       Source s3{"3.26e-2|"};
       REQUIRE(detail::lexNumber(s3, t));
       REQUIRE(s3.currentChar() == '|');
       REQUIRE(t.type() == Token::Type::Float);
+      REQUIRE(variantEquals<double>(t.data(), 0.0326, wrappedNearlyEquals));
       t.setType(Token::Type::Plus);
 
       Source s4{"3e4|"};
       REQUIRE(detail::lexNumber(s4, t));
       REQUIRE(s4.currentChar() == '|');
       REQUIRE(t.type() == Token::Type::Float);
+      REQUIRE(variantEquals<double>(t.data(), 30000.0, wrappedNearlyEquals));
       t.setType(Token::Type::Plus);
 
       Source s5{"7e-4|"};
       REQUIRE(detail::lexNumber(s5, t));
       REQUIRE(s5.currentChar() == '|');
       REQUIRE(t.type() == Token::Type::Float);
+      REQUIRE(variantEquals<double>(t.data(), 0.0007, wrappedNearlyEquals));
 
       Source s6{"3.26eHi|"};
       bool correct = false;
