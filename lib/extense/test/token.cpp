@@ -73,11 +73,148 @@ TEST_CASE("skipWhitespace works", "[detail::skipWhitespace]") {
   REQUIRE(s.currentChar().isAfterSource());
 }
 
-TEST_CASE("Lexing detail functions",
-          "[detail::lexCharacter, detail::lexString, detail::lexLabel, "
-          "detail::lexUnsigned, detail::lexInteger, detail::lexNumber, "
-          "detail::lexIdentifier, detail::lexOperator]") {
+TEST_CASE(
+    "Lexing detail functions",
+    "[detail::lexEscapeSequence, detail::lexCharacter, detail::lexString, "
+    "detail::lexLabel, detail::lexInteger, detail::lexNumber, "
+    "detail::lexIdentifier, detail::lexOperator]") {
+  SECTION("lexEscapeSequence") {
+    char result = '\0';
+    Source s{R"(\' )"};
+    detail::lexEscapeSequence(s, result);
+    REQUIRE(result == '\'');
+    REQUIRE(s.currentChar() == ' ');
+
+    result = '\0';
+    Source s2{R"(\" )"};
+    detail::lexEscapeSequence(s2, result);
+    REQUIRE(result == '"');
+    REQUIRE(s2.currentChar() == ' ');
+
+    result = '\0';
+    Source s3{R"(\\ )"};
+    detail::lexEscapeSequence(s3, result);
+    REQUIRE(result == '\\');
+    REQUIRE(s3.currentChar() == ' ');
+
+    result = '\0';
+    Source s4{R"(\a )"};
+    detail::lexEscapeSequence(s4, result);
+    REQUIRE(result == '\a');
+    REQUIRE(s4.currentChar() == ' ');
+
+    result = '\0';
+    Source s5{R"(\b )"};
+    detail::lexEscapeSequence(s5, result);
+    REQUIRE(result == '\b');
+    REQUIRE(s5.currentChar() == ' ');
+
+    result = '\0';
+    Source s6{R"(\f )"};
+    detail::lexEscapeSequence(s6, result);
+    REQUIRE(result == '\f');
+    REQUIRE(s6.currentChar() == ' ');
+
+    result = '\0';
+    Source s7{R"(\n )"};
+    detail::lexEscapeSequence(s7, result);
+    REQUIRE(result == '\n');
+    REQUIRE(s7.currentChar() == ' ');
+
+    result = '\0';
+    Source s8{R"(\r )"};
+    detail::lexEscapeSequence(s8, result);
+    REQUIRE(result == '\r');
+    REQUIRE(s8.currentChar() == ' ');
+
+    result = '\0';
+    Source s9{R"(\t )"};
+    detail::lexEscapeSequence(s9, result);
+    REQUIRE(result == '\t');
+    REQUIRE(s9.currentChar() == ' ');
+
+    result = '\0';
+    Source s10{R"(\v )"};
+    detail::lexEscapeSequence(s10, result);
+    REQUIRE(result == '\v');
+    REQUIRE(s10.currentChar() == ' ');
+
+    // ASCII characters with octal values
+    result = '\0';
+    Source s11{R"(\036 )"};
+    detail::lexEscapeSequence(s11, result);
+    REQUIRE(result == '\36');
+    REQUIRE(s11.currentChar() == ' ');
+
+    result = '\0';
+    Source s12{R"(\36 )"};
+    detail::lexEscapeSequence(s12, result);
+    REQUIRE(result == '\36');
+    REQUIRE(s12.currentChar() == ' ');
+
+    result = '\0';
+    Source s13{R"(\142 )"};
+    detail::lexEscapeSequence(s13, result);
+    REQUIRE(result == '\142');
+    REQUIRE(s13.currentChar() == ' ');
+
+    // ASCII characters with hexadecimal values
+    result = '\0';
+    Source s14{R"(\xFA )"};
+    detail::lexEscapeSequence(s14, result);
+    REQUIRE(result == '\xFA');
+    REQUIRE(s14.currentChar() == ' ');
+
+    result = '\0';
+    Source s15{R"(\xB )"};
+    detail::lexEscapeSequence(s15, result);
+    REQUIRE(result == '\xB');
+    REQUIRE(s15.currentChar() == ' ');
+
+    result = '\0';
+    Source s16{R"(\x3E )"};
+    detail::lexEscapeSequence(s16, result);
+    REQUIRE(result == '\x3E');
+    REQUIRE(s16.currentChar() == ' ');
+
+    // ASCII characters with decimal values
+    result = '\0';
+    Source s17{R"(\d22 )"};
+    detail::lexEscapeSequence(s17, result);
+    REQUIRE(result == '\x16');
+    REQUIRE(s16.currentChar() == ' ');
+
+    result = '\0';
+    Source s18{R"(\d57 )"};
+    detail::lexEscapeSequence(s18, result);
+    REQUIRE(result == '\x39');
+    REQUIRE(s18.currentChar() == ' ');
+
+    result = '\0';
+    Source s19{R"(\d255 )"};
+    detail::lexEscapeSequence(s19, result);
+    REQUIRE(result == '\xFF');
+    REQUIRE(s19.currentChar() == ' ');
+
+    // Unexpected end of source
+    Source s20{R"(\)"};
+    bool correct = false;
+    try {
+      detail::lexEscapeSequence(s20, result);
+    } catch (const LexingError &) { correct = true; }
+    REQUIRE(correct);
+
+    // Unrecognized escape sequence
+    Source s21{R"(\p)"};
+    correct = false;
+    try {
+      detail::lexEscapeSequence(s21, result);
+    } catch (const LexingError &) { correct = true; }
+    REQUIRE(correct);
+  }
+
   Token t{Source::Location{}};
+  t.setType(Token::Type::EndSource);
 
   SECTION("lexCharacter") {
     Source s{"`a"};
@@ -92,10 +229,16 @@ TEST_CASE("Lexing detail functions",
     REQUIRE(s2.currentChar() == 'k');
     t.setType(Token::Type::Plus);
 
-    Source s3{"Word"};
-    REQUIRE(!detail::lexCharacter(s3, t));
+    Source s3{"`\\x52l"};
+    REQUIRE(detail::lexCharacter(s3, t));
+    REQUIRE(t.type() == Token::Type::Character);
+    REQUIRE(s3.currentChar() == 'l');
+    t.setType(Token::Type::Plus);
+
+    Source s4{"Word"};
+    REQUIRE(!detail::lexCharacter(s4, t));
     REQUIRE(t.type() == Token::Type::Plus);
-    REQUIRE(s3.index() == 0);
+    REQUIRE(s4.index() == 0);
   }
 
   SECTION("lexString") {
@@ -141,6 +284,12 @@ TEST_CASE("Lexing detail functions",
       detail::lexString(s7, t);
     } catch (const LexingError &) { correct = true; }
     REQUIRE(correct);
+
+    t.setType(Token::Type::Plus);
+    Source s8{"'This is a tab: \t' "};
+    REQUIRE(detail::lexString(s8, t));
+    REQUIRE(t.type() == Token::Type::String);
+    REQUIRE(s8.currentChar() == ' ');
   }
 
   SECTION("lexLabel") {
@@ -169,50 +318,6 @@ TEST_CASE("Lexing detail functions",
     REQUIRE(s4.currentChar() == 'N');
   }
 
-  SECTION("lexUnsigned") {
-    Source s{"1234_"};
-    REQUIRE(detail::lexUnsigned(s));
-    REQUIRE(s.currentChar() == '_');
-
-    Source s2{"-1234"};
-    REQUIRE(!detail::lexUnsigned(s2));
-    REQUIRE(s2.currentChar() == '-');
-
-    Source s3{"seventy"};
-    REQUIRE(!detail::lexUnsigned(s3));
-    REQUIRE(s3.currentChar() == 's');
-  }
-
-  SECTION("lexInteger") {
-    Source s{"1234_"};
-    REQUIRE(detail::lexInteger(s, t));
-    REQUIRE(s.currentChar() == '_');
-    REQUIRE(t.type() == Token::Type::Integer);
-    t.setType(Token::Type::Plus);
-
-    Source s2{"-1234."};
-    REQUIRE(detail::lexInteger(s2, t));
-    REQUIRE(s2.currentChar() == '.');
-    REQUIRE(t.type() == Token::Type::Integer);
-    t.setType(Token::Type::Plus);
-
-    Source s3{"seventy"};
-    REQUIRE(!detail::lexInteger(s3, t));
-    REQUIRE(s3.currentChar() == 's');
-    REQUIRE(t.type() == Token::Type::Plus);
-
-    Source s4{"+1."};
-    REQUIRE(detail::lexInteger(s4, t));
-    REQUIRE(s4.currentChar() == '.');
-    REQUIRE(t.type() == Token::Type::Integer);
-    t.setType(Token::Type::Plus);
-
-    Source s5{"+|"};
-    REQUIRE(!detail::lexInteger(s5, t));
-    REQUIRE(s5.currentChar() == '+');
-    REQUIRE(t.type() == Token::Type::Plus);
-  }
-
   SECTION("lexNumber") {
     SECTION("Int") {
       Source s{"1234_"};
@@ -221,7 +326,7 @@ TEST_CASE("Lexing detail functions",
       REQUIRE(t.type() == Token::Type::Integer);
       t.setType(Token::Type::Plus);
 
-      Source s2{"-1234."};
+      Source s2{"1234."};
       REQUIRE(detail::lexNumber(s2, t));
       REQUIRE(s2.currentChar() == '.');
       REQUIRE(t.type() == Token::Type::Integer);
@@ -232,25 +337,25 @@ TEST_CASE("Lexing detail functions",
       REQUIRE(s3.currentChar() == 's');
       REQUIRE(t.type() == Token::Type::Plus);
 
-      Source s4{"-3.-26e2|"};
+      Source s4{"3.-26e2|"};
       REQUIRE(detail::lexNumber(s4, t));
       REQUIRE(s4.currentChar() == '.');
       REQUIRE(t.type() == Token::Type::Integer);
       t.setType(Token::Type::Plus);
 
-      Source s5{"-034!"};
+      Source s5{"034!"};
       REQUIRE(detail::lexNumber(s5, t));
       REQUIRE(s5.currentChar() == '!');
       REQUIRE(t.type() == Token::Type::Integer);
       t.setType(Token::Type::Plus);
 
-      Source s6{"-0xA4!"};
+      Source s6{"0xA4!"};
       REQUIRE(detail::lexNumber(s6, t));
       REQUIRE(s6.currentChar() == '!');
       REQUIRE(t.type() == Token::Type::Integer);
       t.setType(Token::Type::Plus);
 
-      Source s7{"-0b11034!"};
+      Source s7{"0b11034!"};
       REQUIRE(detail::lexNumber(s7, t));
       REQUIRE(s7.currentChar() == '3');
       REQUIRE(t.type() == Token::Type::Integer);
@@ -279,25 +384,25 @@ TEST_CASE("Lexing detail functions",
     }
 
     SECTION("Float") {
-      Source s{"-3.26|"};
+      Source s{"3.26|"};
       REQUIRE(detail::lexNumber(s, t));
       REQUIRE(s.currentChar() == '|');
       REQUIRE(t.type() == Token::Type::Float);
       t.setType(Token::Type::Plus);
 
-      Source s2{"-3.26e2|"};
+      Source s2{"3.26e2|"};
       REQUIRE(detail::lexNumber(s2, t));
       REQUIRE(s2.currentChar() == '|');
       REQUIRE(t.type() == Token::Type::Float);
       t.setType(Token::Type::Plus);
 
-      Source s3{"-3.26e-2|"};
+      Source s3{"3.26e-2|"};
       REQUIRE(detail::lexNumber(s3, t));
       REQUIRE(s3.currentChar() == '|');
       REQUIRE(t.type() == Token::Type::Float);
       t.setType(Token::Type::Plus);
 
-      Source s4{"-3e4|"};
+      Source s4{"3e4|"};
       REQUIRE(detail::lexNumber(s4, t));
       REQUIRE(s4.currentChar() == '|');
       REQUIRE(t.type() == Token::Type::Float);
@@ -308,7 +413,7 @@ TEST_CASE("Lexing detail functions",
       REQUIRE(s5.currentChar() == '|');
       REQUIRE(t.type() == Token::Type::Float);
 
-      Source s6{"-3.26eHi|"};
+      Source s6{"3.26eHi|"};
       bool correct = false;
       try {
         detail::lexNumber(s6, t);

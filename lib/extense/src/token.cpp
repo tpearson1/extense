@@ -26,13 +26,14 @@ SOFTWARE.
 
 #include <algorithm>
 #include <array>
+#include <cassert>
 #include <cctype>
 #include <ostream>
 #include <sstream>
 
 #include <extense/token.hpp>
 
-std::vector<extense::Token> extense::tokenize(extense::Source &source) {
+std::vector<extense::Token> extense::tokenize(Source &source) {
   std::vector<Token> tokens;
   auto lastTokenIsEndStatement = [&tokens] {
     if (tokens.empty()) return false;
@@ -55,7 +56,7 @@ std::vector<extense::Token> extense::tokenize(extense::Source &source) {
  * Fetches the next token and adds it to the end of tokens.
  * May throw an InvalidTokenError exception.
  */
-extense::Token extense::detail::fetchNextToken(extense::Source &source) {
+extense::Token extense::detail::fetchNextToken(Source &source) {
   skipWhitespace(source);
   using extense::Token;
 
@@ -86,12 +87,8 @@ extense::Token extense::detail::fetchNextToken(extense::Source &source) {
   case '{': SINGLE_CHAR_TOKEN(LeftBrace)
   case '}': SINGLE_CHAR_TOKEN(RightBrace)
   default: {
-    // Needs to be before the +/- token checks in lexOperator, because else
-    // numbers like +42 and -26 would be split into a Plus/Minus token and an
-    // Integer token
-    if (lexNumber(source, t)) break;
-
     if (lexOperator(source, t)) break;
+    if (lexNumber(source, t)) break;
     if (lexString(source, t)) break;
     if (lexCharacter(source, t)) break;
     if (lexLabel(source, t)) break;
@@ -99,7 +96,7 @@ extense::Token extense::detail::fetchNextToken(extense::Source &source) {
 
     std::ostringstream errorMsg;
     errorMsg << "Unexpected character '" << current << '\'';
-    throw extense::LexingError{source.location(), errorMsg.str()};
+    throw LexingError{source.location(), errorMsg.str()};
   }
   }
 #undef SINGLE_CHAR_TOKEN
@@ -108,7 +105,7 @@ extense::Token extense::detail::fetchNextToken(extense::Source &source) {
   return t;
 }
 
-bool extense::detail::tryMatch(extense::Source &source, std::string_view str) {
+bool extense::detail::tryMatch(Source &source, std::string_view str) {
   for (std::size_t i = 0; i < str.size(); i++) {
     if (str[i] == source.currentChar()) {
       source.nextChar();
@@ -152,7 +149,7 @@ static void skipWhitespaceOneAttempt(extense::Source &source) {
   }
 }
 
-void extense::detail::skipWhitespace(extense::Source &source) {
+void extense::detail::skipWhitespace(Source &source) {
   // Continue attempting to skip whitespace until no progress was made
   auto index = source.index();
   do {
@@ -162,13 +159,134 @@ void extense::detail::skipWhitespace(extense::Source &source) {
   } while (true);
 }
 
-bool extense::detail::lexCharacter(extense::Source &source,
-                                   extense::Token &out) {
-  // TODO: Support for more escape sequences in string and character literals
-  auto current = source.currentChar().get();
-  if (current != '`') return false;
+static bool safeIsDigit(unsigned char c) {
+  return static_cast<bool>(std::isdigit(c));
+}
 
-  if (source.nextChar() == '\\') source.nextChar();
+constexpr int invalidDigit = -1;
+
+template <typename DigitFunc>
+static void lexUnsignedInteger(extense::Source &source, std::int64_t &out,
+                               DigitFunc df, int base) {
+  int digit;
+  // Throw LexingError if first digit is invalid
+  if (source.currentChar().isAfterSource() ||
+      (digit = df(source.currentChar().get())) == invalidDigit)
+    throw extense::LexingError{source.location(), "Expected number"};
+  out = digit;
+
+  while (!source.nextChar().isAfterSource()) {
+    digit = df(source.currentChar().get());
+    if (digit == invalidDigit) return;
+    out *= base;
+    out += digit;
+  }
+}
+
+void extense::detail::lexHexadecimalNumber(Source &source, std::int64_t &out) {
+  auto hexValue = [](char c) -> int {
+    if (c >= '0' && c <= '9') return c - '0';
+    if (c >= 'A' && c <= 'F') return (c - 'A') + 10;
+    if (c >= 'a' && c <= 'f') return (c - 'f') + 10;
+    return invalidDigit;
+  };
+  lexUnsignedInteger(source, out, hexValue, 16);
+}
+
+void extense::detail::lexOctalNumber(Source &source, std::int64_t &out) {
+  auto octalValue = [](char c) -> int {
+    if (c >= '0' && c <= '7') return c - '0';
+    return invalidDigit;
+  };
+  lexUnsignedInteger(source, out, octalValue, 8);
+}
+
+void extense::detail::lexDecimalNumber(Source &source, std::int64_t &out) {
+  auto decimalValue = [](char c) -> int {
+    if (safeIsDigit(c)) return c - '0';
+    return invalidDigit;
+  };
+  lexUnsignedInteger(source, out, decimalValue, 10);
+}
+
+void extense::detail::lexBinaryNumber(Source &source, std::int64_t &out) {
+  auto binaryValue = [](char c) -> int {
+    if (c == '0') return 0;
+    if (c == '1') return 1;
+    return invalidDigit;
+  };
+  lexUnsignedInteger(source, out, binaryValue, 2);
+}
+
+template <typename LexFunction>
+static void lexEscapeSequenceNumber(extense::Source &source, char &out,
+                                    LexFunction lf) {
+  std::int64_t hex;
+  lf(source, hex);
+  if (hex > 255) {
+    // The number is too large to store in a character
+    throw extense::LexingError{source.location(),
+                               "Number number in escape sequence too large"};
+  }
+
+  out = static_cast<char>(hex);
+}
+
+void extense::detail::lexEscapeSequence(Source &source, char &out) {
+  assert(source.currentChar() == '\\');
+  if (source.nextChar().isAfterSource()) {
+    throw LexingError{source.location(),
+                      "Unexpected end of source in escape sequence"};
+  }
+
+  auto c = source.currentChar().get();
+  switch (c) {
+  case '\'': out = '\''; break;
+  case '"': out = '"'; break;
+  case '\\': out = '\\'; break;
+  case 'a': out = '\a'; break;
+  case 'b': out = '\b'; break;
+  case 'f': out = '\f'; break;
+  case 'n': out = '\n'; break;
+  case 'r': out = '\r'; break;
+  case 't': out = '\t'; break;
+  case 'v': out = '\v'; break;
+  case 'x': {
+    source.nextChar();
+    lexEscapeSequenceNumber(source, out, lexHexadecimalNumber);
+    return;
+  }
+  case 'd': {
+    source.nextChar();
+    lexEscapeSequenceNumber(source, out, lexDecimalNumber);
+    return;
+  }
+  default: {
+    if (!safeIsDigit(c))
+      throw LexingError{source.location(), "Unrecognized escape sequence"};
+
+    // Since the sequence is a backslash followed by a digit, the escape
+    // sequence must be octal
+    lexEscapeSequenceNumber(source, out, lexOctalNumber);
+    return;
+  }
+  }
+
+  // To reach here, we must have had a single character escape sequence. We
+  // need to skip past that single character.
+  source.nextChar();
+}
+
+// TODO: Store data in token
+bool extense::detail::lexCharacter(Source &source, Token &out) {
+  if (source.currentChar().get() != '`') return false;
+
+  if (source.nextChar() == '\\') {
+    char ignore;
+    lexEscapeSequence(source, ignore);
+    out.setType(Token::Type::Character);
+    return true;
+  }
 
   if (source.currentChar().isAfterSource()) {
     throw extense::LexingError{
@@ -180,25 +298,34 @@ bool extense::detail::lexCharacter(extense::Source &source,
   return true;
 }
 
-bool extense::detail::lexString(extense::Source &source, extense::Token &out) {
-  auto current = source.currentChar().get();
-  if (current != '\'' && current != '"') return false;
+// TODO: Store data in token
+bool extense::detail::lexString(Source &source, Token &out) {
+  auto stringBegin = source.currentChar().get();
+  if (stringBegin != '\'' && stringBegin != '"') return false;
 
   source.nextChar();
-  detail::skipPast(source, [ current, previous = ' ' ](auto c) mutable {
-    if (previous == '\\' && c == current) {
-      previous = c;
-      return false; // Escaped '/" should not end string
+  while (true) {
+    if (source.currentChar().isAfterSource()) {
+      throw LexingError{source.location(),
+                        "Unexpected end of source while lexing String literal"};
     }
-    previous = c;
-    return c == current;
-  });
+
+    char c = source.currentChar().get();
+    if (c == '\\') {
+      char ignore;
+      lexEscapeSequence(source, ignore);
+      continue;
+    }
+
+    source.nextChar();
+    if (c == stringBegin) break;
+  }
 
   out.setType(Token::Type::String);
   return true;
 }
 
-bool extense::detail::lexLabel(extense::Source &source, extense::Token &out) {
+bool extense::detail::lexLabel(Source &source, Token &out) {
   auto current = source.currentChar().get();
   if (current != '@') return false;
 
@@ -216,49 +343,74 @@ bool extense::detail::lexLabel(extense::Source &source, extense::Token &out) {
   return true;
 }
 
-static bool safeIsDigit(unsigned char c) {
-  return static_cast<bool>(std::isdigit(c));
-}
-
-bool extense::detail::lexUnsigned(extense::Source &source) {
-  auto begin = source.index();
-  skipUntilPermitEOS(source, [](auto c) { return !safeIsDigit(c); });
-  return source.index() != begin;
-}
-
-static bool lexIntegerHelper(extense::Source &source) {
+static bool lexPossibleSign(extense::Source &source, bool &negative) {
   auto current = source.currentChar().get();
-
-  bool hasSign = current == '-' || current == '+';
-  if (hasSign)
+  if (current == '-') {
+    negative = true;
     source.nextChar();
-  else if (!safeIsDigit(current))
-    return false;
-
-  if (!extense::detail::lexUnsigned(source)) {
-    // If there is a sign character we need to go back so we haven't consumed
-    // any characters on failure
-    if (hasSign) source.backChar();
-
-    return false;
+    return true;
   }
 
-  return true;
+  if (current == '+') {
+    negative = false;
+    source.nextChar();
+    return true;
+  }
+
+  negative = false;
+  return safeIsDigit(current);
 }
 
-bool extense::detail::lexInteger(extense::Source &source, extense::Token &out) {
-  bool res = lexIntegerHelper(source);
-  if (res) out.setType(Token::Type::Integer);
-  return res;
-}
+// TODO: Store data in token
+// Only lexes positive numbers. Numbers with signs are considered to be two
+// tokens: '-/+' and the number.
+bool extense::detail::lexNumber(Source &source, Token &out) {
+  std::int64_t ignore;
+  // We could have a hexadecimal or octal literal, in which case a Float would
+  // no longer be possible
+  if (source.currentChar().get() == '0') {
+    out.setType(Token::Type::Integer);
 
-bool extense::detail::lexNumber(extense::Source &source, extense::Token &out) {
-  if (!lexInteger(source, out)) return false;
+    if (source.nextChar() == 'x') {
+      // Hexadecimal literal
+      source.nextChar();
+      lexHexadecimalNumber(source, ignore);
+      return true;
+    }
+
+    if (source.currentChar() == 'b') {
+      // Binary literal
+      source.nextChar();
+      lexBinaryNumber(source, ignore);
+      return true;
+    }
+
+    // Could just be 0
+    if (source.currentChar().isAfterSource() ||
+        !safeIsDigit(source.currentChar().get()))
+      return true;
+
+    // Octal literal
+    lexOctalNumber(source, ignore);
+    return true;
+  }
+
+  // The token may not be a number. If it does not start with a digit, it must
+  // not be.
+  if (!safeIsDigit(source.currentChar().get())) return false;
+
+  // At this point the token is either a decimal literal or a Float
+  lexDecimalNumber(source, ignore);
+  out.setType(Token::Type::Integer);
 
   if (source.currentChar() == '.') {
-    source.nextChar();
-    if (!lexUnsigned(source)) {
-      // Is not a Float
+    if (!source.nextChar().isAfterSource() &&
+        safeIsDigit(source.currentChar().get())) {
+      // There is a number after the '.'
+      lexDecimalNumber(source, ignore);
+    } else {
+      // Go back to make '.' the current character again, as this token is an
+      // integer
       source.backChar();
       return true;
     }
@@ -271,11 +423,9 @@ bool extense::detail::lexNumber(extense::Source &source, extense::Token &out) {
 
   out.setType(Token::Type::Float);
   source.nextChar();
-  if (!lexIntegerHelper(source)) {
-    // Must be an integer exponent
-    throw LexingError{source.location(), "Expected integer exponent in float"};
-  }
-
+  bool exponentNegative;
+  lexPossibleSign(source, exponentNegative);
+  lexDecimalNumber(source, ignore);
   return true;
 }
 
@@ -302,8 +452,7 @@ static bool lexTextualToken(std::string_view text, extense::Token &out) {
   return false;
 }
 
-bool extense::detail::lexIdentifier(extense::Source &source,
-                                    extense::Token &out) {
+bool extense::detail::lexIdentifier(Source &source, Token &out) {
   auto validFirstChar = [](unsigned char c) {
     return static_cast<bool>(std::isalpha(c)) || c == '_';
   };
@@ -326,8 +475,7 @@ bool extense::detail::lexIdentifier(extense::Source &source,
   return true;
 }
 
-bool extense::detail::lexOperator(extense::Source &source,
-                                  extense::Token &out) {
+bool extense::detail::lexOperator(Source &source, Token &out) {
   constexpr const std::array permittedOpChars{'&', '|', '~', '^', '<', '>',
                                               '?', '+', '-', '*', '/', '%',
                                               '!', ':', '.', '='};
@@ -405,7 +553,7 @@ static constexpr std::array tokenTypeEnumStrings{
 #undef X
 };
 
-std::ostream &operator<<(std::ostream &os, const extense::Token &token) {
+std::ostream &extense::operator<<(std::ostream &os, const Token &token) {
   if (token.type() == extense::Token::Type::EndSource)
     os << "{End source}";
   else {
@@ -416,7 +564,7 @@ std::ostream &operator<<(std::ostream &os, const extense::Token &token) {
   return os;
 }
 
-std::ostream &operator<<(std::ostream &os, extense::Token::Type type) {
+std::ostream &extense::operator<<(std::ostream &os, Token::Type type) {
   os << tokenTypeEnumStrings.at(static_cast<int>(type));
   return os;
 }

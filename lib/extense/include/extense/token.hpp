@@ -27,7 +27,9 @@ SOFTWARE.
 #ifndef _LIB_EXTENSE__TOKEN_HPP
 #define _LIB_EXTENSE__TOKEN_HPP
 
+#include <cstdint>
 #include <iosfwd>
+#include <variant>
 
 #include <extense/source.hpp>
 
@@ -135,10 +137,14 @@ public:
 #undef X
   };
 
+  using Data =
+      std::variant<std::monostate, std::int64_t, double, char, std::string>;
+
 private:
   Source::Location loc;
   std::string_view tokenText;
   Type tokenType;
+  Data data_;
 
 public:
   Token(Source::Location location) : loc(std::move(location)) {}
@@ -147,6 +153,12 @@ public:
 
   void setText(std::string_view text) { tokenText = std::move(text); }
   void setType(Type type) { tokenType = std::move(type); }
+
+  void setData(std::int64_t i) { data_ = i; }
+  void setData(double d) { data_ = d; }
+  void setData(char c) { data_ = c; }
+  void setData(std::string s) { data_ = std::move(s); }
+  void clearData() { data_ = std::monostate{}; }
 
   /*
    * Accessors for the token's location in the source, raw text, and type
@@ -164,6 +176,8 @@ public:
   }
 
   Type type() const { return tokenType; }
+
+  Data data() const { return data_; }
 };
 
 /*
@@ -209,12 +223,18 @@ void skipWhitespace(Source &source);
 bool lexCharacter(Source &source, Token &out);
 bool lexString(Source &source, Token &out);
 bool lexLabel(Source &source, Token &out);
-bool lexUnsigned(Source &source);
-bool lexInteger(Source &source, Token &out);
 bool lexNumber(Source &source, Token &out);
 bool lexOperator(Source &source, Token &out);
 // Also lexes booleans and textual tokens
 bool lexIdentifier(Source &source, Token &out);
+
+// Expects the current character when called to be backslash
+void lexEscapeSequence(Source &source, char &out);
+
+void lexHexadecimalNumber(Source &source, std::int64_t &out);
+void lexOctalNumber(Source &source, std::int64_t &out);
+void lexDecimalNumber(Source &source, std::int64_t &out);
+void lexBinaryNumber(Source &source, std::int64_t &out);
 
 // EOS = End of Source
 inline void throwUnexpectedEOS(Source &source) {
@@ -247,9 +267,9 @@ void skipPast(Source &source, Pred p) {
   throwUnexpectedEOS(source);
 }
 } // namespace detail
-} // namespace extense
 
-std::ostream &operator<<(std::ostream &, const extense::Token &);
-std::ostream &operator<<(std::ostream &, extense::Token::Type);
+std::ostream &operator<<(std::ostream &, const Token &);
+std::ostream &operator<<(std::ostream &, Token::Type);
+} // namespace extense
 
 #endif // _LIB_EXTENSE__TOKEN_HPP
