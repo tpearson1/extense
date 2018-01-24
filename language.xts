@@ -79,7 +79,7 @@ println '" \'' # " '
   References
 
   Basic datatypes like Int and Char have their values copied by default
-  when '=' is used. Sets, Strings and lists are referenced by default, and can be copied
+  when '=' is used. Maps, Strings and lists are referenced by default, and can be copied
   using the 'copy' function.
 }
 x = 8
@@ -222,7 +222,7 @@ data.join {c -> true}
 
 # OOP
 
-# Create a constructor - function returning a set
+# Create a constructor - function returning a Map
 Person = [{
   name -> $:0
   age -> $:1
@@ -239,7 +239,7 @@ Mutant = [(Person $).concat {power -> $:3}]
 hulk = Mutant ('Hulk',25,378,'Strength')
 println (speak hulk)
 
-# Can also add functions to a set, which can act as member functions or
+# Can also add functions to a Map, which can act as member functions or
 # essentially a namespace equivalent
 Fruit = [{
   color -> $
@@ -317,8 +317,9 @@ println mathScope # Prints 7
   - Char
   - String
   - List
-  - Set
+  - Map
   - None
+  - Scope
 }
 a = 7
 println (a is Int) # true
@@ -340,17 +341,17 @@ println (a == None) # true
 println (7 ++ 2) # 7 + 2 * 2 = 11
 
 #{
-  Overriding operators for sets.
+  Overriding operators for Maps.
 
   For binary operators:
-    When a set is the left operand of an expression, the Set is indexed with the
+    When a Map is the left operand of an expression, the Map is indexed with the
     operator as a String (e.g. "+"). The mapped value should be a function, and
     if it isn't, an exception is thrown. The mapped function is called with the
-    Set and the right operand (which doesn't need to be a Set).
+    Map and the right operand (which doesn't need to be a Map).
 
   For unary operators:
-    Similarly to the case with binary operators, the Set is indexed with the
-    operator's corresponding String, and then called with the Set as it's
+    Similarly to the case with binary operators, the Map is indexed with the
+    operator's corresponding String, and then called with the Map as it's
     argument.
 
   For both operator types the arguments may be modified, although this may not
@@ -360,7 +361,7 @@ println (7 ++ 2) # 7 + 2 * 2 = 11
   can now be used with the type. To avoid repetition it is possible to implement
   one in terms of the other (as seen in the example of Vector2).
 
-  Some operators are reserved for sets, and cannot be overloaded, such as the
+  Some operators are reserved for Maps, and cannot be overloaded, such as the
   indexing (and reflexive indexing) operations.
 }
 Vector2 = [{
@@ -368,7 +369,7 @@ Vector2 = [{
   y -> $:1
 
   # Note that this example would crash if the unary plus operator were to be used
-  # on this set, since $ would be a Set and not a List
+  # on this Map, since $ would be a Map and not a List
   '+' -> [Vector2 ($:0:x + $:1:x, $:0:y + $:1:y)]
   '+=' -> [$:0 = $:0 + $:1]
 }]
@@ -384,7 +385,7 @@ Vector3 = [{
   '+' -> [Vector3 ($:0:x + $:1:x, $:0:y + $:1:y, $:0:z + $:1:z)]
 }]
 
-# Since the left set's '+' member is used for the addition,
+# Since the left Map's '+' member is used for the addition,
 # sum is a Vector2. Switching the order of Vector2 and Vector3 in the addition
 # expression would be an error because the Vector3's '+' member would be used,
 # expecting a 'z' member in the Vector2 operand which is not present.

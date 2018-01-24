@@ -323,7 +323,7 @@ inline Bool equal(Char a, Char b) { return Bool{a.value == b.value}; }
 inline Bool equal(const String &a, const String &b) {
   return Bool{a.value == b.value};
 }
-Bool equal(const Set &a, const Set &b);
+Bool equal(const Map &a, const Map &b);
 Bool equal(const List &a, const List &b);
 inline Bool equal(const Scope &, const Scope &) { return Bool{false}; }
 
@@ -342,55 +342,55 @@ inline Bool notEqual(const VT1 &a, const VT2 &b) {
 // Set overload operations.
 // The following operations cannot be overloaded:
 //   : :: !
-Value add(Set &a, const Value &b);
-Value addEquals(Set &a, const Value &b);
-Value add(Set &a);
+Value add(Map &a, const Value &b);
+Value addEquals(Map &a, const Value &b);
+Value add(Map &a);
 
-Value sub(Set &a, const Value &b);
-Value subEquals(Set &a, const Value &b);
-Value sub(Set &a);
+Value sub(Map &a, const Value &b);
+Value subEquals(Map &a, const Value &b);
+Value sub(Map &a);
 
-Value mul(Set &a, const Value &b);
-Value mulEquals(Set &a, const Value &b);
+Value mul(Map &a, const Value &b);
+Value mulEquals(Map &a, const Value &b);
 
-Value div(Set &a, const Value &b);
-Value divEquals(Set &a, const Value &b);
+Value div(Map &a, const Value &b);
+Value divEquals(Map &a, const Value &b);
 
-Value mod(Set &a, const Value &b);
-Value modEquals(Set &a, const Value &b);
+Value mod(Map &a, const Value &b);
+Value modEquals(Map &a, const Value &b);
 
-Value floorDiv(Set &a, const Value &b);
-Value floorDivEquals(Set &a, const Value &b);
+Value floorDiv(Map &a, const Value &b);
+Value floorDivEquals(Map &a, const Value &b);
 
-Value pow(Set &a, const Value &b);
-Value powEquals(Set &a, const Value &b);
+Value pow(Map &a, const Value &b);
+Value powEquals(Map &a, const Value &b);
 
-Value dotDot(Set &a, const Value &b);
+Value dotDot(Map &a, const Value &b);
 
-Value bitAnd(Set &a, const Value &b);
-Value bitAndEquals(Set &a, const Value &b);
+Value bitAnd(Map &a, const Value &b);
+Value bitAndEquals(Map &a, const Value &b);
 
-Value bitOr(Set &a, const Value &b);
-Value bitOrEquals(Set &a, const Value &b);
+Value bitOr(Map &a, const Value &b);
+Value bitOrEquals(Map &a, const Value &b);
 
-Value bitXor(Set &a, const Value &b);
-Value bitXorEquals(Set &a, const Value &b);
+Value bitXor(Map &a, const Value &b);
+Value bitXorEquals(Map &a, const Value &b);
 
-Value bitNot(Set &a);
+Value bitNot(Map &a);
 
-Value bitLShift(Set &a, const Value &b);
-Value bitLShiftEquals(Set &a, const Value &b);
+Value bitLShift(Map &a, const Value &b);
+Value bitLShiftEquals(Map &a, const Value &b);
 
-Value bitRShift(Set &a, const Value &b);
-Value bitRShiftEquals(Set &a, const Value &b);
+Value bitRShift(Map &a, const Value &b);
+Value bitRShiftEquals(Map &a, const Value &b);
 
-Value lessThan(Set &a, const Value &b);
-Value lessEquals(Set &a, const Value &b);
-Value greaterThan(Set &a, const Value &b);
-Value greaterEquals(Set &a, const Value &b);
+Value lessThan(Map &a, const Value &b);
+Value lessEquals(Map &a, const Value &b);
+Value greaterThan(Map &a, const Value &b);
+Value greaterEquals(Map &a, const Value &b);
 
-Value equal(Set &a, const Value &b);
-Value notEqual(Set &a, const Value &b);
+Value equal(Map &a, const Value &b);
+Value notEqual(Map &a, const Value &b);
 } // namespace ops
 
 template <typename VT, detail::enableValidOpArgs<VT> * = nullptr>

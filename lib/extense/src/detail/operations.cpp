@@ -101,103 +101,103 @@ List dotDot(Int a, Int b) {
 
 Reference ref(Value &v) { return Reference{v}; }
 
-Bool equal(const Set &a, const Set &b) { return Bool{a.value == b.value}; }
+Bool equal(const Map &a, const Map &b) { return Bool{a.value == b.value}; }
 Bool equal(const List &a, const List &b) { return Bool{a.value == b.value}; }
 } // namespace extense::ops
 
-static extense::Value binaryFunction(const extense::String &op, extense::Set &a,
+static extense::Value binaryFunction(const extense::String &op, extense::Map &a,
                                      const extense::Value &b) {
   auto v = extense::Value{a};
   return extense::get<extense::Scope>(a[op])(v, b);
 }
 static extense::Value unaryFunction(const extense::String &op,
-                                    extense::Set &a) {
+                                    extense::Map &a) {
   auto v = extense::Value{a};
   return extense::get<extense::Scope>(a[op])(v);
 }
 
 namespace extense::ops {
-Value add(Set &a, const Value &b) { return binaryFunction("+"_es, a, b); }
-Value addEquals(Set &a, const Value &b) {
+Value add(Map &a, const Value &b) { return binaryFunction("+"_es, a, b); }
+Value addEquals(Map &a, const Value &b) {
   return binaryFunction("+="_es, a, b);
 }
-Value add(Set &a) { return unaryFunction("+"_es, a); }
+Value add(Map &a) { return unaryFunction("+"_es, a); }
 
-Value sub(Set &a, const Value &b) { return binaryFunction("-"_es, a, b); }
-Value subEquals(Set &a, const Value &b) {
+Value sub(Map &a, const Value &b) { return binaryFunction("-"_es, a, b); }
+Value subEquals(Map &a, const Value &b) {
   return binaryFunction("-="_es, a, b);
 }
-Value sub(Set &a) { return unaryFunction("-"_es, a); }
+Value sub(Map &a) { return unaryFunction("-"_es, a); }
 
-Value mul(Set &a, const Value &b) { return binaryFunction("*"_es, a, b); }
-Value mulEquals(Set &a, const Value &b) {
+Value mul(Map &a, const Value &b) { return binaryFunction("*"_es, a, b); }
+Value mulEquals(Map &a, const Value &b) {
   return binaryFunction("*="_es, a, b);
 }
 
-Value div(Set &a, const Value &b) { return binaryFunction("/"_es, a, b); }
-Value divEquals(Set &a, const Value &b) {
+Value div(Map &a, const Value &b) { return binaryFunction("/"_es, a, b); }
+Value divEquals(Map &a, const Value &b) {
   return binaryFunction("/="_es, a, b);
 }
 
-Value mod(Set &a, const Value &b) { return binaryFunction("%"_es, a, b); }
-Value modEquals(Set &a, const Value &b) {
+Value mod(Map &a, const Value &b) { return binaryFunction("%"_es, a, b); }
+Value modEquals(Map &a, const Value &b) {
   return binaryFunction("%="_es, a, b);
 }
 
-Value floorDiv(Set &a, const Value &b) { return binaryFunction("//"_es, a, b); }
-Value floorDivEquals(Set &a, const Value &b) {
+Value floorDiv(Map &a, const Value &b) { return binaryFunction("//"_es, a, b); }
+Value floorDivEquals(Map &a, const Value &b) {
   return binaryFunction("//="_es, a, b);
 }
 
-Value pow(Set &a, const Value &b) { return binaryFunction("**"_es, a, b); }
-Value powEquals(Set &a, const Value &b) {
+Value pow(Map &a, const Value &b) { return binaryFunction("**"_es, a, b); }
+Value powEquals(Map &a, const Value &b) {
   return binaryFunction("**="_es, a, b);
 }
 
-Value dotDot(Set &a, const Value &b) { return binaryFunction(".."_es, a, b); }
+Value dotDot(Map &a, const Value &b) { return binaryFunction(".."_es, a, b); }
 
-Value bitAnd(Set &a, const Value &b) { return binaryFunction("&"_es, a, b); }
-Value bitAndEquals(Set &a, const Value &b) {
+Value bitAnd(Map &a, const Value &b) { return binaryFunction("&"_es, a, b); }
+Value bitAndEquals(Map &a, const Value &b) {
   return binaryFunction("&="_es, a, b);
 }
 
-Value bitOr(Set &a, const Value &b) { return binaryFunction("|"_es, a, b); }
-Value bitOrEquals(Set &a, const Value &b) {
+Value bitOr(Map &a, const Value &b) { return binaryFunction("|"_es, a, b); }
+Value bitOrEquals(Map &a, const Value &b) {
   return binaryFunction("|="_es, a, b);
 }
 
-Value bitXor(Set &a, const Value &b) { return binaryFunction("^"_es, a, b); }
-Value bitXorEquals(Set &a, const Value &b) {
+Value bitXor(Map &a, const Value &b) { return binaryFunction("^"_es, a, b); }
+Value bitXorEquals(Map &a, const Value &b) {
   return binaryFunction("^="_es, a, b);
 }
 
-Value bitNot(Set &a) { return unaryFunction("~"_es, a); }
+Value bitNot(Map &a) { return unaryFunction("~"_es, a); }
 
-Value bitLShift(Set &a, const Value &b) {
+Value bitLShift(Map &a, const Value &b) {
   return binaryFunction("<<"_es, a, b);
 }
-Value bitLShiftEquals(Set &a, const Value &b) {
+Value bitLShiftEquals(Map &a, const Value &b) {
   return binaryFunction("<<="_es, a, b);
 }
 
-Value bitRShift(Set &a, const Value &b) {
+Value bitRShift(Map &a, const Value &b) {
   return binaryFunction(">>"_es, a, b);
 }
-Value bitRShiftEquals(Set &a, const Value &b) {
+Value bitRShiftEquals(Map &a, const Value &b) {
   return binaryFunction(">>="_es, a, b);
 }
 
-Value lessThan(Set &a, const Value &b) { return binaryFunction("<"_es, a, b); }
-Value lessEquals(Set &a, const Value &b) {
+Value lessThan(Map &a, const Value &b) { return binaryFunction("<"_es, a, b); }
+Value lessEquals(Map &a, const Value &b) {
   return binaryFunction("<="_es, a, b);
 }
-Value greaterThan(Set &a, const Value &b) {
+Value greaterThan(Map &a, const Value &b) {
   return binaryFunction(">"_es, a, b);
 }
-Value greaterEquals(Set &a, const Value &b) {
+Value greaterEquals(Map &a, const Value &b) {
   return binaryFunction(">="_es, a, b);
 }
 
-Value equal(Set &a, const Value &b) { return binaryFunction("=="_es, a, b); }
-Value notEqual(Set &a, const Value &b) { return binaryFunction("!="_es, a, b); }
+Value equal(Map &a, const Value &b) { return binaryFunction("=="_es, a, b); }
+Value notEqual(Map &a, const Value &b) { return binaryFunction("!="_es, a, b); }
 } // namespace extense::ops

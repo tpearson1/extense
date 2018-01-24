@@ -200,7 +200,7 @@ TEST_CASE("Operation functions", "[extense::ops]") {
     REQUIRE(v.is<Bool>());
     REQUIRE(get<Bool>(v) == Bool::t);
 
-    auto s = Set{Mapping{"key"_es, "value"_es}, Mapping{'c'_ec, Bool::f},
+    auto s = Map{Mapping{"key"_es, "value"_es}, Mapping{'c'_ec, Bool::f},
                  Mapping{3_ei, Bool::t}};
     REQUIRE(ops::index(s, 'c'_ec) == Value{Bool::f});
     REQUIRE(ops::index(s, "key"_es) == Value{"value"_es});
@@ -333,7 +333,7 @@ TEST_CASE("Operation functions", "[extense::ops]") {
     REQUIRE(ops::equal('c'_ec, 'c'_ec));
     REQUIRE(ops::equal("hello"_es, "hello"_es));
     REQUIRE(ops::equal(List{4_ei, Bool::t}, List{4.0_ef, Bool::t}));
-    auto s = Set{Mapping{'a'_ec, "hi"_es}, Mapping{Bool::t, 3_ei}};
+    auto s = Map{Mapping{'a'_ec, "hi"_es}, Mapping{Bool::t, 3_ei}};
     REQUIRE(ops::equal(s, s));
 
     REQUIRE(ops::equal(Value{2_ei}, Value{2_ei}));

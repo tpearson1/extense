@@ -86,14 +86,14 @@ TEST_CASE("Construction and conversion for types",
     REQUIRE(s.value == "Hello, World.");
   }
 
-  SECTION("Set") {
+  SECTION("Map") {
     auto s =
-        Set{// Each entry into a set can have keys and values of differing
+        Map{// Each entry into a set can have keys and values of differing
             // types
-            Mapping{"set"_es, 7_ei}, Mapping{Bool::f, List{7_ei, Bool::t}}};
+            Mapping{"map"_es, 7_ei}, Mapping{Bool::f, List{7_ei, Bool::t}}};
     // Explicit conversion to String
-    REQUIRE(String{s}.value == "{\nfalse -> (7,true)\n\"set\" -> 7\n}");
-    auto s2 = Set{};
+    REQUIRE(String{s}.value == "{\nfalse -> (7,true)\n\"map\" -> 7\n}");
+    auto s2 = Map{};
     REQUIRE(String{s2}.value == "{}");
   }
 

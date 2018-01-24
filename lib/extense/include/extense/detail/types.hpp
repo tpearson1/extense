@@ -45,7 +45,7 @@ struct Float;
 struct Bool;
 struct Char;
 class String;
-class Set;
+class Map;
 class List;
 class Scope;
 
@@ -74,7 +74,7 @@ struct Convert<Char, String>;
 // String
 template <typename T>
 inline constexpr bool isFlatValueType =
-    detail::isAnyOf<T, None, Int, Float, Bool, Char, List, String, Set, Scope>;
+    detail::isAnyOf<T, None, Int, Float, Bool, Char, List, String, Map, Scope>;
 
 // Whether or not T is a valid type for a Value - either a FlatValue type or a
 // Reference
@@ -93,7 +93,7 @@ constexpr std::string_view typeAsString() {
   if (std::is_same_v<Char, T>) return "Char";
   if (std::is_same_v<String, T>) return "String";
   if (std::is_same_v<List, T>) return "List";
-  if (std::is_same_v<Set, T>) return "Set";
+  if (std::is_same_v<Map, T>) return "Map";
   if (std::is_same_v<Scope, T>) return "Scope";
   if (std::is_same_v<Reference, T>) return "Reference";
 }
@@ -149,15 +149,15 @@ template <typename... ValueTypes>
 class BasicFlatValue;
 
 namespace detail {
-using SetKeyType = BasicFlatValue<Int, Float, Bool, Char, String>;
+using MapKeyType = BasicFlatValue<Int, Float, Bool, Char, String>;
 
-struct SetCompare {
-  bool operator()(const SetKeyType &lhs, const SetKeyType &rhs) const;
+struct MapCompare {
+  bool operator()(const MapKeyType &lhs, const MapKeyType &rhs) const;
 };
 
 // Using a map instead of an unordered_map, even though ordering is not needed,
 // because unordered_map requires Value to be a complete type
-using SetValueType = std::map<SetKeyType, Value, SetCompare>;
+using MapValueType = std::map<MapKeyType, Value, MapCompare>;
 
 // Wraps any value
 template <typename T>
@@ -171,32 +171,32 @@ Wrap(T)->Wrap<T>;
 
 struct Mapping;
 
-class Set : public detail::ValueTypeBase<Set, detail::SetValueType> {
+class Map : public detail::ValueTypeBase<Map, detail::MapValueType> {
 public:
   using Base::Base;
-  using KeyType = detail::SetKeyType;
+  using KeyType = detail::MapKeyType;
 
 private:
-  const Value &operator[](const KeyType &i) const;
-  Value &operator[](const KeyType &i);
-
   // Avoid language weirdness with std::initializer_list
-  Set(detail::Wrap<std::initializer_list<ValueType::value_type>> kvps);
+  Map(detail::Wrap<std::initializer_list<ValueType::value_type>> kvps);
 
 public:
   // Defined in value.hpp
-  Set();
+  Map();
 
-  Set(const Set &) = default;
-  Set &operator=(const Set &) = default;
-  Set(Set &&) = default;
-  Set &operator=(Set &&) = default;
+  Map(const Map &) = default;
+  Map &operator=(const Map &) = default;
+  Map(Map &&) = default;
+  Map &operator=(Map &&) = default;
 
   // Forwards to initializer_list constructor. Defined in value.hpp.
   template <
       typename... Mappings,
       std::enable_if_t<(std::is_same_v<Mapping, Mappings> || ...)> * = nullptr>
-  explicit Set(Mappings &&... mappings);
+  explicit Map(Mappings &&... mappings);
+
+  const Value &operator[](const KeyType &i) const;
+  Value &operator[](const KeyType &i);
 
   // Access an element. Defined in value.hpp.
   template <typename VT>
@@ -311,7 +311,7 @@ inline std::ostream &operator<<(std::ostream &os, const String &v) {
   return os;
 }
 
-std::ostream &operator<<(std::ostream &, const Set &);
+std::ostream &operator<<(std::ostream &, const Map &);
 std::ostream &operator<<(std::ostream &, const List &);
 
 // TODO: Print AST for scope

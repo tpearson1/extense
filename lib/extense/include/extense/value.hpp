@@ -27,8 +27,10 @@ SOFTWARE.
 #ifndef _LIB_EXTENSE__VALUE_HPP
 #define _LIB_EXTENSE__VALUE_HPP
 
+#include <cassert>
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <tuple>
 #include <type_traits>
 #include <utility>
@@ -76,7 +78,7 @@ To tryConvert(const From &f) {
 }
 
 using FlatValue =
-    BasicFlatValue<None, Int, Float, Bool, Char, String, List, Set, Scope>;
+    BasicFlatValue<None, Int, Float, Bool, Char, String, List, Map, Scope>;
 
 namespace detail {
 // Used to expose the internal data representation of a BasicFlatValue/Value to
@@ -125,7 +127,7 @@ public:
   friend const T &get(const TValue &v);
 
   // To implement comparison the internal variant data is needed
-  friend struct detail::SetCompare;
+  friend struct detail::MapCompare;
 
   friend Bool ops::equal<>(const BasicFlatValue &, const BasicFlatValue &);
 
@@ -161,7 +163,7 @@ Reference makeReference(Args &&... args) {
 
 template <typename VT>
 inline constexpr bool isReferencedOnCopy =
-    detail::isAnyOf<VT, String, List, Set, Scope>;
+    detail::isAnyOf<VT, String, List, Map, Scope>;
 
 class Value {
   using Data = std::variant<FlatValue, Reference>;
@@ -335,6 +337,48 @@ T convertedTo(const TValue &v) {
       v);
 }
 
+namespace {
+template <typename>
+struct QueryFlatValue {};
+
+template <typename... Types>
+struct QueryFlatValue<BasicFlatValue<Types...>> {
+  template <typename FlatValueFrom>
+  static bool canConstrain(const FlatValueFrom &from) {
+    return (from.template is<Types>() || ...);
+  }
+};
+} // namespace
+
+// Reduce the number of possible types in a BasicFlatValue.
+// Will copy/move the active type in argument from.
+template <typename FlatValueTo, typename FlatValueFrom>
+FlatValueTo constrain(FlatValueFrom from) {
+  static_assert(!std::is_same_v<FlatValueFrom, Value>,
+                "Cannot pass a value to constrain, instead pass "
+                "BasicFlatValue/FlatValue");
+
+  // FlatValueTo may not be default constructible
+  std::optional<FlatValueTo> to;
+  if (!QueryFlatValue<FlatValueTo>::canConstrain(from)) {
+    // TODO: Custom exception type
+    throw std::runtime_error{"Could not constrain type"};
+  }
+
+  visit(
+      [&to](auto v) {
+        // Even though we know that the type of argument 'from' must be one of
+        // the types in 'to', visit does not know this, and so we just do
+        // nothing in the impossible circumstance
+        using InputType = std::decay_t<decltype(v)>;
+        if constexpr (FlatValueTo::template supportsType<InputType>)
+          to = FlatValueTo{std::move(v)};
+      },
+      std::move(from));
+  assert(to.has_value());
+  return to.value();
+}
+
 namespace ops {
 template <typename... ValueTypes>
 Bool equal(const BasicFlatValue<ValueTypes...> &a,
@@ -422,22 +466,21 @@ Value Scope::operator()(Values &&... values) {
 struct Mapping {
   // Converts value types to the necessary types for convenience
   template <typename K, typename V>
-  Mapping(const K &k, const V &v)
-      : key(detail::SetKeyType(k)), value(Value(v)) {}
+  Mapping(const K &k, const V &v) : key(Map::KeyType(k)), value(Value(v)) {}
 
-  std::pair<const detail::SetKeyType, Value> toPair() {
-    return std::make_pair<const detail::SetKeyType, Value>(std::move(key),
-                                                           std::move(value));
+  std::pair<const Map::KeyType, Value> toPair() {
+    return std::make_pair<const Map::KeyType, Value>(std::move(key),
+                                                     std::move(value));
   }
 
 private:
-  const detail::SetKeyType key;
+  const Map::KeyType key;
   Value value;
 };
 
 inline List::List() : Base(ValueType()) {}
 
-inline Set::Set() : Base(ValueType()) {}
+inline Map::Map() : Base(ValueType()) {}
 
 template <typename... Elems>
 List::List(Elems &&... elems)
@@ -446,18 +489,18 @@ List::List(Elems &&... elems)
 
 template <typename... Mappings,
           std::enable_if_t<(std::is_same_v<Mapping, Mappings> || ...)> *>
-Set::Set(Mappings &&... mappings)
-    : Set(detail::Wrap{std::initializer_list<ValueType::value_type>(
+Map::Map(Mappings &&... mappings)
+    : Map(detail::Wrap{std::initializer_list<ValueType::value_type>(
           {(std::forward<Mappings>(mappings).toPair())...})}) {}
 
 template <typename VT>
-const Value &Set::operator[](const VT &i) const {
+const Value &Map::operator[](const VT &i) const {
   static_assert(KeyType::supportsType<VT>,
                 "Cannot index with an object of the given type");
   return (*this)[KeyType{i}];
 }
 template <typename VT>
-Value &Set::operator[](const VT &i) {
+Value &Map::operator[](const VT &i) {
   static_assert(KeyType::supportsType<VT>,
                 "Cannot index with an object of the given type");
   return (*this)[KeyType{i}];

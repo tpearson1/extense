@@ -26,8 +26,8 @@
 
 #include <extense/value.hpp>
 
-bool extense::detail::SetCompare::operator()(const SetKeyType &lhs,
-                                             const SetKeyType &rhs) const {
+bool extense::detail::MapCompare::operator()(const MapKeyType &lhs,
+                                             const MapKeyType &rhs) const {
   // It is necessary to mostly reimplement variant's operator< because we do not
   // want to expose arbitrary operator< definitions to the end user and the
   // language
@@ -54,24 +54,24 @@ bool extense::detail::SetCompare::operator()(const SetKeyType &lhs,
       v);
 }
 
-extense::Set::Set(
+extense::Map::Map(
     detail::Wrap<std::initializer_list<ValueType::value_type>> kvps)
     : Base{ValueType(std::move(kvps).value)} {}
 
-const extense::Value &extense::Set::operator[](const Set::KeyType &i) const {
+const extense::Value &extense::Map::operator[](const Map::KeyType &i) const {
   try {
     return value.at(i);
   } catch (std::out_of_range &) {
-    throw InvalidOperation{"Set", "Set's key type",
+    throw InvalidOperation{"Map", "Map's key type",
                            "Element not present in map"};
   }
 }
 
-extense::Value &extense::Set::operator[](const Set::KeyType &i) {
-  return const_cast<Value &>(static_cast<const Set &>(*this)[i]);
+extense::Value &extense::Map::operator[](const Map::KeyType &i) {
+  return const_cast<Value &>(static_cast<const Map &>(*this)[i]);
 }
 
-extense::Value &extense::Set::insertOrAccess(const extense::Set::KeyType &i) {
+extense::Value &extense::Map::insertOrAccess(const extense::Map::KeyType &i) {
   return value[i];
 }
 
@@ -137,10 +137,10 @@ std::ostream &extense::operator<<(std::ostream &os, const List &v) {
   return os;
 }
 
-std::ostream &extense::operator<<(std::ostream &os, const Set &v) {
-  auto &set = v.value;
-  os << (set.empty() ? "{" : "{\n");
-  for (const auto & [ k, v ] : set)
+std::ostream &extense::operator<<(std::ostream &os, const Map &v) {
+  auto &map = v.value;
+  os << (map.empty() ? "{" : "{\n");
+  for (const auto & [ k, v ] : map)
     os << extense::LiteralShow{k} << " -> " << extense::LiteralShow{v} << '\n';
   os << '}';
   return os;
