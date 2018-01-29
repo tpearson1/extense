@@ -166,3 +166,59 @@ TEST_CASE("typeAsString", "[typeAsString]") {
   REQUIRE(typeAsString<String> == "String");
   REQUIRE(typeAsString<Reference> == "Reference");
 }
+
+TEST_CASE("Constraining Values", "[ConstrainedValue, constrain]") {
+  auto v = Value{17_ei};
+
+  using Constrained = ConstrainedValue<Value, Int, Char>;
+  auto constrained = Constrained{v};
+  REQUIRE(Constrained::supportsType<Int>);
+  REQUIRE(!Constrained::supportsType<Float>);
+
+  constrained = 'a'_ec;
+  REQUIRE(v.is<Char>());
+  REQUIRE(get<Char>(v).value == 'a');
+  REQUIRE(constrained.is<Char>());
+  REQUIRE(get<Char>(constrained).value == 'a');
+
+  bool threw = false;
+  try {
+    ConstrainedValue<Value>{v};
+  } catch (const std::runtime_error &) { threw = true; }
+  REQUIRE(threw);
+
+  threw = false;
+  try {
+    ConstrainedValue<Value, Float, String>{v};
+  } catch (const std::runtime_error &) { threw = true; }
+  REQUIRE(threw);
+
+  SECTION("Visiting") {
+    int a = visit(
+        [](auto a) {
+          using VT = std::decay_t<decltype(a)>;
+          if constexpr (!detail::isAnyOf<VT, Int, Char>) {
+            INFO("Should not compile visitors for these types");
+            REQUIRE(false);
+          }
+
+          return 7;
+        },
+        constrained);
+    REQUIRE(a == 7);
+  }
+
+  SECTION("Function 'constrain'") {
+    BasicFlatValue<Int, Float, Char> a{7_ei};
+
+    auto b = constrain<BasicFlatValue<Int, Char>>(a);
+    REQUIRE(b.is<Int>());
+    REQUIRE(get<Int>(b).value == 7);
+
+    bool threw = false;
+    try {
+      constrain<BasicFlatValue<Float, Char>>(a);
+    } catch (const std::runtime_error &) { threw = true; }
+    REQUIRE(threw);
+  }
+}

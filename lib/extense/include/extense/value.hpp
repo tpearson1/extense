@@ -80,6 +80,9 @@ To tryConvert(const From &f) {
 using FlatValue =
     BasicFlatValue<None, Int, Float, Bool, Char, String, List, Map, Scope>;
 
+template <typename TValue, typename... PermittedVTs>
+class ConstrainedValue;
+
 namespace detail {
 // Used to expose the internal data representation of a BasicFlatValue/Value to
 // template meta-programming used by the visit function
@@ -91,6 +94,11 @@ struct InternalData {
 
 template <typename... ValueTypes>
 struct InternalData<BasicFlatValue<ValueTypes...>> {
+  using Type = std::variant<ValueTypes...>;
+};
+
+template <typename TValue, typename... ValueTypes>
+struct InternalData<ConstrainedValue<TValue, ValueTypes...>> {
   using Type = std::variant<ValueTypes...>;
 };
 } // namespace detail
@@ -122,14 +130,6 @@ public:
                   "type T");
     return std::holds_alternative<T>(data);
   }
-
-  template <typename T, typename TValue>
-  friend const T &get(const TValue &v);
-
-  // To implement comparison the internal variant data is needed
-  friend struct detail::MapCompare;
-
-  friend Bool ops::equal<>(const BasicFlatValue &, const BasicFlatValue &);
 
   const Data &internalVariant() const { return data; }
   Data &internalVariant() { return data; }
@@ -226,15 +226,61 @@ public:
       return flatten().is<T>();
   }
 
-  template <typename T, typename TValue>
-  friend const T &get(const TValue &v);
-
   friend std::ostream &operator<<(std::ostream &os, const Value &v);
 
-  friend Bool ops::equal(const Value &, const Value &);
+  const Data &internalVariant() const { return data; }
+  Data &internalVariant() { return data; }
+};
+
+template <typename TValue, typename... PermittedVTs>
+class ConstrainedValue {
+  TValue &data;
+
+public:
+  ConstrainedValue(TValue &value) : data(value) {
+    if (!(value.template is<PermittedVTs>() || ...))
+      throw std::runtime_error{"Cannot constrain types"};
+  }
+
+  template <typename T>
+  ConstrainedValue &operator=(T v) {
+    static_assert(
+        supportsType<T>,
+        "Can only assign to a ConstrainedValue with a permitted type");
+    data = std::move(v);
+    return *this;
+  }
+
+  template <typename T>
+  inline static constexpr bool supportsType =
+      detail::isAnyOf<T, PermittedVTs...>;
+
+  template <typename T>
+  bool is() const {
+    static_assert(supportsType<T>,
+                  "Constrained value cannot be of given type T");
+    return data.template is<T>();
+  }
+
+  friend std::ostream &operator<<(std::ostream &os, const ConstrainedValue &v) {
+    os << v.data;
+    return os;
+  }
+
+  const TValue &value() const { return data; }
+  TValue &value() { return data; }
 };
 
 namespace {
+template <typename>
+struct IsConstrainedValue : std::false_type {};
+
+template <typename... Args>
+struct IsConstrainedValue<ConstrainedValue<Args...>> : std::true_type {};
+
+template <typename T>
+inline constexpr bool isConstrainedValue = IsConstrainedValue<T>::value;
+
 // A possible alternative contained in the TValue, for use in determining the
 // return type of a visitor
 template <typename TValue>
@@ -243,8 +289,8 @@ using TestInput = std::conditional_t<
     // If the first type is a Value the function should be
     // able to handle a None object
     None,
-    // Otherwise, it should be able to handle the first
-    // possible type in the BasicFlatValue
+    // Should be able to handle the first type in the
+    // BasicFlatValue/ConstrainedValue
     decltype(std::get<0>(
         std::declval<typename detail::InternalData<TValue>::Type>()))>;
 
@@ -252,6 +298,8 @@ template <typename TValue>
 const auto &tryFlatten(const TValue &v) {
   if constexpr (std::is_same_v<TValue, Value>)
     return v.flatten();
+  else if constexpr (isConstrainedValue<TValue>)
+    return v.value().flatten();
   else
     return v;
 }
@@ -260,41 +308,45 @@ template <typename TValue>
 auto &tryFlatten(TValue &v) {
   if constexpr (std::is_same_v<TValue, Value>)
     return v.flatten();
+  else if constexpr (isConstrainedValue<TValue>)
+    return v.value().flatten();
   else
     return v;
 }
 } // namespace
 
 // Visits a Value, similarly to std::visit with a variant, but automatically
-// handles referenced types
+// handles referenced types.
 template <typename Visitor, typename... Values>
 decltype(auto) visit(Visitor visitor, Values &&... values) {
+  // TODO: Handle constraint
   using ResultType =
       decltype(visitor(std::declval<TestInput<std::decay_t<Values>>>()...));
 
   return std::visit(
       [&visitor](auto &&... args) -> ResultType {
-        return visitor(std::forward<decltype(args)>(args)...);
+        if constexpr ((std::decay_t<Values>::template supportsType<
+                           std::decay_t<decltype(args)>> &&
+                       ...)) {
+          return visitor(std::forward<decltype(args)>(args)...);
+        } else {
+          // TODO: Custom exception - same type as in constrain
+          throw std::runtime_error{"Unsatisfied constraint in visit"};
+        }
       },
       (tryFlatten(std::forward<decltype(values)>(values))
            .internalVariant())...);
 }
 
-// Get's a reference the contained value, without making any conversions.
-// REVIEW: Wrap into custom exception on failure?
 template <typename T, typename TValue>
 const T &get(const TValue &v) {
   static_assert(TValue::template supportsType<T>,
                 "Invalid type passed to 'extense::get'");
   if constexpr (std::is_same_v<T, Reference>) {
     // If we flatten we will not be able to get the Reference
-    return std::get<Reference>(v.data);
-  } else {
-    if constexpr (std::is_same_v<TValue, Value>)
-      return std::get<T>(v.flatten().data);
-    else
-      return std::get<T>(v.data);
-  }
+    return std::get<Reference>(v.internalVariant());
+  } else
+    return std::get<T>(tryFlatten(v).internalVariant());
 }
 
 template <typename T, typename TValue>
@@ -302,6 +354,7 @@ T &get(TValue &v) {
   return const_cast<T &>(get<T>(static_cast<const TValue &>(v)));
 }
 
+// Creates a reference to the contained value, without making any conversions.
 inline Reference::Reference(Value &v) {
   if (v.is<Reference>()) {
     *this = get<Reference>(v);
@@ -390,7 +443,20 @@ Bool equal(const BasicFlatValue<ValueTypes...> &a,
       (a.template is<Int>() && b.template is<Float>()))
     return as<Float>(a) == as<Float>(b);
 
-  return Bool{a.data == b.data};
+  return Bool{a.internalVariant() == b.internalVariant()};
+}
+
+template <typename TValue, typename... ValueTypes>
+Bool equal(const ConstrainedValue<TValue, ValueTypes...> &a,
+           const ConstrainedValue<TValue, ValueTypes...> &b) {
+  // We want a Float and Int with the same values (e.g. 1.0 and 1) to compare
+  // equal. A variant's default operator== will not do this, and so this special
+  // case is handled manually.
+  if ((a.template is<Float>() && b.template is<Int>()) ||
+      (a.template is<Int>() && b.template is<Float>()))
+    return as<Float>(a) == as<Float>(b);
+
+  return Bool{a.internalVariant() == b.internalVariant()};
 }
 
 inline Bool equal(const Value &a, const Value &b) {

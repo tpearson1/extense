@@ -31,7 +31,7 @@ bool extense::detail::MapCompare::operator()(const MapKeyType &lhs,
   // It is necessary to mostly reimplement variant's operator< because we do not
   // want to expose arbitrary operator< definitions to the end user and the
   // language
-  const auto &v = lhs.data, &w = rhs.data;
+  const auto &v = lhs.internalVariant(), &w = rhs.internalVariant();
   if (w.valueless_by_exception()) return false;
   if (v.valueless_by_exception()) return false;
   if (v.index() < w.index()) return true;
