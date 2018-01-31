@@ -30,25 +30,9 @@ SOFTWARE.
 #include <type_traits>
 
 #include <config.hpp>
-#include <extense/token.hpp>
+#include <extense/parser.hpp>
 
-int main(int /*argc*/, const char * /*argv*/ []) {
-  std::cout << "Extense version " << extense::version << '\n';
-
-  std::ifstream file{"language.xts"};
-  std::stringstream buffer;
-  buffer << file.rdbuf();
-  extense::Source s{buffer.str()};
-
-  std::vector<extense::Token> tokens;
-  try {
-    tokens = extense::tokenize(s);
-  } catch (const extense::LexingError &error) {
-    std::cerr << "Error tokenizing file at " << error.location() << ": \""
-              << error.what() << "\"\n";
-    return 1;
-  }
-
+static void dumpTokens(const std::vector<extense::Token> &tokens) {
   for (const auto &token : tokens) {
     if (token.text() == "\n")
       std::cout << '\n';
@@ -66,6 +50,45 @@ int main(int /*argc*/, const char * /*argv*/ []) {
   }
 
   std::cout << '\n';
+}
+
+int main(int /*argc*/, const char * /*argv*/ []) {
+  std::cout << "Extense version " << extense::version << "\n\n";
+
+  std::ifstream file{"language.xts"};
+  std::stringstream buffer;
+  buffer << file.rdbuf();
+  extense::Source s{buffer.str()};
+
+  std::vector<extense::Token> tokens;
+  try {
+    tokens = extense::tokenize(s);
+  } catch (const extense::LexingError &error) {
+    std::cerr << "Error tokenizing file at " << error.location() << ": \""
+              << error.what() << "\"\n";
+    return 1;
+  }
+
+  (void)dumpTokens;
+  // dumpTokens(tokens);
+
+  std::unique_ptr<extense::Expr> expr;
+  try {
+    expr = extense::parse(tokens);
+  } catch (const extense::ParseError &e) {
+    std::cerr << "Encountered ParseError at " << e.location()
+              << ", with token '" << e.tokenText() << "' (type '"
+              << e.tokenType() << "'), and with message '" << e.what() << "'\n";
+    return 1;
+  }
+
+  // Not yet ready for evaluating
+  // extense::Scope dummy{[](auto, auto) { return extense::noneValue; }};
+  // std::cout << expr->eval(dummy) << '\n';
+
+  std::cout << "Parse tree:\n"
+               "-----------\n\n";
+  expr->dump(std::cout);
 
   return 0;
 }
