@@ -24,6 +24,7 @@ SOFTWARE.
 -------------------------------------------------------------------------------
 */
 
+#include <cmath>
 #include <ostream>
 
 #include "common.hpp"
@@ -400,11 +401,9 @@ TEST_CASE(
     }
 
     SECTION("Float") {
-      // The function nearlyEquals doesn't have two arguments, but instead has
-      // three with a default argument. To use with variantEquals, we need to
-      // wrap nearlyEquals with a function that really only takes two arguments.
-      auto wrappedNearlyEquals = [](auto a, auto b) {
-        return nearlyEquals(a, b);
+      auto nearlyEquals = [](auto a, auto b) {
+        constexpr const auto floatTolerance = 0.00000001;
+        return std::abs(a - b) < floatTolerance;
       };
 
       Source s{"3.26|"};
@@ -412,35 +411,35 @@ TEST_CASE(
       REQUIRE(s.currentChar() == '|');
       REQUIRE(t.type() == Token::Type::Float);
       INFO(std::get<double>(t.data()));
-      REQUIRE(variantEquals<double>(t.data(), 3.26, wrappedNearlyEquals));
+      REQUIRE(variantEquals<double>(t.data(), 3.26, nearlyEquals));
       t.setType(Token::Type::Plus);
 
       Source s2{"3.26e2|"};
       REQUIRE(detail::lexNumber(s2, t));
       REQUIRE(s2.currentChar() == '|');
       REQUIRE(t.type() == Token::Type::Float);
-      REQUIRE(variantEquals<double>(t.data(), 326.0, wrappedNearlyEquals));
+      REQUIRE(variantEquals<double>(t.data(), 326.0, nearlyEquals));
       t.setType(Token::Type::Plus);
 
       Source s3{"3.26e-2|"};
       REQUIRE(detail::lexNumber(s3, t));
       REQUIRE(s3.currentChar() == '|');
       REQUIRE(t.type() == Token::Type::Float);
-      REQUIRE(variantEquals<double>(t.data(), 0.0326, wrappedNearlyEquals));
+      REQUIRE(variantEquals<double>(t.data(), 0.0326, nearlyEquals));
       t.setType(Token::Type::Plus);
 
       Source s4{"3e4|"};
       REQUIRE(detail::lexNumber(s4, t));
       REQUIRE(s4.currentChar() == '|');
       REQUIRE(t.type() == Token::Type::Float);
-      REQUIRE(variantEquals<double>(t.data(), 30000.0, wrappedNearlyEquals));
+      REQUIRE(variantEquals<double>(t.data(), 30000.0, nearlyEquals));
       t.setType(Token::Type::Plus);
 
       Source s5{"7e-4|"};
       REQUIRE(detail::lexNumber(s5, t));
       REQUIRE(s5.currentChar() == '|');
       REQUIRE(t.type() == Token::Type::Float);
-      REQUIRE(variantEquals<double>(t.data(), 0.0007, wrappedNearlyEquals));
+      REQUIRE(variantEquals<double>(t.data(), 0.0007, nearlyEquals));
 
       Source s6{"3.26eHi|"};
       bool correct = false;

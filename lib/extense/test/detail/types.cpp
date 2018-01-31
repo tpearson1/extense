@@ -50,7 +50,7 @@ TEST_CASE("Construction and conversion for types",
     REQUIRE(String{i}.value == "7");
     // Implicit conversion to Float
     Float f = i;
-    REQUIRE(nearlyEquals(f.value, 7.0));
+    REQUIRE(f.value == Approx(7.0));
   }
 
   SECTION("Float") {

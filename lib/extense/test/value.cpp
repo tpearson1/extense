@@ -38,10 +38,10 @@ TEST_CASE("Storing, accessing and converting Values", "[Value]") {
   REQUIRE(v.is<Int>());
   REQUIRE(v.typeAsString() == "Int");
   REQUIRE(get<Int>(v).value == 7);
-  REQUIRE(nearlyEquals(as<Float>(v).value, 7.0));
+  REQUIRE(as<Float>(v).value == Approx(7.0));
 
   Value v2{Float{2.7}};
-  REQUIRE(nearlyEquals(get<Float>(v2).value, 2.7));
+  REQUIRE(get<Float>(v2).value == Approx(2.7));
 
   bool threw = false;
   try {
@@ -60,7 +60,7 @@ TEST_CASE("Storing, accessing and converting Values", "[Value]") {
 TEST_CASE("Testing try-conversion functions",
           "[tryConvertImplicitly, tryConvert]") {
   auto f = tryConvertImplicitly<Int, Float>(7_ei);
-  REQUIRE(nearlyEquals(f.value, 7.0));
+  REQUIRE(f.value == Approx(7.0));
 
   auto i = tryConvert<Float, Int>(3.2_ef);
   REQUIRE(i.value == 3);

@@ -54,9 +54,9 @@ TEST_CASE("Operation functions", "[extense::ops]") {
     REQUIRE(isum.value == 14);
 
     auto fsum = ops::add(3.5_ef, 4.5_ef);
-    REQUIRE(nearlyEquals(fsum.value, 8.0));
-    REQUIRE(nearlyEquals(ops::addEquals(fsum, 5.0_ef).value, 13.0));
-    REQUIRE(nearlyEquals(fsum.value, 13.0));
+    REQUIRE(fsum.value == Approx(8.0));
+    REQUIRE(ops::addEquals(fsum, 5.0_ef).value == Approx(13.0));
+    REQUIRE(fsum.value == Approx(13.0));
 
     auto ssum = ops::add("Hello, "_es, "World!"_es);
     REQUIRE(ssum.value == "Hello, World!");
@@ -102,9 +102,9 @@ TEST_CASE("Operation functions", "[extense::ops]") {
     REQUIRE(idiff.value == -1);
 
     auto fdiff = ops::sub(3.5_ef, 4.5_ef);
-    REQUIRE(nearlyEquals(fdiff.value, -1.0));
-    REQUIRE(nearlyEquals(ops::subEquals(fdiff, 5.0_ef).value, -6.0));
-    REQUIRE(nearlyEquals(fdiff.value, -6.0));
+    REQUIRE(fdiff.value == Approx(-1.0));
+    REQUIRE(ops::subEquals(fdiff, 5.0_ef).value == Approx(-6.0));
+    REQUIRE(fdiff.value == Approx(-6.0));
   }
 
   SECTION("Multiplication") {
@@ -114,9 +114,9 @@ TEST_CASE("Operation functions", "[extense::ops]") {
     REQUIRE(iprod.value == 105);
 
     auto fprod = ops::mul(3.5_ef, 4.5_ef);
-    REQUIRE(nearlyEquals(fprod.value, 3.5 * 4.5));
-    REQUIRE(nearlyEquals(ops::mulEquals(fprod, Float{1.0 / 3.5}).value, 4.5));
-    REQUIRE(nearlyEquals(fprod.value, 4.5));
+    REQUIRE(fprod.value == Approx(3.5 * 4.5));
+    REQUIRE(ops::mulEquals(fprod, Float{1.0 / 3.5}).value == Approx(4.5));
+    REQUIRE(fprod.value == Approx(4.5));
 
     auto repeatedString = ops::mul("abc"_es, 4_ei);
     REQUIRE(repeatedString.value == "abcabcabcabc");
@@ -135,10 +135,10 @@ TEST_CASE("Operation functions", "[extense::ops]") {
   SECTION("Division") {
     auto quotient = ops::div(18.6_ef, 6.0_ef);
     auto expected = 18.6 / 6.0;
-    REQUIRE(nearlyEquals(quotient.value, expected));
+    REQUIRE(quotient.value == Approx(expected));
     expected /= 2.0;
-    REQUIRE(nearlyEquals(ops::divEquals(quotient, 2.0_ef).value, expected));
-    REQUIRE(nearlyEquals(quotient.value, expected));
+    REQUIRE(ops::divEquals(quotient, 2.0_ef).value == Approx(expected));
+    REQUIRE(quotient.value == Approx(expected));
   }
 
   SECTION("Modulo") {
@@ -151,10 +151,10 @@ TEST_CASE("Operation functions", "[extense::ops]") {
 
     auto fremainder = ops::mod(12.4_ef, 3.2_ef);
     auto fexpected = std::fmod(12.4, 3.2);
-    REQUIRE(nearlyEquals(fremainder.value, fexpected));
+    REQUIRE(fremainder.value == Approx(fexpected));
     fexpected = std::fmod(fexpected, 1.3);
-    REQUIRE(nearlyEquals(ops::modEquals(fremainder, 1.3_ef).value, fexpected));
-    REQUIRE(nearlyEquals(fremainder.value, fexpected));
+    REQUIRE(ops::modEquals(fremainder, 1.3_ef).value == Approx(fexpected));
+    REQUIRE(fremainder.value == Approx(fexpected));
   }
 
   SECTION("Floor division") {
@@ -165,7 +165,7 @@ TEST_CASE("Operation functions", "[extense::ops]") {
 
     auto fresult = ops::floorDiv(-37.6_ef, 8.4_ef);
     auto expected = std::floor(-37.6 / 8.4);
-    REQUIRE(nearlyEquals(fresult.value, expected));
+    REQUIRE(fresult.value == Approx(expected));
     expected = std::floor(expected / 1.4);
     REQUIRE(ops::floorDivEquals(fresult, 1.4_ef).value == expected);
     REQUIRE(fresult.value == expected);
@@ -175,18 +175,18 @@ TEST_CASE("Operation functions", "[extense::ops]") {
     // Float exponent
     auto result = ops::pow(3.9_ef, 2.4_ef);
     auto expected = std::pow(3.9, 2.4);
-    REQUIRE(nearlyEquals(result.value, expected));
+    REQUIRE(result.value == Approx(expected));
     expected = std::pow(expected, 0.5);
-    REQUIRE(nearlyEquals(ops::powEquals(result, 0.5_ef).value, expected));
-    REQUIRE(nearlyEquals(result.value, expected));
+    REQUIRE(ops::powEquals(result, 0.5_ef).value == Approx(expected));
+    REQUIRE(result.value == Approx(expected));
 
     // Int exponent
     result = ops::pow(3.9_ef, 2_ei);
     expected = 3.9 * 3.9;
-    REQUIRE(nearlyEquals(result.value, expected));
+    REQUIRE(result.value == Approx(expected));
     expected = 1.0 / expected;
-    REQUIRE(nearlyEquals(ops::powEquals(result, -1_ei).value, expected));
-    REQUIRE(nearlyEquals(result.value, expected));
+    REQUIRE(ops::powEquals(result, -1_ei).value == Approx(expected));
+    REQUIRE(result.value == Approx(expected));
   }
 
   SECTION("Dot dot") {

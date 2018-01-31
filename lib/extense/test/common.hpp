@@ -27,15 +27,7 @@
 #ifndef _LIB_EXTENSE_TEST__COMMON_HPP
 #define _LIB_EXTENSE_TEST__COMMON_HPP
 
-#include <cmath>
 #include <variant>
-
-constexpr const auto floatTolerance = 0.00000001;
-
-inline bool nearlyEquals(double a, double b,
-                         double tolerance = floatTolerance) {
-  return std::abs(a - b) < tolerance;
-}
 
 template <typename T, typename TVariant,
           typename EqFunc = bool (*)(const T &, const T &)>
