@@ -34,37 +34,8 @@ SOFTWARE.
 #include <extense/source.hpp>
 
 #define _LIB_EXTENSE__TOKEN__TYPE_ENUM                                         \
-  X(Dollar) /*   $   */                                                        \
-                                                                               \
-  X(Label) /*   @outer   */                                                    \
-                                                                               \
-  /* Math operators */                                                         \
-  X(Plus) /*   +   */                                                          \
-  X(Minus) /*   -   */                                                         \
-  X(Mul) /*   *   */                                                           \
-  X(Div) /*   /   */                                                           \
-  X(FloorDiv) /*   //   */                                                     \
-  X(Pow) /*   **   */                                                          \
-  X(Mod) /*   %   */                                                           \
-                                                                               \
-  X(CustomOperator) /*   E.g. <=> or |>   */                                   \
-                                                                               \
+  /****** START OF BINARY OPERATORS ******/                                    \
   X(Assign) /*   =   */                                                        \
-  X(Dot) /*   .   */                                                           \
-  X(DotDot) /*   ..   */                                                       \
-  X(Colon) /*   :   */                                                         \
-  X(ColonColon) /*   ::   */                                                   \
-  X(Exclamation) /* ! */                                                       \
-  X(EndStatement) /*   , or a newline   */                                     \
-  X(MapsTo) /* -> */                                                           \
-                                                                               \
-  X(LeftParen) /*   (   */                                                     \
-  X(RightParen) /*   )   */                                                    \
-  X(LeftBracket) /*   [   */                                                   \
-  X(RightBracket) /*   ]   */                                                  \
-  X(LeftBrace) /*   {   */                                                     \
-  X(RightBrace) /*   }   */                                                    \
-                                                                               \
   /* Relative math Operators */                                                \
   X(PlusEquals) /*   +=   */                                                   \
   X(MinusEquals) /*   -=   */                                                  \
@@ -74,21 +45,23 @@ SOFTWARE.
   X(PowEquals) /*   **=   */                                                   \
   X(ModEquals) /*   %=   */                                                    \
                                                                                \
-  /* Bitwise operators */                                                      \
-  X(BitAnd) /*   &   */                                                        \
-  X(BitOr) /*   |   */                                                         \
-  X(BitXor) /*   ^   */                                                        \
-  X(BitNot) /*   ~   */                                                        \
-  X(BitLShift) /*   <<   */                                                    \
-  X(BitRShift) /*   >>   */                                                    \
-                                                                               \
   /* Relative bitwise Operators */                                             \
   X(BitAndEquals) /*   &=   */                                                 \
   X(BitOrEquals) /*   |=   */                                                  \
   X(BitXorEquals) /*   ^=   */                                                 \
-  X(BitNotEquals) /*   ~=   */                                                 \
   X(BitLShiftEquals) /*   <<=   */                                             \
   X(BitRShiftEquals) /*   >>=   */                                             \
+                                                                               \
+  /* Binary Bitwise operators */                                               \
+  X(BitAnd) /*   &   */                                                        \
+  X(BitOr) /*   |   */                                                         \
+  X(BitXor) /*   ^   */                                                        \
+  X(BitLShift) /*   <<   */                                                    \
+  X(BitRShift) /*   >>   */                                                    \
+                                                                               \
+  /* Binary Logical operators */                                               \
+  X(And) /*   and   */                                                         \
+  X(Or) /*   or   */                                                           \
                                                                                \
   /* Comparison operators */                                                   \
   X(Equals) /*   ==   */                                                       \
@@ -98,13 +71,48 @@ SOFTWARE.
   X(GreaterThan) /*   >   */                                                   \
   X(GreaterEquals) /*   >=   */                                                \
                                                                                \
-  /* Logical operators */                                                      \
-  X(And) /*   and   */                                                         \
-  X(Or) /*   or   */                                                           \
-  X(Not) /*   not   */                                                         \
+  X(CustomOperator) /*   E.g. <=> or |>   */                                   \
+                                                                               \
+  X(Dot) /*   .   */                                                           \
+  X(ColonColon) /*   ::   */                                                   \
                                                                                \
   /* Querying the type of a variable */                                        \
   X(Is) /*   is   */                                                           \
+                                                                               \
+  X(DotDot) /*   ..   */                                                       \
+  X(Colon) /*   :   */                                                         \
+                                                                               \
+  /* Math operators */                                                         \
+  X(Mul) /*   *   */                                                           \
+  X(Div) /*   /   */                                                           \
+  X(FloorDiv) /*   //   */                                                     \
+  X(Pow) /*   **   */                                                          \
+  X(Mod) /*   %   */                                                           \
+  /****** START OF UNARY OPERATORS ******/                                     \
+  X(Plus) /*   +   */                                                          \
+  X(Minus) /*   -   */                                                         \
+  /****** END OF BINARY OPERATORS ******/                                      \
+                                                                               \
+  X(Not) /*   not   */                                                         \
+  X(Exclamation) /*   !   */                                                   \
+  X(BitNot) /*   ~   */                                                        \
+  /****** END OF UNARY OPERATORS ******/                                       \
+                                                                               \
+  /****** BEGIN TERMINATES EXPRESSION ******/                                  \
+  X(EndStatement) /*   , or a newline   */                                     \
+  X(MapsTo) /* -> */                                                           \
+                                                                               \
+  /* End of source */                                                          \
+  X(EndSource)                                                                 \
+                                                                               \
+  X(RightParen) /*   )   */                                                    \
+  X(RightBracket) /*   ]   */                                                  \
+  X(RightBrace) /*   }   */                                                    \
+  /****** END TERMINATES EXPRESSION ******/                                    \
+                                                                               \
+  X(LeftParen) /*   (   */                                                     \
+  X(LeftBracket) /*   [   */                                                   \
+  X(LeftBrace) /*   {   */                                                     \
                                                                                \
   /* Literals */                                                               \
   X(Integer) /*   E.g. 1234   */                                               \
@@ -115,8 +123,7 @@ SOFTWARE.
                                                                                \
   X(None) /*   None   */                                                       \
                                                                                \
-  /* End of source */                                                          \
-  X(EndSource)                                                                 \
+  X(Label) /*   @outer   */                                                    \
                                                                                \
   /* An identifier. Must start with either a letter or _ (no numbers) */       \
   X(Identifier)
@@ -166,15 +173,9 @@ public:
    * respectively.
    */
 
-  Source::Location location() const {
-    assert(tokenType != Type::EndSource);
-    return loc;
-  }
+  Source::Location location() const { return loc; }
 
-  std::string_view text() const {
-    assert(tokenType != Type::EndSource);
-    return tokenText;
-  }
+  std::string_view text() const { return tokenText; }
 
   Type type() const { return tokenType; }
 

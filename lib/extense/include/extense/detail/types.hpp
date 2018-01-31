@@ -209,6 +209,17 @@ public:
   Value &insertOrAccess(const KeyType &i);
 };
 
+namespace {
+template <typename...>
+struct IsJustList : std::false_type {};
+
+template <>
+struct IsJustList<List> : std::true_type {};
+
+template <typename... Ts>
+inline constexpr bool isJustList = IsJustList<Ts...>::value;
+} // namespace
+
 class List : public detail::ValueTypeBase<List, std::vector<Value>> {
   // Using detail::Wrap to avoid language complications with
   // std::initializer_list
@@ -222,7 +233,8 @@ public:
 
   // Automatically converts to Value to avoid excessive verbosity when
   // constructing. Defined in value.hpp
-  template <typename... Elems>
+  template <typename... Elems,
+            std::enable_if_t<!isJustList<std::decay_t<Elems>...>> * = nullptr>
   explicit List(Elems &&... elems);
 
   Value &operator[](Int i) {

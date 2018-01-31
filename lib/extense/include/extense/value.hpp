@@ -31,7 +31,6 @@ SOFTWARE.
 #include <cstdint>
 #include <memory>
 #include <optional>
-#include <tuple>
 #include <type_traits>
 #include <utility>
 #include <variant>
@@ -548,10 +547,21 @@ inline List::List() : Base(ValueType()) {}
 
 inline Map::Map() : Base(ValueType()) {}
 
-template <typename... Elems>
+namespace {
+template <typename VT>
+Value tryMakeValue(VT v) {
+  if constexpr (std::is_same_v<VT, Value>)
+    return std::move(v);
+  else
+    return Value{std::move(v)};
+}
+} // namespace
+
+template <typename... Elems,
+          std::enable_if_t<!isJustList<std::decay_t<Elems>...>> *>
 List::List(Elems &&... elems)
     : List(detail::Wrap{std::initializer_list<Value>{
-          static_cast<Value>(std::forward<Elems>(elems))...}}) {}
+          tryMakeValue(std::forward<Elems>(elems))...}}) {}
 
 template <typename... Mappings,
           std::enable_if_t<(std::is_same_v<Mapping, Mappings> || ...)> *>

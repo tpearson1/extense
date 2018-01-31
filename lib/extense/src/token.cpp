@@ -45,9 +45,9 @@ std::vector<extense::Token> extense::tokenize(Source &source) {
     auto token = detail::fetchNextToken(source);
     if (token.type() == Token::Type::EndStatement && lastTokenIsEndStatement())
       continue; // Collapse multiple EndStatement tokens into one
-    if (token.type() == Token::Type::EndSource) break;
 
     tokens.push_back(token);
+    if (token.type() == Token::Type::EndSource) break;
   }
 
   return tokens;
@@ -80,7 +80,6 @@ extense::Token extense::detail::fetchNextToken(Source &source) {
   switch (current) {
   case '\n':
   case ',': SINGLE_CHAR_TOKEN(EndStatement)
-  case '$': SINGLE_CHAR_TOKEN(Dollar)
   case '(': SINGLE_CHAR_TOKEN(LeftParen)
   case ')': SINGLE_CHAR_TOKEN(RightParen)
   case '[': SINGLE_CHAR_TOKEN(LeftBracket)
@@ -510,6 +509,12 @@ static bool lexTextualToken(std::string_view text, extense::Token &out) {
 }
 
 bool extense::detail::lexIdentifier(Source &source, Token &out) {
+  if (source.currentChar().get() == '$') {
+    source.nextChar();
+    out.setType(Token::Type::Identifier);
+    return true;
+  }
+
   auto validFirstChar = [](unsigned char c) {
     return static_cast<bool>(std::isalpha(c)) || c == '_';
   };
@@ -594,7 +599,6 @@ bool extense::detail::lexOperator(Source &source, Token &out) {
   MATCH_TOKEN("&=", BitAndEquals)
   MATCH_TOKEN("|=", BitOrEquals)
   MATCH_TOKEN("^=", BitXorEquals)
-  MATCH_TOKEN("~=", BitNotEquals)
   MATCH_TOKEN("<<=", BitLShiftEquals)
   MATCH_TOKEN(">>=", BitRShiftEquals)
 
