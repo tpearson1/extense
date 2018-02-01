@@ -136,12 +136,6 @@ constexpr bool isTokenTypeUnaryOperator(Token::Type type) {
          typeOrd <= static_cast<int>(Token::Type::BitNot);
 }
 
-constexpr bool isTokenTypeCompoundAssignment(Token::Type type) {
-  auto typeOrd = static_cast<int>(type);
-  return typeOrd >= static_cast<int>(Token::Type::Assign) &&
-         typeOrd <= static_cast<int>(Token::Type::BitRShiftEquals);
-}
-
 constexpr ASTNodeType binaryOperatorFromTokenType(Token::Type t) {
   assert(isTokenTypeBinaryOperator(t));
   return static_cast<ASTNodeType>(t);
@@ -250,9 +244,7 @@ bool parseParenthesizedCustomOperator(TokenStream &s,
 bool parseValueExpr(TokenStream &s, std::unique_ptr<Expr> &out);
 bool parseIdentifier(TokenStream &s, std::unique_ptr<Expr> &out);
 
-bool parsePrimary(TokenStream &s, std::unique_ptr<Expr> &out);
 std::unique_ptr<Expr> parsePrimary(TokenStream &s);
-std::unique_ptr<Expr> parseParenthesizedExpr(TokenStream &s);
 
 std::unique_ptr<Expr> parseUnaryOperator(TokenStream &s);
 std::unique_ptr<Expr> parsePrefix(TokenStream &s);
@@ -278,14 +270,24 @@ std::unique_ptr<ExprList> parse(TokenStream &s);
 // Parses the input into a single Expr
 inline std::unique_ptr<Expr> parseExpr(const std::vector<Token> &s) {
   if (s.empty()) return nullptr;
-  auto tokenStream = detail::TokenStream{s};
+  detail::TokenStream tokenStream{s};
   return detail::parseExpr(tokenStream);
+}
+
+inline std::unique_ptr<Expr> parseExpr(const std::string &s) {
+  auto tokens = tokenize(s);
+  return parseExpr(tokens);
 }
 
 // Parses the input into an ExprList
 inline std::unique_ptr<ExprList> parse(const std::vector<Token> &s) {
-  auto tokenStream = detail::TokenStream{s};
+  detail::TokenStream tokenStream{s};
   return detail::parse(tokenStream);
+}
+
+inline std::unique_ptr<ExprList> parse(const std::string &s) {
+  auto tokens = tokenize(s);
+  return parse(tokens);
 }
 } // namespace extense
 

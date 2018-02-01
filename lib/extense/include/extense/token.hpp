@@ -183,12 +183,18 @@ public:
 };
 
 /*
- * Tokenizes a source stream.
+ * Tokenizes a source stream/string.
+ * The source string must not be destructed until the tokens are no longer in
+ * use.
  *
  * May throw an InvalidTokenError exception if the source could not be
  * tokenized.
  */
 std::vector<Token> tokenize(Source &source);
+inline std::vector<Token> tokenize(std::string_view source) {
+  Source s{source};
+  return tokenize(s);
+}
 
 /*
  * Exception thrown when tokenize was unable to fetch a token.

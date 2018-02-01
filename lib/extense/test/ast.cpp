@@ -31,7 +31,7 @@ SOFTWARE.
 using namespace extense;
 using namespace extense::literals;
 
-TEST_CASE("Using, classifying, and printing AST node types", "[ASTNodeType]") {
+TEST_CASE("Classifying and printing AST node types", "[ASTNodeType]") {
   SECTION("isUnaryOperator") {
     REQUIRE(isUnaryOperator(ASTNodeType::UnaryPlus));
     REQUIRE(isUnaryOperator(ASTNodeType::Not));

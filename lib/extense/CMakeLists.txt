@@ -5,6 +5,8 @@ set (sources
     ${source_dir}/source.cpp
     ${source_dir}/token.cpp
     ${source_dir}/value.cpp
+    ${source_dir}/ast.cpp
+    ${source_dir}/parser.cpp
     ${detail_source_dir}/types.cpp
     ${detail_source_dir}/operations.cpp)
 
@@ -20,6 +22,8 @@ if (ENABLE_TESTS)
     ${test_dir}/source.cpp
     ${test_dir}/token.cpp
     ${test_dir}/value.cpp
+    ${test_dir}/ast.cpp
+    ${test_dir}/parser.cpp
     ${detail_test_dir}/types.cpp
     ${detail_test_dir}/operations.cpp)
 

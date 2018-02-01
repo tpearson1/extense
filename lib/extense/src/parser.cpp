@@ -31,15 +31,6 @@ bool extense::detail::parseLiteral(TokenStream &s, std::unique_ptr<Expr> &out) {
          parseString(s, out) || parseChar(s, out) || parseNone(s, out);
 }
 
-template <typename Pred>
-static bool parseToken(extense::detail::TokenStream &s, Pred p,
-                       extense::Token::Type &out) {
-  if (!p(s.current()->type())) return false;
-  out = *s.current();
-  s.next();
-  return true;
-}
-
 static bool parseToken(extense::detail::TokenStream &s,
                        extense::Token::Type type) {
   if (s.current()->type() != type) return false;

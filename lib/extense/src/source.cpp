@@ -39,7 +39,7 @@ std::ostream &operator<<(std::ostream &os, extense::Source::Char c) {
   return os;
 }
 
-extense::Source::Source(std::string source) : data(std::move(source)) {
+extense::Source::Source(std::string_view source) : data(std::move(source)) {
   lineStartIndices.push_back(0);
 }
 

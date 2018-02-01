@@ -32,25 +32,25 @@ SOFTWARE.
 #include <config.hpp>
 #include <extense/parser.hpp>
 
-static void dumpTokens(const std::vector<extense::Token> &tokens) {
-  for (const auto &token : tokens) {
-    if (token.text() == "\n")
-      std::cout << '\n';
-    else
-      std::cout << '|' << token.text() << '/' << token.type();
+// static void dumpTokens(const std::vector<extense::Token> &tokens) {
+//   for (const auto &token : tokens) {
+//     if (token.text() == "\n")
+//       std::cout << '\n';
+//     else
+//       std::cout << '|' << token.text() << '/' << token.type();
 
-    // If there is any data in the token, print it
-    std::visit(
-        [](const auto &data) {
-          if constexpr (!std::is_same_v<std::decay_t<decltype(data)>,
-                                        std::monostate>)
-            std::cout << '/' << data;
-        },
-        token.data());
-  }
+//     // If there is any data in the token, print it
+//     std::visit(
+//         [](const auto &data) {
+//           if constexpr (!std::is_same_v<std::decay_t<decltype(data)>,
+//                                         std::monostate>)
+//             std::cout << '/' << data;
+//         },
+//         token.data());
+//   }
 
-  std::cout << '\n';
-}
+//   std::cout << '\n';
+// }
 
 int main(int /*argc*/, const char * /*argv*/ []) {
   std::cout << "Extense version " << extense::version << "\n\n";
@@ -58,23 +58,15 @@ int main(int /*argc*/, const char * /*argv*/ []) {
   std::ifstream file{"language.xts"};
   std::stringstream buffer;
   buffer << file.rdbuf();
-  extense::Source s{buffer.str()};
+  auto source = buffer.str();
 
-  std::vector<extense::Token> tokens;
+  std::unique_ptr<extense::Expr> expr;
   try {
-    tokens = extense::tokenize(s);
+    expr = extense::parse(source);
   } catch (const extense::LexingError &error) {
     std::cerr << "Error tokenizing file at " << error.location() << ": \""
               << error.what() << "\"\n";
     return 1;
-  }
-
-  (void)dumpTokens;
-  // dumpTokens(tokens);
-
-  std::unique_ptr<extense::Expr> expr;
-  try {
-    expr = extense::parse(tokens);
   } catch (const extense::ParseError &e) {
     std::cerr << "Encountered ParseError at " << e.location()
               << ", with token '" << e.tokenText() << "' (type '"

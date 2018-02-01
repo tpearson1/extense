@@ -92,7 +92,7 @@ public:
   };
 
 private:
-  std::string data;
+  std::string_view data;
 
   // Stores the indices in the source which represent the first characters on a
   // line
@@ -109,9 +109,10 @@ private:
 
 public:
   /*
-   * Constructs a Source with the given input stream.
+   * Constructs a Source with the given input string.
+   * Does not take ownership of the string
    */
-  explicit Source(std::string source);
+  explicit Source(std::string_view source);
 
   /*
    * Gets number of characters in the source.
@@ -176,21 +177,12 @@ public:
   int linePosition() const { return idx - lineStartIndices[lineIdx]; }
 
   class Location {
-#ifndef NDEBUG
-    const Source *owner; // Used for error checking when in debug
-#endif
-
     int idx = -1;
     int lineNum = 0;
     int linePos = -1;
 
-#ifdef NDEBUG
     Location(int index, int lineNumber, int linePosition)
         : idx(index), lineNum(lineNumber), linePos(linePosition) {}
-#else
-    Location(const Source *o, int index, int lineNumber, int linePosition)
-        : owner(o), idx(index), lineNum(lineNumber), linePos(linePosition) {}
-#endif
 
   public:
     Location() = default;
@@ -199,12 +191,7 @@ public:
     int lineNumber() const { return lineNum; }
     int linePosition() const { return linePos; }
 
-    bool operator==(const Location &other) const {
-      // Comparing locations from two different sources is not permitted
-      assert(owner == other.owner);
-
-      return idx == other.idx;
-    }
+    bool operator==(const Location &other) const { return idx == other.idx; }
 
     friend class Source;
   };
@@ -212,11 +199,7 @@ public:
   /*
    * Returns a Location instance for the current character.
    */
-#ifdef NDEBUG
   Location location() { return {idx, lineNumber(), linePosition()}; }
-#else
-  Location location() { return {this, idx, lineNumber(), linePosition()}; }
-#endif
 
   /*
    * Creates a string_view which references a portion of the source.
