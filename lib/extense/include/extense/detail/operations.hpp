@@ -246,8 +246,13 @@ List dotDot(Int a, Int b);
 
 // :
 template <typename VT1, typename VT2>
-auto index(const VT1 &a, const VT2 &i) {
-  return a[i];
+const auto &index(const VT1 &a, const VT2 &i) {
+  return a.at(i);
+}
+
+template <typename VT1, typename VT2>
+auto &index(VT1 &a, const VT2 &i) {
+  return a.at(i);
 }
 
 // Reflexive indexing (::) can only be implemented once functions are added as a

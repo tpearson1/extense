@@ -76,9 +76,6 @@ To tryConvert(const From &f) {
   throw InvalidConversion::Create<From, To>(false);
 }
 
-using FlatValue =
-    BasicFlatValue<None, Int, Float, Bool, Char, String, List, Map, Scope>;
-
 template <typename TValue, typename... PermittedVTs>
 class ConstrainedValue;
 
@@ -569,17 +566,49 @@ Map::Map(Mappings &&... mappings)
     : Map(detail::Wrap{std::initializer_list<ValueType::value_type>(
           {(std::forward<Mappings>(mappings).toPair())...})}) {}
 
-template <typename VT>
-const Value &Map::operator[](const VT &i) const {
-  static_assert(KeyType::supportsType<VT>,
-                "Cannot index with an object of the given type");
-  return (*this)[KeyType{i}];
+inline Value &Map::operator[](const KeyType &i) { return value[i]; }
+inline Value &Map::operator[](const Value &i) {
+  return value[constrainToKeyType(i)];
 }
+inline Value &Map::operator[](const FlatValue &i) {
+  return value[constrainToKeyType(i)];
+}
+
 template <typename VT>
 Value &Map::operator[](const VT &i) {
   static_assert(KeyType::supportsType<VT>,
                 "Cannot index with an object of the given type");
   return (*this)[KeyType{i}];
+}
+
+inline Value &Map::at(const KeyType &i) {
+  return const_cast<Value &>(static_cast<const Map *>(this)->at(i));
+}
+
+inline Value &Map::at(const Value &i) {
+  return this->at(constrainToKeyType(i));
+}
+inline Value &Map::at(const FlatValue &i) {
+  return this->at(constrainToKeyType(i));
+}
+
+template <typename VT>
+inline Value &Map::at(const VT &i) {
+  return const_cast<Value &>(static_cast<const Map *>(this)->at(i));
+}
+
+inline const Value &Map::at(const Value &i) const {
+  return this->at(constrainToKeyType(i));
+}
+inline const Value &Map::at(const FlatValue &i) const {
+  return this->at(constrainToKeyType(i));
+}
+
+template <typename VT>
+const Value &Map::at(const VT &i) const {
+  static_assert(KeyType::supportsType<VT>,
+                "Cannot index with an object of the given type");
+  return this->at(KeyType{i});
 }
 } // namespace extense
 

@@ -148,6 +148,9 @@ class Value;
 template <typename... ValueTypes>
 class BasicFlatValue;
 
+using FlatValue =
+    BasicFlatValue<None, Int, Float, Bool, Char, String, List, Map, Scope>;
+
 namespace detail {
 using MapKeyType = BasicFlatValue<Int, Float, Bool, Char, String>;
 
@@ -180,6 +183,9 @@ private:
   // Avoid language weirdness with std::initializer_list
   Map(detail::Wrap<std::initializer_list<ValueType::value_type>> kvps);
 
+  static KeyType constrainToKeyType(const Value &v);
+  static KeyType constrainToKeyType(const FlatValue &v);
+
 public:
   // Defined in value.hpp
   Map();
@@ -195,18 +201,25 @@ public:
       std::enable_if_t<(std::is_same_v<Mapping, Mappings> || ...)> * = nullptr>
   explicit Map(Mappings &&... mappings);
 
-  const Value &operator[](const KeyType &i) const;
+  // Access or create an element. Defined in value.hpp.
   Value &operator[](const KeyType &i);
-
-  // Access an element. Defined in value.hpp.
-  template <typename VT>
-  const Value &operator[](const VT &i) const;
+  Value &operator[](const Value &i);
+  Value &operator[](const FlatValue &i);
   template <typename VT>
   Value &operator[](const VT &i);
 
-  // Returns a reference to the element associated with the given key,
-  // creating the element if not present
-  Value &insertOrAccess(const KeyType &i);
+  // Access an element. Defined in value.hpp
+  Value &at(const KeyType &i);
+  Value &at(const Value &i);
+  Value &at(const FlatValue &i);
+  template <typename VT>
+  Value &at(const VT &i);
+
+  const Value &at(const KeyType &i) const;
+  const Value &at(const Value &i) const;
+  const Value &at(const FlatValue &i) const;
+  template <typename VT>
+  const Value &at(const VT &i) const;
 };
 
 namespace {
@@ -242,8 +255,10 @@ public:
   }
 
   const Value &operator[](Int i) const;
+  const Value &at(Int i) const;
 
   List operator[](const List &i) const;
+  List at(const List &i) const { return (*this)[i]; }
 };
 
 class Scope {

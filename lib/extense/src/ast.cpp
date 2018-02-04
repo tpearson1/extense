@@ -93,8 +93,7 @@ extense::Value extense::MapConstructor::eval(Scope &scope) {
   // one
   for (auto & [ key, value ] : mappings_) {
     auto keyValue = key->eval(scope);
-    s.insertOrAccess(constrain<Map::KeyType>(keyValue.flatten())) =
-        value->eval(scope);
+    s[keyValue] = value->eval(scope);
   }
   return Value{s};
 }

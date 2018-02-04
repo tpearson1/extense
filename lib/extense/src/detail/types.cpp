@@ -58,21 +58,21 @@ extense::Map::Map(
     detail::Wrap<std::initializer_list<ValueType::value_type>> kvps)
     : Base{ValueType(std::move(kvps).value)} {}
 
-const extense::Value &extense::Map::operator[](const Map::KeyType &i) const {
+extense::Map::KeyType extense::Map::constrainToKeyType(const Value &v) {
+  return constrain<Map::KeyType>(v.flatten());
+}
+
+extense::Map::KeyType extense::Map::constrainToKeyType(const FlatValue &v) {
+  return constrain<Map::KeyType>(v);
+}
+
+const extense::Value &extense::Map::at(const KeyType &i) const {
   try {
     return value.at(i);
   } catch (std::out_of_range &) {
     throw InvalidOperation{"Map", "Map's key type",
                            "Element not present in map"};
   }
-}
-
-extense::Value &extense::Map::operator[](const Map::KeyType &i) {
-  return const_cast<Value &>(static_cast<const Map &>(*this)[i]);
-}
-
-extense::Value &extense::Map::insertOrAccess(const extense::Map::KeyType &i) {
-  return value[i];
 }
 
 extense::List::List(detail::Wrap<std::initializer_list<Value>> values)
@@ -82,6 +82,10 @@ const extense::Value &extense::List::operator[](extense::Int i) const {
   if (i.value >= static_cast<Int::ValueType>(value.size()) || i.value < 0)
     throw InvalidOperation::Create<List, Int>("Out of bounds array access");
   return value[i.value];
+}
+
+const extense::Value &extense::List::at(extense::Int i) const {
+  return (*this)[i];
 }
 
 extense::List extense::List::operator[](const extense::List &i) const {
