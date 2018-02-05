@@ -123,7 +123,7 @@ SOFTWARE.
                                                                                \
   X(None) /*   None   */                                                       \
                                                                                \
-  X(Label) /*   @outer   */                                                    \
+  X(LabelDeclaration) /*   @outer   */                                         \
                                                                                \
   /* An identifier. Must start with either a letter or _ (no numbers) */       \
   X(Identifier)

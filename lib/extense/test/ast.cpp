@@ -88,16 +88,16 @@ TEST_CASE("Manipulating and dumping expressions", "[Expr]") {
   }
 
   // REVIEW: Evaluation once labels are properly implemented
-  SECTION("Label") {
-    auto label = Label{"outer"};
-    REQUIRE(label.type() == ASTNodeType::Label);
+  SECTION("LabelDeclaration") {
+    auto label = LabelDeclaration{"outer"};
+    REQUIRE(label.type() == ASTNodeType::LabelDeclaration);
     REQUIRE(label.name() == "outer");
     label.rename("inner");
     REQUIRE(label.name() == "inner");
 
     std::ostringstream dump;
     label.dump(dump);
-    REQUIRE(dump.str() == "Label: name 'inner'\n");
+    REQUIRE(dump.str() == "LabelDeclaration: name 'inner'\n");
   }
 
   // REVIEW: Evaluation once identifiers are properly implemented

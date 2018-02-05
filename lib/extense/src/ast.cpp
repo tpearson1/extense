@@ -42,9 +42,10 @@ void extense::ValueExpr::dumpWithIndent(std::ostream &os, int indent) const {
   os << "ValueExpr: " << LiteralShow{value_} << '\n';
 }
 
-void extense::Label::dumpWithIndent(std::ostream &os, int indent) const {
+void extense::LabelDeclaration::dumpWithIndent(std::ostream &os,
+                                               int indent) const {
   makeIndent(os, indent);
-  os << "Label: name '" << name_ << "'\n";
+  os << "LabelDeclaration: name '" << name_ << "'\n";
 }
 
 void extense::Identifier::dumpWithIndent(std::ostream &os, int indent) const {

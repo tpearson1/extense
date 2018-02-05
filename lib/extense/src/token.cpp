@@ -343,7 +343,7 @@ bool extense::detail::lexLabel(Source &source, Token &out) {
                                "Expected valid identifier after '@'"};
   }
 
-  out.setType(Token::Type::Label);
+  out.setType(Token::Type::LabelDeclaration);
   return true;
 }
 

@@ -68,11 +68,11 @@ static bool skipEndStatement(extense::detail::TokenStream &s) {
 }
 
 std::unique_ptr<extense::Expr> extense::detail::parseLabel(TokenStream &s) {
-  if (s.current()->type() != Token::Type::Label) return nullptr;
+  if (s.current()->type() != Token::Type::LabelDeclaration) return nullptr;
   auto fullText = s.current()->text();
   auto withoutAtSymbol = std::string(fullText.begin() + 1, fullText.end());
   s.next();
-  return std::make_unique<Label>(withoutAtSymbol);
+  return std::make_unique<LabelDeclaration>(withoutAtSymbol);
 }
 
 std::unique_ptr<extense::Expr>

@@ -305,13 +305,13 @@ TEST_CASE(
   SECTION("lexLabel") {
     Source s{"@_label "};
     REQUIRE(detail::lexLabel(s, t));
-    REQUIRE(t.type() == Token::Type::Label);
+    REQUIRE(t.type() == Token::Type::LabelDeclaration);
     REQUIRE(s.currentChar() == ' ');
     t.setType(Token::Type::Plus);
 
     Source s2{"@lab3l "};
     REQUIRE(detail::lexLabel(s2, t));
-    REQUIRE(t.type() == Token::Type::Label);
+    REQUIRE(t.type() == Token::Type::LabelDeclaration);
     REQUIRE(s2.currentChar() == ' ');
     t.setType(Token::Type::Plus);
 

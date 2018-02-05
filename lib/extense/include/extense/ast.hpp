@@ -84,7 +84,7 @@ namespace extense {
                                                                                \
   X(Custom)                                                                    \
   X(ValueExpr)                                                                 \
-  X(Label)                                                                     \
+  X(LabelDeclaration)                                                          \
   X(Identifier)                                                                \
   X(ScopeCall)                                                                 \
   X(MapConstructor)                                                            \
@@ -151,12 +151,12 @@ public:
   Value eval(Scope &) override { return value_; }
 };
 
-class Label : public Expr {
+class LabelDeclaration : public Expr {
   std::string name_;
 
 public:
-  explicit Label(std::string name)
-      : Expr(ASTNodeType::Label), name_(std::move(name)) {}
+  explicit LabelDeclaration(std::string name)
+      : Expr(ASTNodeType::LabelDeclaration), name_(std::move(name)) {}
 
   void dumpWithIndent(std::ostream &os, int indent) const override;
 

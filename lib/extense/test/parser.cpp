@@ -239,8 +239,9 @@ TEST_CASE("Detail parsing functions", "[parse]") {
     detail::TokenStream s{token};
     auto result = detail::parseLabel(s);
     REQUIRE(result);
-    REQUIRE(result->type() == ASTNodeType::Label);
-    REQUIRE(static_cast<Label *>(result.get())->name() == "thisisalabel");
+    REQUIRE(result->type() == ASTNodeType::LabelDeclaration);
+    REQUIRE(static_cast<LabelDeclaration *>(result.get())->name() ==
+            "thisisalabel");
   }
 
   SECTION("parseIdentifier") {
@@ -350,7 +351,7 @@ TEST_CASE("Parsing functions", "[parseExpr, parse]") {
   BinaryOperation: type 'MulEquals'
     Identifier: name 'c'
     Identifier: name 'd'
-  Label: name 'xyz'
+  LabelDeclaration: name 'xyz'
 )");
 
     auto empty = parse("");
