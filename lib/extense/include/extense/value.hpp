@@ -610,6 +610,9 @@ const Value &Map::at(const VT &i) const {
                 "Cannot index with an object of the given type");
   return this->at(KeyType{i});
 }
+
+inline Value Scope::operator()() { return (*this)(noneValue); }
+
 } // namespace extense
 
 #endif // _LIB_EXTENSE__VALUE_HPP

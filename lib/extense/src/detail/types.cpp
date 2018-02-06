@@ -122,7 +122,36 @@ extense::List extense::List::operator[](const extense::List &i) const {
   return sublist;
 }
 
-extense::Value extense::Scope::operator()() { return (*this)(noneValue); }
+const extense::Value &
+extense::Scope::getIdentifier(const std::string &name) const {
+  auto *v = findIdentifier(name);
+  if (!v) {
+    // TODO: Custom exception
+    throw std::runtime_error{"Undefined identifier"};
+  }
+
+  return *v;
+}
+
+const extense::Value *
+extense::Scope::findIdentifier(const std::string &name) const {
+  for (auto *s = this; s != nullptr; s = s->outer_) {
+    if (auto it = s->identifiers.find(name); it != s->identifiers.end())
+      return &it->second;
+  }
+
+  return nullptr;
+}
+
+extense::Value &extense::Scope::createIdentifier(const std::string &name) {
+  return identifiers[name];
+}
+
+extense::Value &extense::Scope::createOrGetIdentifier(const std::string &name) {
+  auto *ident = findIdentifier(name);
+  if (ident) return *ident;
+  return identifiers[name];
+}
 
 std::ostream &extense::operator<<(std::ostream &os, const List &v) {
   auto &list = v.value;

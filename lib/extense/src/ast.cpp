@@ -129,6 +129,7 @@ void extense::ExprList::dumpWithIndent(std::ostream &os, int indent) const {
 }
 
 extense::Value extense::ExprList::eval(Scope &scope) {
+  if (exprs_.empty()) return noneValue;
   std::for_each(exprs_.begin(), exprs_.end() - 1,
                 [&scope](auto &expr) { expr->eval(scope); });
   return exprs_.back()->eval(scope);

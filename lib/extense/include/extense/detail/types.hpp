@@ -29,6 +29,7 @@ SOFTWARE.
 
 #include <functional>
 #include <map>
+#include <optional>
 #include <ostream>
 #include <sstream>
 #include <string>
@@ -269,6 +270,9 @@ public:
 private:
   Function func;
   Scope *outer_;
+  // Using map as it does not require definition of Value, and iterators are not
+  // invalidated unless the iterator's element is removed.
+  std::map<std::string, Value> identifiers;
 
 public:
   Scope(Function f, Scope *outer = nullptr)
@@ -280,6 +284,27 @@ public:
   const Function &function() const { return func; }
   Function &function() { return func; }
 
+  const Value &getIdentifier(const std::string &name) const;
+  Value &getIdentifier(const std::string &name) {
+    return const_cast<Value &>(
+        static_cast<const Scope *>(this)->getIdentifier(name));
+  }
+
+  const Value *findIdentifier(const std::string &name) const;
+  Value *findIdentifier(const std::string &name) {
+    return const_cast<Value *>(
+        static_cast<const Scope *>(this)->findIdentifier(name));
+  }
+
+  // Creates an identifier in the current scope, even if a variable with the
+  // same name is already set in an outer scope
+  Value &createIdentifier(const std::string &name);
+
+  // Will automatically create an identifier with that name if it isn't
+  // already present in the scope or outer scopes
+  Value &createOrGetIdentifier(const std::string &name);
+
+  // Defined in value.hpp
   Value operator()();
 
   // Convenience function. If there is one argument, the function is called with

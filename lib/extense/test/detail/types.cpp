@@ -153,3 +153,28 @@ TEST_CASE("Construction and conversion for types",
     }
   }
 }
+
+TEST_CASE("Using Scopes", "[Scope]") {
+  Scope global{[](Scope &, const Value &) { return noneValue; }};
+  REQUIRE(global.outer() == nullptr);
+  REQUIRE(global() == noneValue);
+
+  SECTION("Identifiers") {
+    auto &x = global.createOrGetIdentifier("x");
+    x = Value{7_ei};
+    REQUIRE(global.getIdentifier("x") == x);
+
+    Scope inner{[](Scope &, const Value &) { return noneValue; }, &global};
+    REQUIRE(inner.getIdentifier("x") == x);
+
+    auto &y = inner.createIdentifier("y");
+    y = Value{Bool::t};
+    REQUIRE(inner.getIdentifier("y") == y);
+
+    bool threw = false;
+    try {
+      global.getIdentifier("y");
+    } catch (const std::runtime_error &) { threw = true; }
+    REQUIRE(threw);
+  }
+}
