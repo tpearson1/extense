@@ -520,9 +520,9 @@ inline const Value noneValue{none};
 template <typename... Values>
 Value Scope::operator()(Values &&... values) {
   if constexpr (sizeof...(Values) == 1)
-    return func(*this, static_cast<Value>(std::forward<Values>(values))...);
+    return call(static_cast<Value>(std::forward<Values>(values))...);
   else
-    return func(*this, Value{List{std::forward<Values>(values)...}});
+    return call(Value{List{std::forward<Values>(values)...}});
 }
 
 struct Mapping {

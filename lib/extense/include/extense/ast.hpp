@@ -237,8 +237,8 @@ public:
 
   void dumpWithIndent(std::ostream &os, int indent) const override;
 
-  // Evaluates all expressions, returning the result of evaluating the last
-  Value eval(Scope &) override;
+  Scope toScope(Scope &outer);
+  Value eval(Scope &outer) override { return Value{toScope(outer)}; }
 
   using const_iterator = ExprContainer::const_iterator;
 

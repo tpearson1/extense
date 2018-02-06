@@ -197,9 +197,12 @@ TEST_CASE("Manipulating and dumping expressions", "[Expr]") {
 )");
 
     auto result = exprList.eval(dummyScope);
-    REQUIRE(result.is<Char>());
+    REQUIRE(result.is<Scope>());
 
-    auto c = get<Char>(result);
+    auto s = get<Scope>(result);
+    auto callResult = s();
+    REQUIRE(callResult.is<Char>());
+    auto c = get<Char>(callResult);
     REQUIRE(c.value == 'a');
   }
 

@@ -291,6 +291,8 @@ private:
   // invalidated unless the iterator's element is removed.
   std::map<std::string, Value> identifiers;
 
+  Value call(const Value &v);
+
 public:
   Scope(Function f, Scope *outer = nullptr)
       : func(std::move(f)), outer_(outer) {}
@@ -320,6 +322,8 @@ public:
   // Will automatically create an identifier with that name if it isn't
   // already present in the scope or outer scopes
   Value &createOrGetIdentifier(const std::string &name);
+
+  void clearIdentifiers() { identifiers.clear(); }
 
   // Defined in value.hpp
   Value operator()();

@@ -122,6 +122,12 @@ extense::List extense::List::operator[](const extense::List &i) const {
   return sublist;
 }
 
+extense::Value extense::Scope::call(const Value &v) {
+  auto result = func(*this, v);
+  clearIdentifiers();
+  return result;
+}
+
 const extense::Value &
 extense::Scope::getIdentifier(const std::string &name) const {
   auto *v = findIdentifier(name);

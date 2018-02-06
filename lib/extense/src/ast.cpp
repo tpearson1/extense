@@ -139,15 +139,23 @@ void extense::ExprList::dumpWithIndent(std::ostream &os, int indent) const {
     expr->dumpWithIndent(os, indent + indentAmount);
 }
 
-extense::Value extense::ExprList::eval(Scope &scope) {
-  if (exprs_.empty()) return noneValue;
+extense::Scope extense::ExprList::toScope(Scope &outer) {
+  Scope out{[&](Scope &s, const Value &arg) {
+              // Inject label variables into scope
+              for (auto &label : labels)
+                s.createIdentifier(label.name()) = Value{label};
 
-  Scope inner{[](Scope &, const Value &) { return noneValue; }, &scope};
-  // Inject label variables into scope
-  for (auto &label : labels)
-    inner.createIdentifier(label.name()) = Value{label};
+              // Set '$'
+              s.createIdentifier("$") = arg;
 
-  std::for_each(exprs_.begin(), exprs_.end() - 1,
-                [&inner](auto &expr) { expr->eval(inner); });
-  return exprs_.back()->eval(inner);
+              if (exprs_.empty()) return noneValue;
+
+              // Evaluate each expression, and return the result of evaluating
+              // the last
+              std::for_each(exprs_.begin(), exprs_.end() - 1,
+                            [&s](auto &expr) { expr->eval(s); });
+              return exprs_.back()->eval(s);
+            },
+            &outer};
+  return out;
 }
