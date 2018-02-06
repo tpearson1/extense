@@ -228,16 +228,22 @@ public:
 };
 
 class ExprList : public Expr {
-  std::vector<std::unique_ptr<Expr>> exprs_;
+  using ExprContainer = std::vector<std::unique_ptr<Expr>>;
+  ExprContainer exprs_;
+  std::vector<Label> labels;
 
 public:
-  explicit ExprList(std::vector<std::unique_ptr<Expr>> exprs)
-      : Expr(ASTNodeType::ExprList), exprs_(std::move(exprs)) {}
+  explicit ExprList(std::vector<std::unique_ptr<Expr>> exprs);
 
   void dumpWithIndent(std::ostream &os, int indent) const override;
 
   // Evaluates all expressions, returning the result of evaluating the last
   Value eval(Scope &) override;
+
+  using const_iterator = ExprContainer::const_iterator;
+
+  const_iterator begin() const { return exprs_.begin(); }
+  const_iterator end() const { return exprs_.end(); }
 };
 
 class UnaryOperation : public Expr {

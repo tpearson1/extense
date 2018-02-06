@@ -121,6 +121,17 @@ extense::Value extense::ListConstructor::eval(Scope &scope) {
   return Value{l};
 }
 
+extense::ExprList::ExprList(std::vector<std::unique_ptr<Expr>> exprs)
+    : Expr(ASTNodeType::ExprList), exprs_(std::move(exprs)) {
+  // Find and add label declarations to their corresponding list
+  for (auto it = exprs_.begin(); it != exprs_.end(); it++) {
+    if ((*it)->type() != ASTNodeType::LabelDeclaration) continue;
+    auto labelDecl = static_cast<LabelDeclaration *>(it->get());
+    labels.push_back(
+        Label{static_cast<int>(it - exprs_.begin()), labelDecl->name()});
+  }
+}
+
 void extense::ExprList::dumpWithIndent(std::ostream &os, int indent) const {
   makeIndent(os, indent);
   os << "ExprList: Expressions below\n";
@@ -130,7 +141,13 @@ void extense::ExprList::dumpWithIndent(std::ostream &os, int indent) const {
 
 extense::Value extense::ExprList::eval(Scope &scope) {
   if (exprs_.empty()) return noneValue;
+
+  Scope inner{[](Scope &, const Value &) { return noneValue; }, &scope};
+  // Inject label variables into scope
+  for (auto &label : labels)
+    inner.createIdentifier(label.name()) = Value{label};
+
   std::for_each(exprs_.begin(), exprs_.end() - 1,
-                [&scope](auto &expr) { expr->eval(scope); });
-  return exprs_.back()->eval(scope);
+                [&inner](auto &expr) { expr->eval(inner); });
+  return exprs_.back()->eval(inner);
 }

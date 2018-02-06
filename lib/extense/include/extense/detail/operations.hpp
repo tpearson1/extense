@@ -330,7 +330,8 @@ inline Bool equal(const String &a, const String &b) {
 }
 Bool equal(const Map &a, const Map &b);
 Bool equal(const List &a, const List &b);
-inline Bool equal(const Scope &, const Scope &) { return Bool{false}; }
+inline Bool equal(const Scope &, const Scope &) { return Bool::f; }
+inline Bool equal(const Label &, const Label &) { return Bool::f; }
 
 template <typename... ValueTypes>
 Bool equal(const BasicFlatValue<ValueTypes...> &,

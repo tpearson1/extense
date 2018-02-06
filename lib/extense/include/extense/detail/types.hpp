@@ -48,6 +48,7 @@ struct Char;
 class String;
 class Map;
 class List;
+class Label;
 class Scope;
 
 class Reference;
@@ -75,7 +76,8 @@ struct Convert<Char, String>;
 // String
 template <typename T>
 inline constexpr bool isFlatValueType =
-    detail::isAnyOf<T, None, Int, Float, Bool, Char, List, String, Map, Scope>;
+    detail::isAnyOf<T, None, Int, Float, Bool, Char, List, String, Map, Label,
+                    Scope>;
 
 // Whether or not T is a valid type for a Value - either a FlatValue type or a
 // Reference
@@ -95,6 +97,7 @@ constexpr std::string_view typeAsString() {
   if (std::is_same_v<String, T>) return "String";
   if (std::is_same_v<List, T>) return "List";
   if (std::is_same_v<Map, T>) return "Map";
+  if (std::is_same_v<Label, T>) return "Label";
   if (std::is_same_v<Scope, T>) return "Scope";
   if (std::is_same_v<Reference, T>) return "Reference";
 }
@@ -149,8 +152,8 @@ class Value;
 template <typename... ValueTypes>
 class BasicFlatValue;
 
-using FlatValue =
-    BasicFlatValue<None, Int, Float, Bool, Char, String, List, Map, Scope>;
+using FlatValue = BasicFlatValue<None, Int, Float, Bool, Char, String, List,
+                                 Map, Label, Scope>;
 
 namespace detail {
 using MapKeyType = BasicFlatValue<Int, Float, Bool, Char, String>;
@@ -262,6 +265,20 @@ public:
   List at(const List &i) const { return (*this)[i]; }
 };
 
+class ExprList;
+
+class Label {
+  int index;
+  std::string name_;
+
+  Label(int index_, std::string name) : index(index_), name_(std::move(name)) {}
+  friend class ExprList;
+
+public:
+  const std::string &name() const { return name_; }
+  void rename(std::string newName) { name_ = std::move(newName); }
+};
+
 class Scope {
 public:
   using FunctionSignature = Value(Scope &, const Value &);
@@ -369,6 +386,11 @@ std::ostream &operator<<(std::ostream &, const List &);
 // TODO: Print AST for scope
 inline std::ostream &operator<<(std::ostream &os, const Scope &) {
   os << "<Scope>";
+  return os;
+}
+
+inline std::ostream &operator<<(std::ostream &os, const Label &v) {
+  os << "<Label with name '" << v.name() << " '>";
   return os;
 }
 
