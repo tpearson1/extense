@@ -279,11 +279,7 @@ public:
                           std::unique_ptr<Expr> operand)
       : Expr(opType), operation_(operation), operand_(std::move(operand)) {}
 
-  void dumpWithIndent(std::ostream &os, int indent) const override {
-    makeIndent(os, indent);
-    os << "UnaryOperation: type '" << type() << "'\n";
-    operand_->dumpWithIndent(os, indent + indentAmount);
-  }
+  void dumpWithIndent(std::ostream &os, int indent) const override;
 
   EvalResult eval(Scope &s) override {
     return {true, operation_(s, *operand_)};
@@ -304,12 +300,7 @@ public:
       : Expr(opType), operation_(operation), operand1_(std::move(operand1)),
         operand2_(std::move(operand2)) {}
 
-  void dumpWithIndent(std::ostream &os, int indent) const override {
-    makeIndent(os, indent);
-    os << "BinaryOperation: type '" << type() << "'\n";
-    operand1_->dumpWithIndent(os, indent + indentAmount);
-    operand2_->dumpWithIndent(os, indent + indentAmount);
-  }
+  void dumpWithIndent(std::ostream &os, int indent) const override;
 
   EvalResult eval(Scope &s) override {
     return {true, operation_(s, *operand1_, *operand2_)};
@@ -317,6 +308,25 @@ public:
 
 private:
   Function *operation_;
+  std::unique_ptr<Expr> operand1_, operand2_;
+};
+
+class CustomOperation : public Expr {
+  std::string op_;
+
+public:
+  explicit CustomOperation(std::string op, std::unique_ptr<Expr> operand1,
+                           std::unique_ptr<Expr> operand2)
+      : Expr(ASTNodeType::CustomOperator), op_(std::move(op)),
+        operand1_(std::move(operand1)), operand2_(std::move(operand2)) {}
+
+  const std::string &operatorString() const { return op_; }
+
+  void dumpWithIndent(std::ostream &os, int indent) const override;
+
+  EvalResult eval(Scope &s) override;
+
+private:
   std::unique_ptr<Expr> operand1_, operand2_;
 };
 

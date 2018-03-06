@@ -172,3 +172,32 @@ extense::Scope extense::ExprList::toScope(Scope &outer) {
             &outer};
   return out;
 }
+
+void extense::UnaryOperation::dumpWithIndent(std::ostream &os,
+                                             int indent) const {
+  makeIndent(os, indent);
+  os << "UnaryOperation: type '" << type() << "'\n";
+  operand_->dumpWithIndent(os, indent + indentAmount);
+}
+
+void extense::BinaryOperation::dumpWithIndent(std::ostream &os,
+                                              int indent) const {
+  makeIndent(os, indent);
+  os << "BinaryOperation: type '" << type() << "'\n";
+  operand1_->dumpWithIndent(os, indent + indentAmount);
+  operand2_->dumpWithIndent(os, indent + indentAmount);
+}
+
+void extense::CustomOperation::dumpWithIndent(std::ostream &os,
+                                              int indent) const {
+  makeIndent(os, indent);
+  os << "CustomOperation: '" << op_ << "'\n";
+  operand1_->dumpWithIndent(os, indent + indentAmount);
+  operand2_->dumpWithIndent(os, indent + indentAmount);
+}
+
+extense::Expr::EvalResult extense::CustomOperation::eval(Scope &s) {
+  auto opFuncVal = s.getIdentifier(op_);
+  return {true, get<Scope>(opFuncVal)(constEval(s, *operand1_),
+                                      constEval(s, *operand2_))};
+}

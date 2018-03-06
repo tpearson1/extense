@@ -274,8 +274,12 @@ bool extense::detail::parseBinaryOperator(TokenStream &s,
                                                          opPrecedence);
 
   if (op == ASTNodeType::CustomOperator) {
-    // TODO
+    auto opText = opToken.text();
+    left = std::make_unique<CustomOperation>(std::string(opText),
+                                             std::move(left), std::move(right));
+    return true;
   }
+
   left = makeBinaryOperation(op, std::move(left), std::move(right));
   return true;
 }
