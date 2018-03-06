@@ -26,6 +26,14 @@ SOFTWARE.
 
 #include <extense/value.hpp>
 
+extense::InvalidOperation::InvalidOperation(const Value &a, const Value &b,
+                                            std::string message)
+    : reason(std::move(message)) {
+  v1 = a.typeAsString();
+  v2 = b.typeAsString();
+  buildWhatStr();
+}
+
 const char *extense::InvalidConversion::what() const noexcept {
   std::ostringstream os;
   os << "Invalid " << (implicit ? "implicit" : "explicit")
@@ -33,8 +41,9 @@ const char *extense::InvalidConversion::what() const noexcept {
   return os.str().c_str();
 }
 
-std::string extense::Value::typeAsString() const {
-  std::string result = is<extense::Reference>() ? "Reference to " : "";
+std::string extense::Value::typeAsString(bool displayReference) const {
+  std::string result;
+  if (displayReference && is<Reference>()) result = "Reference to ";
   return result + visit(
                       [](auto &&arg) -> std::string {
                         using VT = std::decay_t<decltype(arg)>;

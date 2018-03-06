@@ -31,6 +31,65 @@
 using namespace extense::literals;
 
 namespace extense::ops {
+#define VALID_OP(resultVar, op)                                                \
+  template <typename A, typename B, typename = void>                           \
+  struct resultVar##Helper : std::false_type {};                               \
+                                                                               \
+  template <typename A, typename B>                                            \
+  struct resultVar##Helper<                                                    \
+      A, B,                                                                    \
+      std::void_t<decltype(op(std::declval<A &>(), std::declval<B &>()))>>     \
+      : std::true_type {};                                                     \
+                                                                               \
+  template <typename A, typename B>                                            \
+  constexpr bool resultVar = resultVar##Helper<A, B>::value;
+
+#define OP_VISITOR(opFuncName)                                                 \
+  VALID_OP(canDoOperation##opFuncName, opFuncName)                             \
+                                                                               \
+  Value opFuncName(const Value &a, const Value &b) {                           \
+    if (a.is<Map>()) return opFuncName(get<Map>(*get<Reference>(a)), b);       \
+    return visit(                                                              \
+        [](const auto &a, const auto &b) -> Value {                            \
+          using A = std::decay_t<decltype(a)>;                                 \
+          using B = std::decay_t<decltype(b)>;                                 \
+          if constexpr (!canDoOperation##opFuncName<A, B>)                     \
+            throw InvalidOperation::Create<A, B>();                            \
+          else                                                                 \
+            return Value{opFuncName(a, b)};                                    \
+        },                                                                     \
+        a, b);                                                                 \
+  }
+
+#define COMPOUND_OP_VISITOR(opFuncName, nonCompoundFuncName)                   \
+  VALID_OP(canDoOperation##opFuncName, opFuncName)                             \
+                                                                               \
+  Value opFuncName(Value &av, const Value &bv) {                               \
+    if (av.is<Map>()) return opFuncName(get<Map>(av), bv);                     \
+    visit(                                                                     \
+        [&av, &bv](auto &a, const auto &b) {                                   \
+          using A = std::decay_t<decltype(a)>;                                 \
+          using B = std::decay_t<decltype(b)>;                                 \
+          if constexpr (!canDoOperation##opFuncName<A, B>) {                   \
+            /* It may be the case that the operation is possible, but */       \
+            /* the mutable argument needs to be converted */                   \
+            av = nonCompoundFuncName(av, bv);                                  \
+          } else                                                               \
+            opFuncName(a, b);                                                  \
+        },                                                                     \
+        av, bv);                                                               \
+    return noneValue;                                                          \
+  }
+
+Value add(const Value &a) {
+  if (a.is<Int>() || a.is<Float>()) return a;
+  // TODO: Custom InvalidUnaryOperation exception
+  throw std::runtime_error{"Cannot use unary '+' operator on non-numeric type"};
+}
+
+OP_VISITOR(add)
+COMPOUND_OP_VISITOR(addEquals, add)
+
 List add(List a, const List &b) {
   addEquals(a, b);
   return a;
@@ -42,6 +101,19 @@ List &addEquals(List &a, const List &b) {
   av.insert(std::end(av), std::begin(bv), std::end(bv));
   return a;
 }
+
+Value sub(const Value &a) {
+  if (a.is<Int>()) return Value{-get<Int>(a)};
+  if (a.is<Float>()) return Value{-get<Float>(a)};
+  // TODO: Custom InvalidUnaryOperation exception
+  throw std::runtime_error{"Cannot use unary '-' operator on non-numeric type"};
+}
+
+OP_VISITOR(sub)
+COMPOUND_OP_VISITOR(subEquals, sub)
+
+OP_VISITOR(mul)
+COMPOUND_OP_VISITOR(mulEquals, mul)
 
 String mul(String a, Int times) {
   mulEquals(a, times);
@@ -72,6 +144,18 @@ List mul(List a, Int times) {
 
 List &mulEquals(List &a, Int times) { return mulEquals<List>(a, times); }
 
+OP_VISITOR(div)
+COMPOUND_OP_VISITOR(divEquals, div)
+
+OP_VISITOR(mod)
+COMPOUND_OP_VISITOR(modEquals, mod)
+
+OP_VISITOR(floorDiv)
+COMPOUND_OP_VISITOR(floorDivEquals, floorDiv)
+
+OP_VISITOR(pow)
+COMPOUND_OP_VISITOR(powEquals, pow)
+
 constexpr const auto powMessage = "Invalid values for base and/or exponent";
 
 // The power functions consider raising 0 to the 0 as 1
@@ -87,6 +171,8 @@ Float pow(Float a, Int b) {
   return Float{std::pow(a.value, b.value)};
 }
 
+OP_VISITOR(dotDot)
+
 List dotDot(Int a, Int b) {
   if (b.value < a.value) {
     throw InvalidOperation::Create<Int, Int>("Operator '..' requires upper "
@@ -99,7 +185,55 @@ List dotDot(Int a, Int b) {
   return List(list);
 }
 
+Value index(const Value &a, const Value &b) {
+  if (a.is<Map>())
+    return get<Map>(a).at(b);
+  else if (a.is<List>())
+    return get<List>(a).at(b);
+  throw InvalidOperation(a, b, "Unable to index type");
+}
+
 Reference ref(Value &v) { return Reference{v}; }
+
+OP_VISITOR(bitAnd)
+COMPOUND_OP_VISITOR(bitAndEquals, bitAnd)
+
+OP_VISITOR(bitOr)
+COMPOUND_OP_VISITOR(bitOrEquals, bitOr)
+
+OP_VISITOR(bitXor)
+COMPOUND_OP_VISITOR(bitXorEquals, bitXor)
+
+Value bitNot(const Value &a) {
+  if (a.is<Int>()) return Value{bitNot(get<Int>(a))};
+  // TODO: Custom InvalidUnaryOperation exception
+  throw std::runtime_error{"Operation 'bitNot' is only permitted on Ints"};
+}
+
+OP_VISITOR(bitLShift)
+COMPOUND_OP_VISITOR(bitLShiftEquals, bitLShift)
+
+OP_VISITOR(bitRShift)
+COMPOUND_OP_VISITOR(bitRShiftEquals, bitRShift)
+
+Bool is(const Value &a, std::string_view type) {
+  if (a.is<Reference>() && type == "Reference") return Bool::t;
+  return Bool{a.typeAsString(false) == type};
+}
+
+OP_VISITOR(logicalAnd)
+OP_VISITOR(logicalOr)
+
+Value logicalNot(const Value &a) {
+  if (a.is<Bool>()) return Value{logicalNot(get<Bool>(a))};
+  // TODO: Custom InvalidUnaryOperation exception
+  throw std::runtime_error{"Operation 'not' is only permitted on Bools"};
+}
+
+OP_VISITOR(lessThan)
+OP_VISITOR(lessEquals)
+OP_VISITOR(greaterThan)
+OP_VISITOR(greaterEquals)
 
 Bool equal(const Map &a, const Map &b) { return Bool{a.value == b.value}; }
 Bool equal(const List &a, const List &b) { return Bool{a.value == b.value}; }
@@ -185,6 +319,13 @@ Value bitRShift(Map &a, const Value &b) {
 }
 Value bitRShiftEquals(Map &a, const Value &b) {
   return binaryFunction(">>="_es, a, b);
+}
+
+Value logicalAnd(Map &a, const Value &b) {
+  return binaryFunction("and"_es, a, b);
+}
+Value logicalOr(Map &a, const Value &b) {
+  return binaryFunction("or"_es, a, b);
 }
 
 Value lessThan(Map &a, const Value &b) { return binaryFunction("<"_es, a, b); }

@@ -42,6 +42,11 @@ void extense::ValueExpr::dumpWithIndent(std::ostream &os, int indent) const {
   os << "ValueExpr: " << LiteralShow{value_} << '\n';
 }
 
+extense::Expr::EvalResult extense::ValueExpr::eval(Scope &) {
+  if (value_.is<Scope>()) return {false, get<Scope>(value_)()};
+  return {false, value_};
+}
+
 void extense::LabelDeclaration::dumpWithIndent(std::ostream &os,
                                                int indent) const {
   makeIndent(os, indent);
@@ -53,6 +58,14 @@ void extense::Identifier::dumpWithIndent(std::ostream &os, int indent) const {
   os << "Identifier: name '" << name_ << "'\n";
 }
 
+extense::Expr::EvalResult extense::Identifier::eval(Scope &s) {
+  return {true, s.getIdentifier(name_)};
+}
+
+extense::Value *extense::Identifier::tryMutableEval(Scope &s) {
+  return &s.createOrGetIdentifier(name_);
+}
+
 void extense::ScopeCall::dumpWithIndent(std::ostream &os, int indent) const {
   makeIndent(os, indent);
   os << "ScopeCall: Scope and argument below\n";
@@ -60,14 +73,14 @@ void extense::ScopeCall::dumpWithIndent(std::ostream &os, int indent) const {
   argument_->dumpWithIndent(os, indent + indentAmount);
 }
 
-extense::Value extense::ScopeCall::eval(Scope &scope) {
-  auto scopeEvaluated = scope_->eval(scope);
+extense::Expr::EvalResult extense::ScopeCall::eval(Scope &scope) {
+  auto scopeEvaluated = scope_->eval(scope).value;
   if (!scopeEvaluated.is<Scope>()) {
     // TODO: Custom exception
-    throw std::runtime_error{"Cannot only call Scopes"};
+    throw std::runtime_error{"Can only call Scopes"};
   }
 
-  return get<Scope>(scopeEvaluated)(argument_->eval(scope));
+  return {true, get<Scope>(scopeEvaluated)(argument_->eval(scope).value)};
 }
 
 void extense::MapConstructor::dumpWithIndent(std::ostream &os,
@@ -88,15 +101,15 @@ void extense::MapConstructor::dumpWithIndent(std::ostream &os,
   }
 }
 
-extense::Value extense::MapConstructor::eval(Scope &scope) {
+extense::Expr::EvalResult extense::MapConstructor::eval(Scope &scope) {
   Map s;
   // TODO: Catch exception which may be thrown by constrain and throw a custom
   // one
   for (auto & [ key, value ] : mappings_) {
-    auto keyValue = key->eval(scope);
-    s[keyValue] = value->eval(scope);
+    auto keyValue = key->eval(scope).value;
+    s[keyValue] = value->eval(scope).value;
   }
-  return Value{s};
+  return {false, Value{s}};
 }
 
 void extense::ListConstructor::dumpWithIndent(std::ostream &os,
@@ -113,12 +126,12 @@ void extense::ListConstructor::dumpWithIndent(std::ostream &os,
     elem->dumpWithIndent(os, indent + indentAmount);
 }
 
-extense::Value extense::ListConstructor::eval(Scope &scope) {
+extense::Expr::EvalResult extense::ListConstructor::eval(Scope &scope) {
   List l;
   std::transform(elements_.begin(), elements_.end(),
                  std::back_inserter(l.value),
-                 [&scope](auto &expr) { return expr->eval(scope); });
-  return Value{l};
+                 [&scope](auto &expr) { return expr->eval(scope).value; });
+  return {false, Value{l}};
 }
 
 extense::ExprList::ExprList(std::vector<std::unique_ptr<Expr>> exprs)
@@ -154,7 +167,7 @@ extense::Scope extense::ExprList::toScope(Scope &outer) {
               // the last
               std::for_each(exprs_.begin(), exprs_.end() - 1,
                             [&s](auto &expr) { expr->eval(s); });
-              return exprs_.back()->eval(s);
+              return exprs_.back()->eval(s).value;
             },
             &outer};
   return out;

@@ -142,11 +142,10 @@ public:
   explicit Reference(Value &v);
   explicit Reference(FlatValue v);
 
-  FlatValue &operator*() { return *value; }
-  const FlatValue &operator*() const { return *value; }
+  FlatValue &operator*() const { return *value; }
+  FlatValue *operator->() const { return value.get(); }
 
-  FlatValue *operator->() { return value.get(); }
-  const FlatValue *operator->() const { return value.get(); }
+  FlatValue *get() const { return value.get(); }
 
   bool operator==(const Reference &other) const { return value == other.value; }
   bool operator!=(const Reference &other) const { return value != other.value; }
@@ -201,7 +200,7 @@ public:
   Value &operator=(const Value &) = default;
   Value &operator=(Value &&) = default;
 
-  std::string typeAsString() const;
+  std::string typeAsString(bool displayReference = true) const;
 
   const FlatValue &flatten() const {
     if (is<Reference>()) return *std::get<Reference>(data);
@@ -284,11 +283,11 @@ using TestInput = std::conditional_t<
     std::is_same_v<TValue, Value>,
     // If the first type is a Value the function should be
     // able to handle a None object
-    None,
+    None &,
     // Should be able to handle the first type in the
     // BasicFlatValue/ConstrainedValue
-    decltype(std::get<0>(
-        std::declval<typename detail::InternalData<TValue>::Type>()))>;
+    std::add_lvalue_reference_t<decltype(std::get<0>(
+        std::declval<typename detail::InternalData<TValue>::Type>()))>>;
 
 template <typename TValue>
 const auto &tryFlatten(const TValue &v) {
@@ -353,7 +352,7 @@ T &get(TValue &v) {
 // Creates a reference to the contained value, without making any conversions.
 inline Reference::Reference(Value &v) {
   if (v.is<Reference>()) {
-    *this = get<Reference>(v);
+    *this = extense::get<Reference>(v);
     return;
   }
 
@@ -612,7 +611,6 @@ const Value &Map::at(const VT &i) const {
 }
 
 inline Value Scope::operator()() { return (*this)(noneValue); }
-
 } // namespace extense
 
 #endif // _LIB_EXTENSE__VALUE_HPP

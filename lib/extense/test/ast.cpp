@@ -141,7 +141,8 @@ TEST_CASE("Manipulating and dumping expressions", "[Expr]") {
     ValueExpr: `v
 )");
 
-    auto mapValue = mapConstructor.eval(dummyScope);
+    auto[isMut, mapValue] = mapConstructor.eval(dummyScope);
+    REQUIRE(!isMut);
     REQUIRE(mapValue.is<Map>());
 
     auto map = get<Map>(mapValue);
@@ -168,7 +169,8 @@ TEST_CASE("Manipulating and dumping expressions", "[Expr]") {
   ValueExpr: `a
 )");
 
-    auto listValue = listConstructor.eval(dummyScope);
+    auto[isMut, listValue] = listConstructor.eval(dummyScope);
+    REQUIRE(!isMut);
     REQUIRE(listValue.is<List>());
 
     auto list = get<List>(listValue);
@@ -196,7 +198,7 @@ TEST_CASE("Manipulating and dumping expressions", "[Expr]") {
   ValueExpr: `a
 )");
 
-    auto result = exprList.eval(dummyScope);
+    auto result = constEval(dummyScope, exprList);
     REQUIRE(result.is<Scope>());
 
     auto s = get<Scope>(result);
@@ -210,7 +212,7 @@ TEST_CASE("Manipulating and dumping expressions", "[Expr]") {
     auto v1 = std::make_unique<ValueExpr>(Value{7_ei});
     UnaryOperation uop{
         ASTNodeType::Custom,
-        [](Scope &s, Expr &e) { return Value{-get<Int>(e.eval(s))}; },
+        [](Scope &s, Expr &e) { return Value{-get<Int>(constEval(s, e))}; },
         std::move(v1)};
 
     std::ostringstream dump;
@@ -220,7 +222,7 @@ TEST_CASE("Manipulating and dumping expressions", "[Expr]") {
   ValueExpr: 7
 )");
 
-    auto result = uop.eval(dummyScope);
+    auto result = constEval(dummyScope, uop);
     REQUIRE(result.is<Int>());
     REQUIRE(get<Int>(result).value == -7);
   }
@@ -230,11 +232,12 @@ TEST_CASE("Manipulating and dumping expressions", "[Expr]") {
     auto v3 = std::make_unique<ValueExpr>(Value{8_ei});
     BinaryOperation bop{ASTNodeType::Custom,
                         [](Scope &s, Expr &a, Expr &b) {
-                          return Value{get<Int>(a.eval(s)) *
-                                       get<Int>(b.eval(s))};
+                          return Value{get<Int>(constEval(s, a)) *
+                                       get<Int>(constEval(s, b))};
                         },
                         std::move(v2), std::move(v3)};
-    auto result = bop.eval(dummyScope);
+    auto[isMut, result] = bop.eval(dummyScope);
+    REQUIRE(!isMut);
     REQUIRE(result.is<Int>());
     REQUIRE(get<Int>(result).value == 32);
   }

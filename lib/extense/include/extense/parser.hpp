@@ -60,6 +60,7 @@ struct BinaryOperatorProperties {
 
 constexpr const std::array<BinaryOperatorProperties, 40> binaryOperators = {{
     // { Precedence, RightAssociative }
+    {14, false}, // CustomOperator
     {1, true}, // Assign
     {1, true}, // PlusEquals
     {1, true}, // MinusEquals
@@ -87,23 +88,23 @@ constexpr const std::array<BinaryOperatorProperties, 40> binaryOperators = {{
     {6, false}, // LessEquals
     {6, false}, // GreaterThan
     {6, false}, // GreaterEquals
-    {14, false}, // CustomOperator
     {19, false}, // Dot
     {20, false}, // ColonColon
     {7, false}, // Is
     {13, false}, // DotDot
     {20, false}, // Colon
     {14, false}, // Mul
-    {14, false}, // Div
     {14, false}, // FloorDiv
     {15, true}, // Pow
     {14, false}, // Mod
+    {14, false}, // Div
     {12, false}, // Plus
     {12, false} // Minus
 }};
 
-constexpr const std::array<int, 5> unaryOperators = {{
+constexpr const std::array<int, 6> unaryOperators = {{
     // Precedence
+    17, // IdentifierName
     17, // Plus
     17, // Minus
     4, // Not
@@ -117,7 +118,7 @@ constexpr int binaryPrecedence(ASTNodeType op) {
 
 constexpr int unaryPrecedence(ASTNodeType op) {
   return unaryOperators[static_cast<int>(op) -
-                        static_cast<int>(ASTNodeType::UnaryPlus)];
+                        static_cast<int>(ASTNodeType::IdentifierName)];
 }
 
 constexpr bool rightAssociative(ASTNodeType op) {
@@ -126,13 +127,13 @@ constexpr bool rightAssociative(ASTNodeType op) {
 
 constexpr bool isTokenTypeBinaryOperator(Token::Type type) {
   auto typeOrd = static_cast<int>(type);
-  return typeOrd >= static_cast<int>(Token::Type::Assign) &&
+  return typeOrd >= static_cast<int>(Token::Type::CustomOperator) &&
          typeOrd <= static_cast<int>(Token::Type::Minus);
 }
 
 constexpr bool isTokenTypeUnaryOperator(Token::Type type) {
   auto typeOrd = static_cast<int>(type);
-  return typeOrd >= static_cast<int>(Token::Type::Plus) &&
+  return typeOrd >= static_cast<int>(Token::Type::Div) &&
          typeOrd <= static_cast<int>(Token::Type::BitNot);
 }
 
@@ -143,9 +144,9 @@ constexpr ASTNodeType binaryOperatorFromTokenType(Token::Type t) {
 
 constexpr ASTNodeType unaryOperatorFromTokenType(Token::Type t) {
   assert(isTokenTypeUnaryOperator(t));
-  return static_cast<ASTNodeType>(static_cast<int>(t) -
-                                  static_cast<int>(Token::Type::Plus) +
-                                  static_cast<int>(ASTNodeType::UnaryPlus));
+  return static_cast<ASTNodeType>(
+      static_cast<int>(t) - static_cast<int>(Token::Type::Div) +
+      static_cast<int>(ASTNodeType::IdentifierName));
 }
 
 constexpr bool terminatesExpression(Token::Type type) {
@@ -265,6 +266,9 @@ inline std::unique_ptr<Expr> parseExpr(TokenStream &s) {
 
 // Parses the input token stream into an ExprList
 std::unique_ptr<ExprList> parse(TokenStream &s);
+
+auto unaryOperationFunc(ASTNodeType type);
+auto binaryOperationFunc(ASTNodeType type);
 } // namespace detail
 
 // Parses the input into a single Expr

@@ -35,6 +35,8 @@ SOFTWARE.
 
 namespace extense {
 #define _LIB_EXTENSE__AST_NODE_TYPE_ENUM                                       \
+  X(CustomOperator)                                                            \
+                                                                               \
   X(Assign)                                                                    \
   X(PlusEquals)                                                                \
   X(MinusEquals)                                                               \
@@ -62,20 +64,20 @@ namespace extense {
   X(LessEquals)                                                                \
   X(GreaterThan)                                                               \
   X(GreaterEquals)                                                             \
-  X(CustomOperator)                                                            \
   X(Dot)                                                                       \
   X(ColonColon)                                                                \
   X(Is)                                                                        \
   X(DotDot)                                                                    \
   X(Colon)                                                                     \
   X(Mul)                                                                       \
-  X(Div)                                                                       \
   X(FloorDiv)                                                                  \
   X(Pow)                                                                       \
   X(Mod)                                                                       \
+  X(Div)                                                                       \
   X(Plus)                                                                      \
   X(Minus)                                                                     \
                                                                                \
+  X(IdentifierName)                                                            \
   X(UnaryPlus)                                                                 \
   X(UnaryMinus)                                                                \
   X(Not)                                                                       \
@@ -101,7 +103,7 @@ std::ostream &operator<<(std::ostream &os, ASTNodeType type);
 
 constexpr bool isUnaryOperator(ASTNodeType t) {
   auto typeOrd = static_cast<int>(t);
-  return typeOrd >= static_cast<int>(ASTNodeType::UnaryPlus) &&
+  return typeOrd >= static_cast<int>(ASTNodeType::IdentifierName) &&
          typeOrd <= static_cast<int>(ASTNodeType::BitNot);
 }
 
@@ -132,9 +134,30 @@ public:
   void dump(std::ostream &os) { dumpWithIndent(os, 0); }
   virtual void dumpWithIndent(std::ostream &os, int indent) const = 0;
 
-  virtual Value eval(Scope &scope) = 0;
+  struct EvalResult {
+    bool isMutable = false;
+    Value value;
+  };
+
+  virtual EvalResult eval(Scope &scope) = 0;
+  virtual Value *tryMutableEval(Scope &) { return nullptr; }
+
   virtual ~Expr() {}
 };
+
+inline Value constEval(Scope &scope, Expr &e) { return e.eval(scope).value; }
+
+template <typename OpFunc>
+auto mutableEval(Scope &scope, Expr &a, OpFunc f) {
+  auto *lhs = a.tryMutableEval(scope);
+  if (lhs) return f(*lhs);
+
+  auto[isMutable, value] = a.eval(scope);
+  // TODO: Custom exception
+  if (!isMutable || !value.is<Reference>())
+    throw std::runtime_error{"Expected mutable expression"};
+  return f(value);
+}
 
 class ValueExpr : public Expr {
   Value value_;
@@ -148,7 +171,7 @@ public:
   const Value &value() const { return value_; }
   Value &value() { return value_; }
 
-  Value eval(Scope &) override { return value_; }
+  EvalResult eval(Scope &) override;
 };
 
 class LabelDeclaration : public Expr {
@@ -163,7 +186,7 @@ public:
   const std::string &name() const { return name_; }
   void rename(std::string name) { name_ = std::move(name); }
 
-  Value eval(Scope &) override { return noneValue; }
+  EvalResult eval(Scope &) override { return {false, noneValue}; }
 };
 
 class Identifier : public Expr {
@@ -178,8 +201,8 @@ public:
   const std::string &name() const { return name_; }
   void rename(std::string name) { name_ = std::move(name); }
 
-  // TODO when necessary infrastructure is in place
-  Value eval(Scope &) override { return noneValue; }
+  EvalResult eval(Scope &s) override;
+  Value *tryMutableEval(Scope &s) override;
 };
 
 class ScopeCall : public Expr {
@@ -194,7 +217,7 @@ public:
 
   void dumpWithIndent(std::ostream &os, int indent) const override;
 
-  Value eval(Scope &) override;
+  EvalResult eval(Scope &) override;
 };
 
 struct ParsedMapping {
@@ -211,7 +234,7 @@ public:
   void dumpWithIndent(std::ostream &os, int indent) const override;
 
   // Returns a Map created from the evaluated mappings
-  Value eval(Scope &) override;
+  EvalResult eval(Scope &) override;
 };
 
 class ListConstructor : public Expr {
@@ -224,7 +247,7 @@ public:
   void dumpWithIndent(std::ostream &os, int indent) const override;
 
   // Returns a List constructed from the evaluated elements
-  Value eval(Scope &) override;
+  EvalResult eval(Scope &) override;
 };
 
 class ExprList : public Expr {
@@ -238,7 +261,9 @@ public:
   void dumpWithIndent(std::ostream &os, int indent) const override;
 
   Scope toScope(Scope &outer);
-  Value eval(Scope &outer) override { return Value{toScope(outer)}; }
+  EvalResult eval(Scope &outer) override {
+    return {false, Value{toScope(outer)}};
+  }
 
   using const_iterator = ExprContainer::const_iterator;
 
@@ -260,7 +285,9 @@ public:
     operand_->dumpWithIndent(os, indent + indentAmount);
   }
 
-  Value eval(Scope &s) override { return operation_(s, *operand_); }
+  EvalResult eval(Scope &s) override {
+    return {true, operation_(s, *operand_)};
+  }
 
 private:
   Function *operation_;
@@ -284,12 +311,47 @@ public:
     operand2_->dumpWithIndent(os, indent + indentAmount);
   }
 
-  Value eval(Scope &s) override {
-    return operation_(s, *operand1_, *operand2_);
+  EvalResult eval(Scope &s) override {
+    return {true, operation_(s, *operand1_, *operand2_)};
   }
 
 private:
   Function *operation_;
+  std::unique_ptr<Expr> operand1_, operand2_;
+};
+
+class PossiblyMutableBinaryOperation : public Expr {
+public:
+  using Function = Value(Scope &, Expr &, Expr &);
+  using MutableFunction = Value *(Scope &, Expr &, Expr &);
+
+  explicit PossiblyMutableBinaryOperation(ASTNodeType opType,
+                                          Function *operation,
+                                          MutableFunction *mutableOperation,
+                                          std::unique_ptr<Expr> operand1,
+                                          std::unique_ptr<Expr> operand2)
+      : Expr(opType), operation_(operation),
+        mutableOperation_(mutableOperation), operand1_(std::move(operand1)),
+        operand2_(std::move(operand2)) {}
+
+  void dumpWithIndent(std::ostream &os, int indent) const override {
+    makeIndent(os, indent);
+    os << "BinaryOperation: type '" << type() << "'\n";
+    operand1_->dumpWithIndent(os, indent + indentAmount);
+    operand2_->dumpWithIndent(os, indent + indentAmount);
+  }
+
+  EvalResult eval(Scope &s) override {
+    return {true, operation_(s, *operand1_, *operand2_)};
+  }
+
+  Value *tryMutableEval(Scope &s) override {
+    return mutableOperation_(s, *operand1_, *operand2_);
+  }
+
+private:
+  Function *operation_;
+  MutableFunction *mutableOperation_;
   std::unique_ptr<Expr> operand1_, operand2_;
 };
 } // namespace extense

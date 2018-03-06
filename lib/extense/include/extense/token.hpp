@@ -35,7 +35,9 @@ SOFTWARE.
 
 #define _LIB_EXTENSE__TOKEN__TYPE_ENUM                                         \
   /****** START OF BINARY OPERATORS ******/                                    \
+  X(CustomOperator) /*   E.g. <=> or |>   */                                   \
   X(Assign) /*   =   */                                                        \
+                                                                               \
   /* Relative math Operators */                                                \
   X(PlusEquals) /*   +=   */                                                   \
   X(MinusEquals) /*   -=   */                                                  \
@@ -71,8 +73,6 @@ SOFTWARE.
   X(GreaterThan) /*   >   */                                                   \
   X(GreaterEquals) /*   >=   */                                                \
                                                                                \
-  X(CustomOperator) /*   E.g. <=> or |>   */                                   \
-                                                                               \
   X(Dot) /*   .   */                                                           \
   X(ColonColon) /*   ::   */                                                   \
                                                                                \
@@ -84,11 +84,11 @@ SOFTWARE.
                                                                                \
   /* Math operators */                                                         \
   X(Mul) /*   *   */                                                           \
-  X(Div) /*   /   */                                                           \
   X(FloorDiv) /*   //   */                                                     \
   X(Pow) /*   **   */                                                          \
   X(Mod) /*   %   */                                                           \
   /****** START OF UNARY OPERATORS ******/                                     \
+  X(Div) /*   /   */                                                           \
   X(Plus) /*   +   */                                                          \
   X(Minus) /*   -   */                                                         \
   /****** END OF BINARY OPERATORS ******/                                      \

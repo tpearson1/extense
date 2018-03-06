@@ -122,6 +122,14 @@ extense::List extense::List::operator[](const extense::List &i) const {
   return sublist;
 }
 
+extense::Value extense::List::at(const Value &i) const {
+  if (i.is<Int>())
+    return Value{at(get<Int>(i))};
+  else if (i.is<List>())
+    return Value{at(get<List>(i))};
+  throw InvalidOperation("List", i.typeAsString(), "Invalid type for indexer");
+}
+
 extense::Value extense::Scope::call(const Value &v) {
   auto result = func(*this, v);
   clearIdentifiers();

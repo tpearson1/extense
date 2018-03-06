@@ -263,6 +263,8 @@ public:
 
   List operator[](const List &i) const;
   List at(const List &i) const { return (*this)[i]; }
+
+  Value at(const Value &i) const;
 };
 
 class ExprList;

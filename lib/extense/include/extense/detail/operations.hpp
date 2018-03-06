@@ -56,6 +56,9 @@ public:
     buildWhatStr();
   }
 
+  InvalidOperation(const Value &a, const Value &b,
+                   std::string message = defaultMessage);
+
   template <typename V1, typename V2>
   static InvalidOperation Create(std::string message = defaultMessage) {
     return InvalidOperation{std::string{typeAsString<V1>},
@@ -107,6 +110,9 @@ inline Float &dec(Float &a) {
 }
 
 // + +=
+Value add(const Value &a, const Value &b);
+Value addEquals(Value &a, const Value &b);
+
 inline Int add(Int a, Int b) { return Int{a.value + b.value}; }
 inline Int &addEquals(Int &a, Int b) {
   a.value += b.value;
@@ -131,10 +137,14 @@ List add(List a, const List &b);
 List &addEquals(List &a, const List &b);
 
 // +x
+Value add(const Value &a);
 inline Int add(Int a) { return a; }
 inline Float add(Float a) { return a; }
 
 // - -=
+Value sub(const Value &a, const Value &b);
+Value subEquals(Value &a, const Value &b);
+
 inline Int sub(Int a, Int b) { return Int{a.value - b.value}; }
 inline Int &subEquals(Int &a, Int b) {
   a.value -= b.value;
@@ -148,10 +158,14 @@ inline Float &subEquals(Float &a, Float b) {
 }
 
 // Unary negation (-x)
+Value sub(const Value &a);
 inline Int sub(Int a) { return Int{-a.value}; }
 inline Float sub(Float a) { return Float{-a.value}; }
 
 // * *=
+Value mul(const Value &a, const Value &b);
+Value mulEquals(Value &a, const Value &b);
+
 inline Int mul(Int a, Int b) { return Int{a.value * b.value}; }
 inline Int &mulEquals(Int &a, Int b) {
   a.value *= b.value;
@@ -180,6 +194,9 @@ inline static void checkDivision(ValueType b) {
 } // namespace
 
 // / /=
+Value div(const Value &a, const Value &b);
+Value divEquals(Value &a, const Value &b);
+
 inline Float div(Float a, Float b) {
   checkDivision(b);
   return Float{a.value / b.value};
@@ -190,6 +207,9 @@ inline Float &divEquals(Float &a, Float b) {
 }
 
 // % %=
+Value mod(const Value &a, const Value &b);
+Value modEquals(Value &a, const Value &b);
+
 inline Int mod(Int a, Int b) {
   checkDivision(b);
   return Int{a.value % b.value};
@@ -209,6 +229,9 @@ inline Float &modEquals(Float &a, Float b) {
 }
 
 // // //=
+Value floorDiv(const Value &a, const Value &b);
+Value floorDivEquals(Value &a, const Value &b);
+
 inline Int floorDiv(Int a, Int b) {
   checkDivision(b);
   auto result = std::floor(static_cast<Float::ValueType>(a.value) /
@@ -229,6 +252,9 @@ inline Float &floorDivEquals(Float &a, Float b) {
 }
 
 // ** **=
+Value pow(const Value &a, const Value &b);
+Value powEquals(Value &a, const Value &b);
+
 Float pow(Float a, Float b);
 inline Float &powEquals(Float &a, Float b) {
   a = pow(a, b);
@@ -242,9 +268,12 @@ inline Float &powEquals(Float &a, Int b) {
 }
 
 // ..
+Value dotDot(const Value &a, const Value &b);
 List dotDot(Int a, Int b);
 
 // :
+Value index(const Value &a, const Value &b);
+
 template <typename VT1, typename VT2>
 const auto &index(const VT1 &a, const VT2 &i) {
   return a.at(i);
@@ -262,6 +291,9 @@ auto &index(VT1 &a, const VT2 &i) {
 Reference ref(Value &v);
 
 // & &=
+Value bitAnd(const Value &a, const Value &b);
+Value bitAndEquals(Value &a, const Value &b);
+
 inline Int bitAnd(Int a, Int b) { return Int{a.value & b.value}; }
 inline Int &bitAndEquals(Int &a, Int b) {
   a = bitAnd(a, b);
@@ -269,6 +301,9 @@ inline Int &bitAndEquals(Int &a, Int b) {
 }
 
 // | |=
+Value bitOr(const Value &a, const Value &b);
+Value bitOrEquals(Value &a, const Value &b);
+
 inline Int bitOr(Int a, Int b) { return Int{a.value | b.value}; }
 inline Int &bitOrEquals(Int &a, Int b) {
   a = bitOr(a, b);
@@ -276,6 +311,9 @@ inline Int &bitOrEquals(Int &a, Int b) {
 }
 
 // ^ ^=
+Value bitXor(const Value &a, const Value &b);
+Value bitXorEquals(Value &a, const Value &b);
+
 inline Int bitXor(Int a, Int b) { return Int{a.value ^ b.value}; }
 inline Int &bitXorEquals(Int &a, Int b) {
   a = bitXor(a, b);
@@ -283,9 +321,13 @@ inline Int &bitXorEquals(Int &a, Int b) {
 }
 
 // ~
+Value bitNot(const Value &a);
 inline Int bitNot(Int a) { return Int{~a.value}; }
 
 // << <<=
+Value bitLShift(const Value &a, const Value &b);
+Value bitLShiftEquals(Value &a, const Value &b);
+
 inline Int bitLShift(Int a, Int b) { return Int{a.value << b.value}; }
 inline Int &bitLShiftEquals(Int &a, Int b) {
   a = bitLShift(a, b);
@@ -293,29 +335,42 @@ inline Int &bitLShiftEquals(Int &a, Int b) {
 }
 
 // >> >>=
+Value bitRShift(const Value &a, const Value &b);
+Value bitRShiftEquals(Value &a, const Value &b);
+
 inline Int bitRShift(Int a, Int b) { return Int{a.value >> b.value}; }
 inline Int &bitRShiftEquals(Int &a, Int b) {
   a = bitRShift(a, b);
   return a;
 }
 
+// is
+Bool is(const Value &a, std::string_view type);
+
 // and
+Value logicalAnd(const Value &a, const Value &b);
 inline Bool logicalAnd(Bool a, Bool b) { return Bool{a.value && b.value}; }
 // or
+Value logicalOr(const Value &a, const Value &b);
 inline Bool logicalOr(Bool a, Bool b) { return Bool{a.value || b.value}; }
 // not
+Value logicalNot(const Value &a);
 inline Bool logicalNot(Bool a) { return Bool{!a.value}; }
 
 // <
+Value lessThan(const Value &a, const Value &b);
 inline Bool lessThan(Int a, Int b) { return Bool{a.value < b.value}; }
 inline Bool lessThan(Float a, Float b) { return Bool{a.value < b.value}; }
 // <=
+Value lessEquals(const Value &a, const Value &b);
 inline Bool lessEquals(Int a, Int b) { return Bool{a.value <= b.value}; }
 inline Bool lessEquals(Float a, Float b) { return Bool{a.value <= b.value}; }
 // >
+Value greaterThan(const Value &a, const Value &b);
 inline Bool greaterThan(Int a, Int b) { return Bool{a.value > b.value}; }
 inline Bool greaterThan(Float a, Float b) { return Bool{a.value > b.value}; }
 // >=
+Value greaterEquals(const Value &a, const Value &b);
 inline Bool greaterEquals(Int a, Int b) { return Bool{a.value >= b.value}; }
 inline Bool greaterEquals(Float a, Float b) { return Bool{a.value >= b.value}; }
 
@@ -389,6 +444,9 @@ Value bitLShiftEquals(Map &a, const Value &b);
 
 Value bitRShift(Map &a, const Value &b);
 Value bitRShiftEquals(Map &a, const Value &b);
+
+Value logicalAnd(Map &a, const Value &b);
+Value logicalOr(Map &a, const Value &b);
 
 Value lessThan(Map &a, const Value &b);
 Value lessEquals(Map &a, const Value &b);

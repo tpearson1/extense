@@ -272,6 +272,10 @@ bool extense::detail::parseBinaryOperator(TokenStream &s,
 
   auto right = parseExprHelper(s, rightAssociative(op) ? (opPrecedence - 1) :
                                                          opPrecedence);
+
+  if (op == ASTNodeType::CustomOperator) {
+    // TODO
+  }
   left = makeBinaryOperation(op, std::move(left), std::move(right));
   return true;
 }
@@ -329,19 +333,239 @@ std::unique_ptr<extense::ExprList> extense::detail::parse(TokenStream &s) {
   return std::make_unique<ExprList>(std::move(exprs));
 }
 
+auto extense::detail::unaryOperationFunc(extense::ASTNodeType type) {
+  assert(isUnaryOperator(type));
+
+  constexpr std::array<extense::UnaryOperation::Function *, 6>
+      unaryOperationFuncs = {
+          {// IdentifierName
+           [](auto &s, auto &e) {
+             // TODO: Custom exception
+             if (e.type() != ASTNodeType::Identifier)
+               throw std::runtime_error{"Expected identifier after '/'"};
+             return Value{String{static_cast<const Identifier &>(e).name()}};
+           },
+           // UnaryPlus
+           [](auto &s, auto &e) { return ops::add(constEval(s, e)); },
+           // UnaryMinus
+           [](auto &s, auto &e) { return ops::sub(constEval(s, e)); },
+           // LogicalNot
+           [](auto &s, auto &e) { return ops::logicalNot(constEval(s, e)); },
+           // Exclamation
+           [](auto &s, auto &e) {
+             return mutableEval(
+                 s, e, [](auto &mutE) { return Value{ops::ref(mutE)}; });
+           },
+           // BitNot
+           [](auto &s, auto &e) { return ops::bitNot(constEval(s, e)); }}};
+
+  auto index = static_cast<int>(type) -
+               static_cast<int>(extense::ASTNodeType::IdentifierName);
+  return unaryOperationFuncs[index];
+}
+
+auto extense::detail::binaryOperationFunc(ASTNodeType type) {
+  assert(isBinaryOperator(type));
+
+  constexpr std::array<BinaryOperation::Function *, 38> binaryOperationFuncs = {
+      {// Assign
+       [](auto &s, auto &a, auto &b) {
+         return mutableEval(s, a, [&s, &b](Value &mutA) {
+           Value rhs = constEval(s, b);
+           if (mutA.is<Reference>() && !rhs.is<Reference>())
+             *get<Reference>(mutA) = rhs.flatten();
+           else
+             mutA = rhs;
+           return noneValue;
+         });
+       },
+       // PlusEquals
+       [](auto &s, auto &a, auto &b) {
+         return mutableEval(s, a, [&s, &b](auto &mutA) {
+           return ops::addEquals(mutA, constEval(s, b));
+         });
+       },
+       // MinusEquals
+       [](auto &s, auto &a, auto &b) {
+         return mutableEval(s, a, [&s, &b](auto &mutA) {
+           return ops::subEquals(mutA, constEval(s, b));
+         });
+       },
+       // MulEquals
+       [](auto &s, auto &a, auto &b) {
+         return mutableEval(s, a, [&s, &b](auto &mutA) {
+           return ops::mulEquals(mutA, constEval(s, b));
+         });
+       },
+       // DivEquals
+       [](auto &s, auto &a, auto &b) {
+         return mutableEval(s, a, [&s, &b](auto &mutA) {
+           return ops::divEquals(mutA, constEval(s, b));
+         });
+       },
+       // FloorDivEquals
+       [](auto &s, auto &a, auto &b) {
+         return mutableEval(s, a, [&s, &b](auto &mutA) {
+           return ops::floorDivEquals(mutA, constEval(s, b));
+         });
+       },
+       // PowEquals
+       [](auto &s, auto &a, auto &b) {
+         return mutableEval(s, a, [&s, &b](auto &mutA) {
+           return ops::powEquals(mutA, constEval(s, b));
+         });
+       },
+       // ModEquals
+       [](auto &s, auto &a, auto &b) {
+         return mutableEval(s, a, [&s, &b](auto &mutA) {
+           return ops::modEquals(mutA, constEval(s, b));
+         });
+       },
+       // BitAndEquals
+       [](auto &s, auto &a, auto &b) {
+         return mutableEval(s, a, [&s, &b](auto &mutA) {
+           return ops::bitAndEquals(mutA, constEval(s, b));
+         });
+       },
+       // BitOrEquals
+       [](auto &s, auto &a, auto &b) {
+         return mutableEval(s, a, [&s, &b](auto &mutA) {
+           return ops::bitOrEquals(mutA, constEval(s, b));
+         });
+       },
+       // BitXorEquals
+       [](auto &s, auto &a, auto &b) {
+         return mutableEval(s, a, [&s, &b](auto &mutA) {
+           return ops::bitXorEquals(mutA, constEval(s, b));
+         });
+       },
+       // BitLShiftEquals
+       [](auto &s, auto &a, auto &b) {
+         return mutableEval(s, a, [&s, &b](auto &mutA) {
+           return ops::bitLShiftEquals(mutA, constEval(s, b));
+         });
+       },
+       // BitRShiftEquals
+       [](auto &s, auto &a, auto &b) {
+         return mutableEval(s, a, [&s, &b](auto &mutA) {
+           return ops::bitRShiftEquals(mutA, constEval(s, b));
+         });
+       },
+
+       // BitAnd
+       [](auto &s, auto &a, auto &b) {
+         return ops::bitAnd(constEval(s, a), constEval(s, b));
+       },
+       // BitOr
+       [](auto &s, auto &a, auto &b) {
+         return ops::bitOr(constEval(s, a), constEval(s, b));
+       },
+       // BitXor
+       [](auto &s, auto &a, auto &b) {
+         return ops::bitXor(constEval(s, a), constEval(s, b));
+       },
+       // BitLShift
+       [](auto &s, auto &a, auto &b) {
+         return ops::bitLShift(constEval(s, a), constEval(s, b));
+       },
+       // BitRShift
+       [](auto &s, auto &a, auto &b) {
+         return ops::bitRShift(constEval(s, a), constEval(s, b));
+       },
+       // And
+       [](auto &s, auto &a, auto &b) {
+         return ops::logicalAnd(constEval(s, a), constEval(s, b));
+       },
+       // Or
+       [](auto &s, auto &a, auto &b) {
+         return ops::logicalOr(constEval(s, a), constEval(s, b));
+       },
+       // Equals
+       [](auto &s, auto &a, auto &b) {
+         return Value{ops::equal(constEval(s, a), constEval(s, b))};
+       },
+       // NotEquals
+       [](auto &s, auto &a, auto &b) {
+         return Value{ops::notEqual(constEval(s, a), constEval(s, b))};
+       },
+       // LessThan
+       [](auto &s, auto &a, auto &b) {
+         return ops::lessThan(constEval(s, a), constEval(s, b));
+       },
+       // LessEquals
+       [](auto &s, auto &a, auto &b) {
+         return ops::lessEquals(constEval(s, a), constEval(s, b));
+       },
+       // GreaterThan
+       [](auto &s, auto &a, auto &b) {
+         return ops::greaterThan(constEval(s, a), constEval(s, b));
+       },
+       // GreaterEquals
+       [](auto &s, auto &a, auto &b) {
+         return ops::greaterEquals(constEval(s, a), constEval(s, b));
+       },
+
+       // TODO
+       [](auto &, auto &, auto &) { return noneValue; }, // Dot
+       [](auto &, auto &, auto &) { return noneValue; }, // ColonColon
+
+       // Is
+       [](auto &s, auto &a, auto &t) {
+         Value tStr = constEval(s, t);
+         // TODO: Custom exception
+         if (!tStr.is<String>())
+           throw std::runtime_error{"Invalid type string for 'is'"};
+         return Value{ops::is(constEval(s, a), get<String>(tStr).value)};
+       },
+       // DotDot
+       [](auto &s, auto &a, auto &b) {
+         return ops::dotDot(constEval(s, a), constEval(s, b));
+       },
+       // Colon
+       [](auto &s, auto &a, auto &b) {
+         return ops::index(constEval(s, a), constEval(s, b));
+       },
+       // Mul
+       [](auto &s, auto &a, auto &b) {
+         return ops::mul(constEval(s, a), constEval(s, b));
+       },
+       // Div
+       [](auto &s, auto &a, auto &b) {
+         return ops::div(constEval(s, a), constEval(s, b));
+       },
+       // FloorDiv
+       [](auto &s, auto &a, auto &b) {
+         return ops::floorDiv(constEval(s, a), constEval(s, b));
+       },
+       // Pow
+       [](auto &s, auto &a, auto &b) {
+         return ops::pow(constEval(s, a), constEval(s, b));
+       },
+       // Mod
+       [](auto &s, auto &a, auto &b) {
+         return ops::mod(constEval(s, a), constEval(s, b));
+       },
+       // Plus
+       [](auto &s, auto &a, auto &b) {
+         return ops::add(constEval(s, a), constEval(s, b));
+       },
+       // Minus
+       [](auto &s, auto &a, auto &b) {
+         return ops::sub(constEval(s, a), constEval(s, b));
+       }}};
+  return binaryOperationFuncs[static_cast<int>(type) - 1];
+}
+
 std::unique_ptr<extense::UnaryOperation>
 extense::detail::makeUnaryOperation(ASTNodeType op,
                                     std::unique_ptr<Expr> operand) {
-  // TODO: Operation functions
-  return std::make_unique<UnaryOperation>(
-      op, [](auto &, auto &) { return noneValue; }, std::move(operand));
+  return std::make_unique<UnaryOperation>(op, unaryOperationFunc(op),
+                                          std::move(operand));
 }
 
 std::unique_ptr<extense::BinaryOperation>
 extense::detail::makeBinaryOperation(ASTNodeType op, std::unique_ptr<Expr> left,
                                      std::unique_ptr<Expr> right) {
-  // TODO: Operation functions
-  return std::make_unique<BinaryOperation>(
-      op, [](auto &, auto &, auto &) { return noneValue; }, std::move(left),
-      std::move(right));
+  return std::make_unique<BinaryOperation>(op, binaryOperationFunc(op),
+                                           std::move(left), std::move(right));
 }
