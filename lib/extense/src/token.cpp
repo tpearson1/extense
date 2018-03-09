@@ -31,6 +31,7 @@ SOFTWARE.
 #include <cmath>
 #include <ostream>
 #include <sstream>
+#include <unordered_map>
 
 #include <extense/token.hpp>
 
@@ -507,6 +508,7 @@ static bool lexTextualToken(std::string_view text, extense::Token &out) {
   MATCH_TOKEN("None", None);
   return false;
 }
+#undef MATCH_TOKEN
 
 bool extense::detail::lexIdentifier(Source &source, Token &out) {
   if (source.currentChar().get() == '$') {
@@ -537,15 +539,87 @@ bool extense::detail::lexIdentifier(Source &source, Token &out) {
   return true;
 }
 
-bool extense::detail::lexOperator(Source &source, Token &out) {
-  constexpr const std::array permittedOpChars{'&', '|', '~', '^', '<', '>',
-                                              '?', '+', '-', '*', '/', '%',
-                                              '!', ':', '.', '='};
+static bool lexBuiltinOperatorFromText(std::string_view text,
+                                       extense::Token &out) {
+  using extense::Token;
+  std::unordered_map<std::string_view, Token::Type> operators = {{
+      // Miscellaneous operators
+      {"=", Token::Type::Assign},
+      {".", Token::Type::Dot},
+      {"..", Token::Type::DotDot},
+      {";", Token::Type::Semicolon},
+      {":", Token::Type::Colon},
+      {";;", Token::Type::SemicolonSemicolon},
+      {"::", Token::Type::ColonColon},
+      {"->", Token::Type::MapsTo},
+      {"!", Token::Type::Exclamation},
 
+      // Comparison operators
+      {"==", Token::Type::Equals},
+      {"!=", Token::Type::NotEquals},
+      {"<=", Token::Type::LessEquals},
+      {">=", Token::Type::GreaterEquals},
+      {"<", Token::Type::LessThan},
+      {">", Token::Type::GreaterThan},
+
+      // Mathematical operators
+      {"+", Token::Type::Plus},
+      {"-", Token::Type::Minus},
+      {"*", Token::Type::Mul},
+      {"**", Token::Type::Pow},
+      {"/", Token::Type::Div},
+      {"//", Token::Type::FloorDiv},
+      {"%", Token::Type::Mod},
+
+      {"+=", Token::Type::PlusEquals},
+      {"-=", Token::Type::MinusEquals},
+      {"*=", Token::Type::MulEquals},
+      {"**=", Token::Type::PowEquals},
+      {"/=", Token::Type::DivEquals},
+      {"//=", Token::Type::FloorDivEquals},
+      {"%=", Token::Type::ModEquals},
+
+      // Bitwise operators
+      {"&", Token::Type::BitAnd},
+      {"|", Token::Type::BitOr},
+      {"^", Token::Type::BitXor},
+      {"~", Token::Type::BitNot},
+      {">>", Token::Type::BitRShift},
+      {"<<", Token::Type::BitLShift},
+
+      {"&=", Token::Type::BitAndEquals},
+      {"|=", Token::Type::BitOrEquals},
+      {"^=", Token::Type::BitXorEquals},
+      {"<<=", Token::Type::BitLShiftEquals},
+      {">>=", Token::Type::BitRShiftEquals},
+  }};
+
+  auto typeIt = operators.find(text);
+  if (typeIt != operators.end()) {
+    out.setType(typeIt->second);
+    return true;
+  }
+
+  return false;
+}
+
+static void lexOperatorFromText(std::string_view text, extense::Token &out) {
+  if (lexBuiltinOperatorFromText(text, out)) return;
+  out.setType(extense::Token::Type::CustomOperator);
+}
+
+bool extense::detail::lexOperator(Source &source, Token &out) {
+  constexpr const std::array<char, 17> permittedOpChars{
+      {'&', '|', '~', '^', '<', '>', '?', '+', '-', '*', '/', '%', '!', ':',
+       ';', '.', '='}};
+
+  int firstDivCharIndex = -1;
   auto isNotValidOpChar = [&](char c) {
     return std::none_of(std::begin(permittedOpChars),
-                        std::end(permittedOpChars),
-                        [=](char c2) { return c2 == c; });
+                        std::end(permittedOpChars), [&](char c2) {
+                          if (c2 == '/') firstDivCharIndex = source.index();
+                          return c2 == c;
+                        });
   };
 
   auto begin = source.index();
@@ -553,60 +627,9 @@ bool extense::detail::lexOperator(Source &source, Token &out) {
   if (begin == source.index()) return false;
 
   auto text = source.getSlice(begin, source.index());
-
-  // Miscellaneous operators
-  MATCH_TOKEN("=", Assign)
-  MATCH_TOKEN(".", Dot)
-  MATCH_TOKEN("..", DotDot)
-  MATCH_TOKEN(":", Colon)
-  MATCH_TOKEN("::", ColonColon)
-  MATCH_TOKEN("->", MapsTo)
-  MATCH_TOKEN("!", Exclamation)
-
-  // Comparison operators
-  MATCH_TOKEN("==", Equals)
-  MATCH_TOKEN("!=", NotEquals)
-  MATCH_TOKEN("<=", LessEquals)
-  MATCH_TOKEN(">=", GreaterEquals)
-  MATCH_TOKEN("<", LessThan)
-  MATCH_TOKEN(">", GreaterThan)
-
-  // Mathematical operators
-  MATCH_TOKEN("+", Plus)
-  MATCH_TOKEN("-", Minus)
-  MATCH_TOKEN("*", Mul)
-  MATCH_TOKEN("**", Pow)
-  MATCH_TOKEN("/", Div)
-  MATCH_TOKEN("//", FloorDiv)
-  MATCH_TOKEN("%", Mod)
-
-  MATCH_TOKEN("+=", PlusEquals)
-  MATCH_TOKEN("-=", MinusEquals)
-  MATCH_TOKEN("*=", MulEquals)
-  MATCH_TOKEN("**=", PowEquals)
-  MATCH_TOKEN("/=", DivEquals)
-  MATCH_TOKEN("//=", FloorDivEquals)
-  MATCH_TOKEN("%=", ModEquals)
-
-  // Bitwise operators
-  MATCH_TOKEN("&", BitAnd)
-  MATCH_TOKEN("|", BitOr)
-  MATCH_TOKEN("^", BitXor)
-  MATCH_TOKEN("~", BitNot)
-  MATCH_TOKEN(">>", BitRShift)
-  MATCH_TOKEN("<<", BitLShift)
-
-  MATCH_TOKEN("&=", BitAndEquals)
-  MATCH_TOKEN("|=", BitOrEquals)
-  MATCH_TOKEN("^=", BitXorEquals)
-  MATCH_TOKEN("<<=", BitLShiftEquals)
-  MATCH_TOKEN(">>=", BitRShiftEquals)
-
-  // Is otherwise considered to be a custom operator
-  out.setType(Token::Type::CustomOperator);
+  lexOperatorFromText(text, out);
   return true;
 }
-#undef SINGLE_CHAR_TOKEN
 
 static constexpr std::array tokenTypeEnumStrings{
 #define X(a) #a,

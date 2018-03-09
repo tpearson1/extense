@@ -65,9 +65,11 @@ namespace extense {
   X(GreaterThan)                                                               \
   X(GreaterEquals)                                                             \
   X(Dot)                                                                       \
+  X(SemicolonSemicolon)                                                        \
   X(ColonColon)                                                                \
   X(Is)                                                                        \
   X(DotDot)                                                                    \
+  X(Semicolon)                                                                 \
   X(Colon)                                                                     \
   X(Mul)                                                                       \
   X(FloorDiv)                                                                  \

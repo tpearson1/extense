@@ -331,18 +331,20 @@ std::unique_ptr<extense::ExprList> extense::detail::parse(TokenStream &s) {
   return std::make_unique<ExprList>(std::move(exprs));
 }
 
+static extense::String getIdentifierName(extense::Expr &e) {
+  // TODO: Custom exception
+  if (e.type() != extense::ASTNodeType::Identifier)
+    throw std::runtime_error{"Expected identifier after '/'"};
+  return extense::String{static_cast<const extense::Identifier &>(e).name()};
+}
+
 auto extense::detail::unaryOperationFunc(extense::ASTNodeType type) {
   assert(isUnaryOperator(type));
 
   constexpr std::array<extense::UnaryOperation::Function *, 6>
       unaryOperationFuncs = {
           {// IdentifierName
-           [](auto &s, auto &e) {
-             // TODO: Custom exception
-             if (e.type() != ASTNodeType::Identifier)
-               throw std::runtime_error{"Expected identifier after '/'"};
-             return Value{String{static_cast<const Identifier &>(e).name()}};
-           },
+           [](auto &, auto &e) { return Value{getIdentifierName(e)}; },
            // UnaryPlus
            [](auto &s, auto &e) { return ops::add(constEval(s, e)); },
            // UnaryMinus
@@ -365,7 +367,7 @@ auto extense::detail::unaryOperationFunc(extense::ASTNodeType type) {
 auto extense::detail::binaryOperationFunc(ASTNodeType type) {
   assert(isBinaryOperator(type));
 
-  constexpr std::array<BinaryOperation::Function *, 38> binaryOperationFuncs = {
+  constexpr std::array<BinaryOperation::Function *, 40> binaryOperationFuncs = {
       {// Assign
        [](auto &s, auto &a, auto &b) {
          return mutableEval(s, a, [&s, &b](Value &mutA) {
@@ -505,6 +507,7 @@ auto extense::detail::binaryOperationFunc(ASTNodeType type) {
 
        // TODO
        [](auto &, auto &, auto &) { return noneValue; }, // Dot
+       [](auto &, auto &, auto &) { return noneValue; }, // SemicolonSemicolon
        [](auto &, auto &, auto &) { return noneValue; }, // ColonColon
 
        // Is
@@ -518,6 +521,10 @@ auto extense::detail::binaryOperationFunc(ASTNodeType type) {
        // DotDot
        [](auto &s, auto &a, auto &b) {
          return ops::dotDot(constEval(s, a), constEval(s, b));
+       },
+       // Semicolon
+       [](auto &s, auto &a, auto &b) {
+         return ops::index(constEval(s, a), Value{getIdentifierName(b)});
        },
        // Colon
        [](auto &s, auto &a, auto &b) {
@@ -571,6 +578,18 @@ bool extense::detail::parseSpecialBinaryOperator(ASTNodeType op,
           auto iEvaled = constEval(s, i);
           return mutableEval(s, a, [&iEvaled](auto &aEvaled) {
             return &ops::mutableIndex(aEvaled, iEvaled);
+          });
+        },
+        std::move(left), std::move(right));
+    return true;
+  }
+
+  if (op == ASTNodeType::Semicolon) {
+    left = std::make_unique<MutableBinaryOperation>(
+        op, binaryOperationFunc(op),
+        [](auto &s, auto &a, auto &i) {
+          return mutableEval(s, a, [&](auto &aEvaled) {
+            return &ops::mutableIndex(aEvaled, Value{getIdentifierName(i)});
           });
         },
         std::move(left), std::move(right));

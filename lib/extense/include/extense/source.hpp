@@ -246,6 +246,8 @@ public:
     return {&data[idx], 1};
   }
 };
+
+void seek(Source &s, int index);
 } // namespace extense
 
 std::ostream &operator<<(std::ostream &, extense::Source::Char);

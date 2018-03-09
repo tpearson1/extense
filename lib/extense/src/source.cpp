@@ -96,6 +96,14 @@ extense::Source::Char extense::Source::peekPreviousChar() {
   return Char{data[idx - 1]};
 }
 
+void extense::seek(Source &s, int index) {
+  if (s.index() > index) {
+    while (index != s.index()) s.nextChar();
+  } else if (s.index() < index) {
+    while (index != s.index()) s.backChar();
+  }
+}
+
 std::ostream &operator<<(std::ostream &os,
                          const extense::Source::Location &loc) {
   os << loc.lineNumber() << ':' << loc.linePosition();

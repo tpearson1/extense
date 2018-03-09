@@ -74,12 +74,14 @@ SOFTWARE.
   X(GreaterEquals) /*   >=   */                                                \
                                                                                \
   X(Dot) /*   .   */                                                           \
+  X(SemicolonSemicolon) /*   ;;   */                                           \
   X(ColonColon) /*   ::   */                                                   \
                                                                                \
   /* Querying the type of a variable */                                        \
   X(Is) /*   is   */                                                           \
                                                                                \
   X(DotDot) /*   ..   */                                                       \
+  X(Semicolon) /*   ;   */                                                     \
   X(Colon) /*   :   */                                                         \
                                                                                \
   /* Math operators */                                                         \
