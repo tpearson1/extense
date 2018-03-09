@@ -201,3 +201,11 @@ extense::Expr::EvalResult extense::CustomOperation::eval(Scope &s) {
   return {true, get<Scope>(opFuncVal)(constEval(s, *operand1_),
                                       constEval(s, *operand2_))};
 }
+
+void extense::MutableBinaryOperation::dumpWithIndent(std::ostream &os,
+                                                     int indent) const {
+  makeIndent(os, indent);
+  os << "MutableBinaryOperation: type '" << type() << "'\n";
+  leftOperand().dumpWithIndent(os, indent + indentAmount);
+  rightOperand().dumpWithIndent(os, indent + indentAmount);
+}

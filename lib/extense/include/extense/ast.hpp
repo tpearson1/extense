@@ -285,6 +285,9 @@ public:
     return {true, operation_(s, *operand_)};
   }
 
+  const Expr &operand() const { return *operand_; }
+  Expr &operand() { return *operand_; }
+
 private:
   Function *operation_;
   std::unique_ptr<Expr> operand_;
@@ -305,6 +308,12 @@ public:
   EvalResult eval(Scope &s) override {
     return {true, operation_(s, *operand1_, *operand2_)};
   }
+
+  const Expr &leftOperand() const { return *operand1_; }
+  Expr &leftOperand() { return *operand1_; }
+
+  const Expr &rightOperand() const { return *operand2_; }
+  Expr &rightOperand() { return *operand2_; }
 
 private:
   Function *operation_;
@@ -330,39 +339,26 @@ private:
   std::unique_ptr<Expr> operand1_, operand2_;
 };
 
-class PossiblyMutableBinaryOperation : public Expr {
+class MutableBinaryOperation : public BinaryOperation {
 public:
-  using Function = Value(Scope &, Expr &, Expr &);
   using MutableFunction = Value *(Scope &, Expr &, Expr &);
 
-  explicit PossiblyMutableBinaryOperation(ASTNodeType opType,
-                                          Function *operation,
-                                          MutableFunction *mutableOperation,
-                                          std::unique_ptr<Expr> operand1,
-                                          std::unique_ptr<Expr> operand2)
-      : Expr(opType), operation_(operation),
-        mutableOperation_(mutableOperation), operand1_(std::move(operand1)),
-        operand2_(std::move(operand2)) {}
+  explicit MutableBinaryOperation(ASTNodeType opType, Function *operation,
+                                  MutableFunction *mutableOperation,
+                                  std::unique_ptr<Expr> operand1,
+                                  std::unique_ptr<Expr> operand2)
+      : BinaryOperation(opType, operation, std::move(operand1),
+                        std::move(operand2)),
+        mutableOperation_(mutableOperation) {}
 
-  void dumpWithIndent(std::ostream &os, int indent) const override {
-    makeIndent(os, indent);
-    os << "BinaryOperation: type '" << type() << "'\n";
-    operand1_->dumpWithIndent(os, indent + indentAmount);
-    operand2_->dumpWithIndent(os, indent + indentAmount);
-  }
-
-  EvalResult eval(Scope &s) override {
-    return {true, operation_(s, *operand1_, *operand2_)};
-  }
+  void dumpWithIndent(std::ostream &os, int indent) const override;
 
   Value *tryMutableEval(Scope &s) override {
-    return mutableOperation_(s, *operand1_, *operand2_);
+    return mutableOperation_(s, leftOperand(), rightOperand());
   }
 
 private:
-  Function *operation_;
   MutableFunction *mutableOperation_;
-  std::unique_ptr<Expr> operand1_, operand2_;
 };
 } // namespace extense
 

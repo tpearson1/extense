@@ -193,6 +193,19 @@ Value index(const Value &a, const Value &b) {
   throw InvalidOperation(a, b, "Unable to index type");
 }
 
+Value &mutableIndex(Value &a, const Value &b) {
+  if (a.is<Map>()) return get<Map>(a)[b];
+
+  if (!a.is<List>()) throw InvalidOperation(a, b, "Unable to index type");
+
+  if (b.is<List>())
+    throw InvalidOperation("List", "List", "Unable to mutate sub-list");
+  if (!b.is<Int>())
+    throw InvalidOperation("List", b.typeAsString(), "Unable to index type");
+
+  return get<List>(a)[get<Int>(b)];
+}
+
 Reference ref(Value &v) { return Reference{v}; }
 
 OP_VISITOR(bitAnd)

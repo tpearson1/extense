@@ -252,6 +252,10 @@ std::unique_ptr<Expr> parsePrefix(TokenStream &s);
 bool parseBinaryOperator(TokenStream &s, std::unique_ptr<Expr> &left, int prec);
 bool parseScopeCall(TokenStream &s, std::unique_ptr<Expr> &left, int prec);
 
+bool parseSpecialBinaryOperator(ASTNodeType op, std::string_view opText,
+                                std::unique_ptr<Expr> &left,
+                                std::unique_ptr<Expr> &right);
+
 std::unique_ptr<UnaryOperation>
 makeUnaryOperation(ASTNodeType op, std::unique_ptr<Expr> operand);
 

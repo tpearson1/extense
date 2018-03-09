@@ -273,12 +273,7 @@ bool extense::detail::parseBinaryOperator(TokenStream &s,
   auto right = parseExprHelper(s, rightAssociative(op) ? (opPrecedence - 1) :
                                                          opPrecedence);
 
-  if (op == ASTNodeType::CustomOperator) {
-    auto opText = opToken.text();
-    left = std::make_unique<CustomOperation>(std::string(opText),
-                                             std::move(left), std::move(right));
-    return true;
-  }
+  if (parseSpecialBinaryOperator(op, opToken.text(), left, right)) return true;
 
   left = makeBinaryOperation(op, std::move(left), std::move(right));
   return true;
@@ -329,9 +324,8 @@ std::unique_ptr<extense::ExprList> extense::detail::parse(TokenStream &s) {
 
   // On failure we do not need to reset the TokenStream's index as a
   // TokenStream will have been created just for this function
-  if (s.current() && s.current()->type() == Token::Type::EndSource) {
+  if (s.current() && s.current()->type() == Token::Type::EndSource)
     throw ParseError{*s.current(), "Unable to parse the entire input"};
-  }
 
   // Success
   return std::make_unique<ExprList>(std::move(exprs));
@@ -558,6 +552,32 @@ auto extense::detail::binaryOperationFunc(ASTNodeType type) {
          return ops::sub(constEval(s, a), constEval(s, b));
        }}};
   return binaryOperationFuncs[static_cast<int>(type) - 1];
+}
+
+bool extense::detail::parseSpecialBinaryOperator(ASTNodeType op,
+                                                 std::string_view opText,
+                                                 std::unique_ptr<Expr> &left,
+                                                 std::unique_ptr<Expr> &right) {
+  if (op == ASTNodeType::CustomOperator) {
+    left = std::make_unique<CustomOperation>(std::string(opText),
+                                             std::move(left), std::move(right));
+    return true;
+  }
+
+  if (op == ASTNodeType::Colon) {
+    left = std::make_unique<MutableBinaryOperation>(
+        op, binaryOperationFunc(op),
+        [](auto &s, auto &a, auto &i) {
+          auto iEvaled = constEval(s, i);
+          return mutableEval(s, a, [&iEvaled](auto &aEvaled) {
+            return &ops::mutableIndex(aEvaled, iEvaled);
+          });
+        },
+        std::move(left), std::move(right));
+    return true;
+  }
+
+  return false;
 }
 
 std::unique_ptr<extense::UnaryOperation>
