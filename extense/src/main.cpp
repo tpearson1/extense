@@ -52,10 +52,19 @@ SOFTWARE.
 //   std::cout << '\n';
 // }
 
-int main(int /*argc*/, const char * /*argv*/ []) {
+int main(int argc, const char *argv[]) {
   std::cout << "Extense version " << extense::version << "\n\n";
 
-  std::ifstream file{"language.xts"};
+  if (argc != 2) {
+    std::cerr << "Expected input file\n";
+    return 1;
+  }
+
+  std::ifstream file{argv[1]};
+  if (!file.good()) {
+    std::cerr << "Could not find input file\n";
+    return 1;
+  }
   std::stringstream buffer;
   buffer << file.rdbuf();
   auto source = buffer.str();
@@ -74,13 +83,14 @@ int main(int /*argc*/, const char * /*argv*/ []) {
     return 1;
   }
 
-  // Not yet ready for evaluating
-  // extense::Scope dummy{[](auto, auto) { return extense::noneValue; }};
-  // std::cout << expr->eval(dummy) << '\n';
-
   std::cout << "Parse tree:\n"
                "-----------\n\n";
   expr->dump(std::cout);
+
+  extense::Scope global{[](auto &, auto &) { return extense::noneValue; }};
+  auto evaluated = extense::constEval(global, *expr);
+  auto &s = extense::get<extense::Scope>(evaluated);
+  std::cout << s() << '\n';
 
   return 0;
 }
