@@ -202,8 +202,8 @@ using TokenStream = ObjectStream<Token>;
 bool parseLiteral(TokenStream &s, std::unique_ptr<Expr> &out);
 
 template <typename VT, typename TData, extense::Token::Type type>
-static bool parseLiteralHelper(extense::detail::TokenStream &s,
-                               std::unique_ptr<extense::Expr> &out) {
+bool parseLiteralHelper(extense::detail::TokenStream &s,
+                        std::unique_ptr<extense::Expr> &out) {
   if (s.current()->type() != type) return false;
   out = std::make_unique<extense::ValueExpr>(
       extense::Value{VT{std::get<TData>(s.current()->data())}});
@@ -213,19 +213,19 @@ static bool parseLiteralHelper(extense::detail::TokenStream &s,
 
 bool parseNone(TokenStream &s, std::unique_ptr<Expr> &out);
 
-bool parseInt(TokenStream &s, std::unique_ptr<Expr> &out) {
+inline bool parseInt(TokenStream &s, std::unique_ptr<Expr> &out) {
   return parseLiteralHelper<Int, std::int64_t, Token::Type::Integer>(s, out);
 }
-bool parseFloat(TokenStream &s, std::unique_ptr<Expr> &out) {
+inline bool parseFloat(TokenStream &s, std::unique_ptr<Expr> &out) {
   return parseLiteralHelper<Float, double, Token::Type::Float>(s, out);
 }
-bool parseBool(TokenStream &s, std::unique_ptr<Expr> &out) {
+inline bool parseBool(TokenStream &s, std::unique_ptr<Expr> &out) {
   return parseLiteralHelper<Bool, bool, Token::Type::Bool>(s, out);
 }
-bool parseChar(TokenStream &s, std::unique_ptr<Expr> &out) {
+inline bool parseChar(TokenStream &s, std::unique_ptr<Expr> &out) {
   return parseLiteralHelper<Char, char, Token::Type::Character>(s, out);
 }
-bool parseString(TokenStream &s, std::unique_ptr<Expr> &out) {
+inline bool parseString(TokenStream &s, std::unique_ptr<Expr> &out) {
   return parseLiteralHelper<String, std::string, Token::Type::String>(s, out);
 }
 
@@ -275,6 +275,8 @@ std::unique_ptr<ExprList> parse(TokenStream &s);
 
 auto unaryOperationFunc(ASTNodeType type);
 auto binaryOperationFunc(ASTNodeType type);
+
+String getIdentifierName(Expr &e);
 } // namespace detail
 
 // Parses the input into a single Expr

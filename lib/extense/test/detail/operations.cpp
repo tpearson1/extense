@@ -359,11 +359,7 @@ TEST_CASE("Operators with Values", "[extense::ops]") {
   REQUIRE(get<Float>(sum).value == Approx(10.2));
 
   auto a = Value{3_ei};
-  auto b = ops::addEquals(a, Value{4_ei});
+  ops::addEquals(a, Value{2_ei});
   REQUIRE(a.is<Int>());
-  REQUIRE(get<Int>(a).value == 7);
-  REQUIRE(b.is<Int>());
-  REQUIRE(get<Int>(b).value == 7);
-  get<Int>(b).value = 5;
   REQUIRE(get<Int>(a).value == 5);
 }

@@ -26,6 +26,8 @@ SOFTWARE.
 
 #include <extense/ast.hpp>
 
+#include <extense/parser.hpp>
+
 static constexpr std::array astNodeEnumStrings{
 #define X(a) #a,
     _LIB_EXTENSE__AST_NODE_TYPE_ENUM
@@ -73,14 +75,53 @@ void extense::ScopeCall::dumpWithIndent(std::ostream &os, int indent) const {
   argument_->dumpWithIndent(os, indent + indentAmount);
 }
 
-extense::Expr::EvalResult extense::ScopeCall::eval(Scope &scope) {
-  auto scopeEvaluated = scope_->eval(scope).value;
-  if (!scopeEvaluated.is<Scope>()) {
+// Used for building an argument from a call using operators such as '.' and
+// '::'. Below are examples of how the function behaves.
+//
+// lhs.x rhs -> x (buildArgumentsForScopeCall (lhs, rhs))
+// 7.x 2 -> x (7, 2)
+// 5.y (2, 3) -> x (5, 2, 3)
+extense::Value extense::detail::buildArgumentsForScopeCall(const Value &lhs,
+                                                           const Value &rhs) {
+  if (rhs.is<List>()) return Value{List{lhs} + get<List>(rhs)};
+  return Value{List{lhs, rhs}};
+}
+
+static extense::Scope &getScopeForCall(extense::Value &scope) {
+  if (!scope.is<extense::Scope>()) {
     // TODO: Custom exception
     throw std::runtime_error{"Can only call Scopes"};
   }
 
-  return {true, get<Scope>(scopeEvaluated)(argument_->eval(scope).value)};
+  return extense::get<extense::Scope>(scope);
+}
+
+extense::Expr::EvalResult extense::ScopeCall::eval(Scope &scope) {
+  auto argEvaled = argument_->eval(scope).value;
+
+  // Handle special cases
+  if (scope_->type() == ASTNodeType::Dot) {
+    auto &dotOpExpr = *static_cast<BinaryOperation *>(scope_.get());
+    auto lhs = constEval(scope, dotOpExpr.leftOperand());
+    auto &toCallExpr = dotOpExpr.rightOperand();
+    auto toCallValue = constEval(scope, toCallExpr);
+    auto &toCall = getScopeForCall(toCallValue);
+    return {true, toCall(detail::buildArgumentsForScopeCall(lhs, argEvaled))};
+  }
+  if (scope_->type() == ASTNodeType::ColonColon ||
+      scope_->type() == ASTNodeType::SemicolonSemicolon) {
+    auto &indexExpr = *static_cast<BinaryOperation *>(scope_.get());
+    indexExpr.dump(std::cout);
+    auto map = constEval(scope, indexExpr.leftOperand());
+    auto toCallValue = ops::index(
+        map, Value{detail::getIdentifierName(indexExpr.rightOperand())});
+    auto &toCall = getScopeForCall(toCallValue);
+    return {true, toCall(detail::buildArgumentsForScopeCall(map, argEvaled))};
+  }
+
+  auto toCallValue = constEval(scope, *scope_);
+  auto &toCall = getScopeForCall(toCallValue);
+  return {true, toCall(argEvaled)};
 }
 
 void extense::MapConstructor::dumpWithIndent(std::ostream &os,

@@ -237,8 +237,28 @@ TEST_CASE("Manipulating and dumping expressions", "[Expr]") {
                         },
                         std::move(v2), std::move(v3)};
     auto[isMut, result] = bop.eval(dummyScope);
-    REQUIRE(!isMut);
+    REQUIRE(isMut);
     REQUIRE(result.is<Int>());
     REQUIRE(get<Int>(result).value == 32);
   }
+}
+
+TEST_CASE("Building arguments for a ScopeCall", "[ScopeCall, Value, Scope]") {
+  auto result = detail::buildArgumentsForScopeCall(Value{7_ei}, Value{2_ei});
+  REQUIRE(result.is<List>());
+  REQUIRE(get<List>(result) == List{7_ei, 2_ei});
+
+  result =
+      detail::buildArgumentsForScopeCall(Value{5_ei}, Value{List{2_ei, 3_ei}});
+  REQUIRE(result.is<List>());
+  REQUIRE(get<List>(result) == List{5_ei, 2_ei, 3_ei});
+
+  result = detail::buildArgumentsForScopeCall(Value{5_ei}, Value{List{}});
+  REQUIRE(result.is<List>());
+  REQUIRE(get<List>(result) == List{5_ei});
+
+  result = detail::buildArgumentsForScopeCall(Value{List{3_ei, 2_ei}},
+                                              Value{List{1_ei}});
+  REQUIRE(result.is<List>());
+  REQUIRE(get<List>(result) == List{List{3_ei, 2_ei}, 1_ei});
 }

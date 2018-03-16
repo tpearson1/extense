@@ -219,6 +219,12 @@ public:
 
   void dumpWithIndent(std::ostream &os, int indent) const override;
 
+  const Expr &scope() const { return *scope_; }
+  Expr &scope() { return *scope_; }
+
+  const Expr &argument() const { return *argument_; }
+  Expr &argument() { return *argument_; }
+
   EvalResult eval(Scope &) override;
 };
 
@@ -337,6 +343,12 @@ public:
 
   EvalResult eval(Scope &s) override;
 
+  const Expr &leftOperand() const { return *operand1_; }
+  Expr &leftOperand() { return *operand1_; }
+
+  const Expr &rightOperand() const { return *operand2_; }
+  Expr &rightOperand() { return *operand2_; }
+
 private:
   std::unique_ptr<Expr> operand1_, operand2_;
 };
@@ -362,6 +374,10 @@ public:
 private:
   MutableFunction *mutableOperation_;
 };
+
+namespace detail {
+Value buildArgumentsForScopeCall(const Value &lhs, const Value &rhs);
+}
 } // namespace extense
 
 #endif // _LIB_EXTENSE__AST_HPP

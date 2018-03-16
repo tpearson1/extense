@@ -275,14 +275,22 @@ List dotDot(Int a, Int b);
 Value index(const Value &a, const Value &b);
 Value &mutableIndex(Value &a, const Value &b);
 
-template <typename VT1, typename VT2>
-const auto &index(const VT1 &a, const VT2 &i) {
+template <typename VT>
+const auto &index(const List &a, const VT &i) {
+  return a.at(i);
+}
+template <typename VT>
+const auto &index(const Map &a, const VT &i) {
   return a.at(i);
 }
 
-template <typename VT1, typename VT2>
-auto &index(VT1 &a, const VT2 &i) {
-  return a.at(i);
+template <typename VT>
+auto &mutableIndex(List &a, const VT &i) {
+  return a[i];
+}
+template <typename VT>
+auto &mutableIndex(Map &a, const VT &i) {
+  return a[i];
 }
 
 // Reflexive indexing (::) can only be implemented once functions are added as a

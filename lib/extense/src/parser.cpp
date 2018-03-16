@@ -331,11 +331,11 @@ std::unique_ptr<extense::ExprList> extense::detail::parse(TokenStream &s) {
   return std::make_unique<ExprList>(std::move(exprs));
 }
 
-static extense::String getIdentifierName(extense::Expr &e) {
+extense::String extense::detail::getIdentifierName(Expr &e) {
   // TODO: Custom exception
-  if (e.type() != extense::ASTNodeType::Identifier)
-    throw std::runtime_error{"Expected identifier after '/'"};
-  return extense::String{static_cast<const extense::Identifier &>(e).name()};
+  if (e.type() != ASTNodeType::Identifier)
+    throw std::runtime_error{"Expected identifier"};
+  return String{static_cast<const Identifier &>(e).name()};
 }
 
 auto extense::detail::unaryOperationFunc(extense::ASTNodeType type) {
@@ -362,6 +362,13 @@ auto extense::detail::unaryOperationFunc(extense::ASTNodeType type) {
   auto index = static_cast<int>(type) -
                static_cast<int>(extense::ASTNodeType::IdentifierName);
   return unaryOperationFuncs[index];
+}
+
+static extense::Value reflexiveIndexCall(extense::Value a, extense::Value v) {
+  auto scopeElement = extense::ops::index(a, v);
+  if (!scopeElement.is<extense::Scope>())
+    throw std::runtime_error{"Expected scope as result of indexing lhs"};
+  return extense::get<extense::Scope>(scopeElement)(a);
 }
 
 auto extense::detail::binaryOperationFunc(ASTNodeType type) {
@@ -504,12 +511,22 @@ auto extense::detail::binaryOperationFunc(ASTNodeType type) {
        [](auto &s, auto &a, auto &b) {
          return ops::greaterEquals(constEval(s, a), constEval(s, b));
        },
-
-       // TODO
-       [](auto &, auto &, auto &) { return noneValue; }, // Dot
-       [](auto &, auto &, auto &) { return noneValue; }, // SemicolonSemicolon
-       [](auto &, auto &, auto &) { return noneValue; }, // ColonColon
-
+       // Dot
+       [](auto &s, auto &a, auto &b) {
+         Value bEvaled = constEval(s, b);
+         if (!bEvaled.is<Scope>())
+           throw std::runtime_error{"Expected scope to call with '.' operator"};
+         return get<Scope>(bEvaled)(constEval(s, a));
+       },
+       // SemicolonSemicolon
+       [](auto &s, auto &a, auto &b) {
+         return reflexiveIndexCall(constEval(s, a),
+                                   Value{getIdentifierName(b)});
+       },
+       // ColonColon
+       [](auto &s, auto &a, auto &b) {
+         return reflexiveIndexCall(constEval(s, a), constEval(s, b));
+       },
        // Is
        [](auto &s, auto &a, auto &t) {
          Value tStr = constEval(s, t);
