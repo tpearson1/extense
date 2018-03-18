@@ -186,23 +186,23 @@ List dotDot(Int a, Int b) {
 }
 
 Value index(const Value &a, const Value &b) {
-  if (a.is<Map>())
-    return get<Map>(a).at(b);
-  else if (a.is<List>())
-    return get<List>(a).at(b);
-  throw InvalidOperation(a, b, "Unable to index type");
+  if (a.is<Map>()) return get<Map>(a).at(b);
+  if (a.is<List>()) return get<List>(a).at(b);
+
+  if (!a.is<String>() || !b.is<Int>())
+    throw InvalidOperation(a, b, "Unable to index type");
+  return Value{get<String>(a).at(get<Int>(b))};
 }
 
 Value &mutableIndex(Value &a, const Value &b) {
   if (a.is<Map>()) return get<Map>(a)[b];
 
   if (!a.is<List>()) throw InvalidOperation(a, b, "Unable to index type");
-
-  if (b.is<List>())
-    throw InvalidOperation("List", "List", "Unable to mutate sub-list");
   if (!b.is<Int>())
     throw InvalidOperation("List", b.typeAsString(), "Unable to index type");
 
+  if (b.is<List>())
+    throw InvalidOperation("List", "List", "Unable to mutate sub-list");
   return get<List>(a)[get<Int>(b)];
 }
 

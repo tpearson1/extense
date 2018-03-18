@@ -26,6 +26,13 @@
 
 #include <extense/value.hpp>
 
+const extense::Char &extense::String::operator[](Int i) const {
+  if (i >= size() || i.value < 0)
+    throw InvalidOperation::Create<String, Int>("Out of bounds string access");
+  // Can reinterpret_cast because the memory layout of Char and char is the same
+  return reinterpret_cast<const Char &>(value[i.value]);
+}
+
 bool extense::detail::MapCompare::operator()(const MapKeyType &lhs,
                                              const MapKeyType &rhs) const {
   // It is necessary to mostly reimplement variant's operator< because we do not

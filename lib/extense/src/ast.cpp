@@ -245,3 +245,11 @@ void extense::MutableBinaryOperation::dumpWithIndent(std::ostream &os,
   leftOperand().dumpWithIndent(os, indent + indentAmount);
   rightOperand().dumpWithIndent(os, indent + indentAmount);
 }
+
+void extense::CharMutableBinaryOperation::dumpWithIndent(std::ostream &os,
+                                                         int indent) const {
+  makeIndent(os, indent);
+  os << "CharMutableBinaryOperation: type '" << type() << "'\n";
+  leftOperand().dumpWithIndent(os, indent + indentAmount);
+  rightOperand().dumpWithIndent(os, indent + indentAmount);
+}

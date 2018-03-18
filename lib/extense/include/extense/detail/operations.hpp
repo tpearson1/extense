@@ -283,6 +283,7 @@ template <typename VT>
 const auto &index(const Map &a, const VT &i) {
   return a.at(i);
 }
+inline Char index(const String &a, Int i) { return a.at(i); }
 
 template <typename VT>
 auto &mutableIndex(List &a, const VT &i) {
@@ -292,6 +293,7 @@ template <typename VT>
 auto &mutableIndex(Map &a, const VT &i) {
   return a[i];
 }
+inline Char &mutableIndex(String &a, Int i) { return a[i]; }
 
 // Reflexive indexing (::) can only be implemented once functions are added as a
 // type

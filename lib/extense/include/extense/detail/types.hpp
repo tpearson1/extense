@@ -129,13 +129,43 @@ struct Bool : detail::ValueTypeBase<Bool, bool> {
 inline const Bool Bool::t{true};
 inline const Bool Bool::f{false};
 
-struct Char : detail::ValueTypeBase<Char, char> {
-  using Base::Base;
+struct __attribute__((packed)) Char {
+  using ValueType = char;
+  ValueType value;
+
+  explicit Char(ValueType v) : value(std::move(v)) {}
+
+  template <typename T,
+            std::enable_if_t<implicitlyConvertible<T, Char>> * = nullptr>
+  Char(const T &v) {
+    *this = convert<T, Char>(std::move(v));
+  }
+
+  template <typename T,
+            std::enable_if_t<convertible<T, Char> &&
+                             !implicitlyConvertible<T, Char>> * = nullptr>
+  explicit Char(const T &v) {
+    *this = convert<T, Char>(std::move(v));
+  }
 };
+
+static_assert(sizeof(Char) == sizeof(char));
 
 class String : public detail::ValueTypeBase<String, std::string> {
 public:
   using Base::Base;
+
+  Int size() const { return Int{static_cast<Int::ValueType>(value.size())}; }
+
+  const Char &operator[](Int i) const;
+  Char &operator[](Int i) {
+    return const_cast<Char &>(static_cast<const String &>(*this)[i]);
+  }
+
+  const Char &at(Int i) const { return (*this)[i]; }
+  Char &at(Int i) {
+    return const_cast<Char &>(static_cast<const String &>(*this).at(i));
+  }
 };
 
 // Can compare directly with a std::string_view to encourage users not to
@@ -143,9 +173,7 @@ public:
 inline Bool operator==(const String &a, std::string_view b) {
   return Bool{a.value == b};
 }
-inline Bool operator==(std::string_view a, const String &b) {
-  return Bool{a == b.value};
-}
+inline Bool operator==(std::string_view a, const String &b) { return b == a; }
 
 class Value;
 
@@ -224,6 +252,8 @@ public:
   const Value &at(const FlatValue &i) const;
   template <typename VT>
   const Value &at(const VT &i) const;
+
+  Int size() const { return Int{static_cast<Int::ValueType>(value.size())}; }
 };
 
 namespace {
@@ -265,6 +295,8 @@ public:
   List at(const List &i) const { return (*this)[i]; }
 
   Value at(const Value &i) const;
+
+  Int size() const { return Int{static_cast<Int::ValueType>(value.size())}; }
 };
 
 class ExprList;
@@ -361,28 +393,28 @@ inline std::ostream &operator<<(std::ostream &os, None) {
   return os;
 }
 
-inline std::ostream &operator<<(std::ostream &os, const Int &v) {
+inline std::ostream &operator<<(std::ostream &os, Int v) {
   os << v.value;
   return os;
 }
 
-inline std::ostream &operator<<(std::ostream &os, const Float &v) {
+inline std::ostream &operator<<(std::ostream &os, Float v) {
   os << v.value;
   return os;
 }
 
-inline std::ostream &operator<<(std::ostream &os, const Bool &v) {
+inline std::ostream &operator<<(std::ostream &os, Bool v) {
   os << (v.value ? "true" : "false");
   return os;
 }
 
-inline std::ostream &operator<<(std::ostream &os, const Char &v) {
+inline std::ostream &operator<<(std::ostream &os, Char v) {
   os << v.value;
   return os;
 }
 
 inline std::ostream &operator<<(std::ostream &os, const String &v) {
-  os << v.value;
+  for (auto c : v.value) os << c;
   return os;
 }
 

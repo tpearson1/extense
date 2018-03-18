@@ -144,6 +144,9 @@ public:
   virtual EvalResult eval(Scope &scope) = 0;
   virtual Value *tryMutableEval(Scope &) { return nullptr; }
 
+  // For mutating elements in a string
+  virtual Char *tryMutableCharEval(Scope &) { return nullptr; }
+
   virtual ~Expr() {}
 };
 
@@ -153,6 +156,16 @@ template <typename OpFunc>
 auto mutableEval(Scope &scope, Expr &a, OpFunc f) {
   auto *lhs = a.tryMutableEval(scope);
   if (lhs) return f(*lhs);
+  auto *charLhs = a.tryMutableCharEval(scope);
+  if (charLhs) {
+    auto toAssign = Value{*charLhs};
+    auto ret = f(toAssign);
+    // TODO: Custom exception
+    if (!toAssign.is<Char>())
+      throw std::runtime_error{"Expected Char in assignment"};
+    *charLhs = get<Char>(toAssign);
+    return ret;
+  }
 
   auto[isMutable, value] = a.eval(scope);
   // TODO: Custom exception
@@ -373,6 +386,29 @@ public:
 
 private:
   MutableFunction *mutableOperation_;
+};
+
+class CharMutableBinaryOperation : public MutableBinaryOperation {
+public:
+  using CharMutableFunction = Char *(Scope &, Expr &, Expr &);
+
+  explicit CharMutableBinaryOperation(ASTNodeType opType, Function *operation,
+                                      MutableFunction *mutableOperation,
+                                      CharMutableFunction *charMutableOperation,
+                                      std::unique_ptr<Expr> operand1,
+                                      std::unique_ptr<Expr> operand2)
+      : MutableBinaryOperation(opType, operation, mutableOperation,
+                               std::move(operand1), std::move(operand2)),
+        charMutableOperation_(charMutableOperation) {}
+
+  void dumpWithIndent(std::ostream &os, int indent) const override;
+
+  Char *tryMutableCharEval(Scope &s) override {
+    return charMutableOperation_(s, leftOperand(), rightOperand());
+  }
+
+private:
+  CharMutableFunction *charMutableOperation_;
 };
 
 namespace detail {

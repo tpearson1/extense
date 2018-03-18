@@ -589,12 +589,25 @@ bool extense::detail::parseSpecialBinaryOperator(ASTNodeType op,
   }
 
   if (op == ASTNodeType::Colon) {
-    left = std::make_unique<MutableBinaryOperation>(
+    left = std::make_unique<CharMutableBinaryOperation>(
         op, binaryOperationFunc(op),
         [](auto &s, auto &a, auto &i) {
           auto iEvaled = constEval(s, i);
-          return mutableEval(s, a, [&iEvaled](auto &aEvaled) {
+          return mutableEval(s, a, [&iEvaled](Value &aEvaled) -> Value * {
+            // This is handled separately (tryCharMutableEval)
+            if (aEvaled.is<String>()) return nullptr;
+
             return &ops::mutableIndex(aEvaled, iEvaled);
+          });
+        },
+        [](auto &s, auto &a, auto &i) {
+          Value iEvaled = constEval(s, i);
+          return mutableEval(s, a, [&iEvaled](Value &aEvaled) -> Char * {
+            // Can only get a mutable character from indexing a String with an
+            // Int
+            if (!aEvaled.is<String>() || !iEvaled.is<Int>()) return nullptr;
+
+            return &get<String>(aEvaled)[get<Int>(iEvaled)];
           });
         },
         std::move(left), std::move(right));
