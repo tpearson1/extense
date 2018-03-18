@@ -44,11 +44,6 @@ void extense::ValueExpr::dumpWithIndent(std::ostream &os, int indent) const {
   os << "ValueExpr: " << LiteralShow{value_} << '\n';
 }
 
-extense::Expr::EvalResult extense::ValueExpr::eval(Scope &) {
-  if (value_.is<Scope>()) return {false, get<Scope>(value_)()};
-  return {false, value_};
-}
-
 void extense::LabelDeclaration::dumpWithIndent(std::ostream &os,
                                                int indent) const {
   makeIndent(os, indent);

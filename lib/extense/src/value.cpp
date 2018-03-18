@@ -53,7 +53,7 @@ std::string extense::Value::typeAsString(bool displayReference) const {
 }
 
 std::ostream &extense::operator<<(std::ostream &os, const Reference &v) {
-  os << "Reference to " << *v;
+  os << *v;
   return os;
 }
 

@@ -551,10 +551,6 @@ auto extense::detail::binaryOperationFunc(ASTNodeType type) {
        [](auto &s, auto &a, auto &b) {
          return ops::mul(constEval(s, a), constEval(s, b));
        },
-       // Div
-       [](auto &s, auto &a, auto &b) {
-         return ops::div(constEval(s, a), constEval(s, b));
-       },
        // FloorDiv
        [](auto &s, auto &a, auto &b) {
          return ops::floorDiv(constEval(s, a), constEval(s, b));
@@ -566,6 +562,10 @@ auto extense::detail::binaryOperationFunc(ASTNodeType type) {
        // Mod
        [](auto &s, auto &a, auto &b) {
          return ops::mod(constEval(s, a), constEval(s, b));
+       },
+       // Div
+       [](auto &s, auto &a, auto &b) {
+         return ops::div(constEval(s, a), constEval(s, b));
        },
        // Plus
        [](auto &s, auto &a, auto &b) {

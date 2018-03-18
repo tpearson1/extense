@@ -103,6 +103,7 @@ list2 = (true,17,'Hi') # Can store different types
 [] # Empty scope
 
 # 'a.b' is equivalent to 'b a'
+# 'a.b ()' is equivalent to 'b a'
 # 'a.b c' is equivalent to 'b (a, c)'
 # 'a.b (c,d)' is equivalent to 'b (a,c,d)', and so on
 
@@ -127,19 +128,19 @@ average = [
   Instead, it is necessary to add a comma: (3,).
 }
 
-# Functions can only take one argument, and so to accept more a list is required
+# Functions only take one argument, and so to accept more a list is required
 println (average (3,8,5)) # (3 + 8 + 5) / 3 = 16 / 3 = 5.333...
 
-# To call a function with no arguments, we can just type the name
+# To call a function with no arguments, we can just type the name and pass a dummy value - generally an empty list.
 sayHi = [println 'Hi']
-sayHi
-# To store a function in a variable, precede the function name with a !
-x = !sayHi
-x # Equivalent to calling sayHi
+sayHi ()
+# Functions can be stored like normal variables
+x = sayHi
+x () # Equivalent to 'sayHi ()'
 
 # Characters
-print(`a)
-print(`\n) # Newline character
+print `a
+print `\n # Newline character
 
 pigLatin = [
   input = $:0
@@ -167,20 +168,33 @@ incrementArgsByFirstArg = [
 println (incrementArgsByFirstArg (2,5,7,17)) # (7,9,19)
 
 #{
-  cond ? func # Returns false if func is executed, else false, so can be chained
-  cond ? func1 ? func2
+  'cond ? func' returns 'not cond', executing 'func' if 'cond' is true
+  Can thus create an if-else statement as follows:
+  'cond ? trueFunc ? falseFunc'
 
-  Can create an 'else if' like this:
-  cond1 ? cond1Func
-    and cond2 ? cond2Func
-    ? elseFunc
+  If something like an else-if is required, that can be done with 'switch':
+  switch (
+      cond1, func1,
+      cond2, func2,
+      cond3, func3,
+      ...
+      true, elseFunc)
 
-  Same behaviour works with ??
+  Switch returns true if it executed one of the given functions, and false
+  otherwise.
+
+  The function 'switchValue' acts similarly to 'switch', but instead of taking
+  functions, takes values, and returns the one which matched the condition. If
+  no conditions are true, returns 'None'.
+
+  The operator '??' takes a boolean and a list of size 2. Acts as follows:
+  true ?? (a, b) # Returns a
+  false ?? (a, b) # Returns b
 }
 
+
 # min returns the minimum value of its two arguments
-# ?? acts as ternary operator - returns second argument instead of calling it
-min = [$:0 < $:1 ?? $:0 ?? $1]
+min = [$:0 < $:1 ?? ($:0, $1)]
 
 println (min (3.6,2)) # 2
 
@@ -273,7 +287,7 @@ apple;betterColor (apple,'orange')
 
 # To reference the function, just do this, but when calling x we need to provide
 # apple
-x = !apple;sayColor
+x = apple;sayColor
 x apple
 # To avoid having to pass apple, we can just create a short function like this
 x = [apple;;sayColor]
@@ -284,8 +298,8 @@ namespace = {
   /foo -> [print 1]
 }
 
-println (namespace;constant) # 7
-namespace;foo # 1
+println namespace;constant # 7
+namespace;foo () # 1
 
 # Reference semantics with a list
 a = (1,2,3)

@@ -173,7 +173,7 @@ public:
   const Value &value() const { return value_; }
   Value &value() { return value_; }
 
-  EvalResult eval(Scope &) override;
+  EvalResult eval(Scope &) override { return {false, value_}; }
 };
 
 class LabelDeclaration : public Expr {
