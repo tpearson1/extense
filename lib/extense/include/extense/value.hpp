@@ -336,7 +336,7 @@ decltype(auto) visit(Visitor visitor, Values &&... values) {
 template <typename T, typename TValue>
 const T &get(const TValue &v) {
   static_assert(TValue::template supportsType<T>,
-                "Invalid type passed to 'extense::get'");
+                "Invalid template argument given to 'extense::get'");
   if constexpr (std::is_same_v<T, Reference>) {
     // If we flatten we will not be able to get the Reference
     return std::get<Reference>(v.internalVariant());
@@ -347,6 +347,23 @@ const T &get(const TValue &v) {
 template <typename T, typename TValue>
 T &get(TValue &v) {
   return const_cast<T &>(get<T>(static_cast<const TValue &>(v)));
+}
+
+template <typename T>
+T &mutableGet(const Value &v) {
+  static_assert(Value::supportsType<T>,
+                "Invalid template argument given to 'extense::mutableGet'");
+  auto ref = std::get<Reference>(v.internalVariant());
+  // TODO: Custom exception
+  if constexpr (std::is_same_v<T, Reference>)
+    throw std::runtime_error{"Unable to get a mutable value type"};
+  else
+    return get<T>(ref->internalVariant());
+}
+
+template <typename T, typename TValue>
+T &mutableGet(TValue &v) {
+  return get<T, TValue>(v);
 }
 
 // Creates a reference to the contained value, without making any conversions.
