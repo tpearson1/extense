@@ -191,6 +191,8 @@ public:
     int lineNumber() const { return lineNum; }
     int linePosition() const { return linePos; }
 
+    bool valid() const { return idx >= 0; }
+
     bool operator==(const Location &other) const { return idx == other.idx; }
 
     friend class Source;
@@ -248,9 +250,8 @@ public:
 };
 
 void seek(Source &s, int index);
+
+std::ostream &operator<<(std::ostream &, Source::Char);
+std::ostream &operator<<(std::ostream &, const Source::Location &);
 } // namespace extense
-
-std::ostream &operator<<(std::ostream &, extense::Source::Char);
-std::ostream &operator<<(std::ostream &, const extense::Source::Location &);
-
 #endif // _LIB_EXTENSE__SOURCE_HPP

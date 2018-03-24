@@ -30,26 +30,21 @@
 #include <iostream>
 
 #include <extense/ast.hpp>
+#include <extense/exception.hpp>
 #include <extense/token.hpp>
 
 namespace extense {
-class ParseError : public std::runtime_error {
+class ParseError : public LocatableError {
   std::string tokenText_;
   Token::Type tokenType_;
-  Source::Location location_;
 
 public:
-  explicit ParseError(const Token &at, const std::string &what)
-      : std::runtime_error(what), tokenText_(at.text()), tokenType_(at.type()),
-        location_(at.location()) {}
-
-  explicit ParseError(const Token &at, const char *what)
-      : std::runtime_error(what), tokenText_(at.text()), tokenType_(at.type()),
-        location_(at.location()) {}
+  explicit ParseError(const Token &at, std::string what)
+      : LocatableError(at.location(), std::move(what)), tokenText_(at.text()),
+        tokenType_(at.type()) {}
 
   const std::string &tokenText() const { return tokenText_; }
   Token::Type tokenType() const { return tokenType_; }
-  Source::Location location() const { return location_; }
 };
 
 namespace detail {
@@ -204,9 +199,10 @@ bool parseLiteral(TokenStream &s, std::unique_ptr<Expr> &out);
 template <typename VT, typename TData, extense::Token::Type type>
 bool parseLiteralHelper(extense::detail::TokenStream &s,
                         std::unique_ptr<extense::Expr> &out) {
+  auto loc = s.current()->location();
   if (s.current()->type() != type) return false;
   out = std::make_unique<extense::ValueExpr>(
-      extense::Value{VT{std::get<TData>(s.current()->data())}});
+      std::move(loc), extense::Value{VT{std::get<TData>(s.current()->data())}});
   s.next();
   return true;
 }
@@ -254,16 +250,18 @@ std::unique_ptr<Expr> parsePrefix(TokenStream &s);
 bool parseBinaryOperator(TokenStream &s, std::unique_ptr<Expr> &left, int prec);
 bool parseScopeCall(TokenStream &s, std::unique_ptr<Expr> &left, int prec);
 
-bool parseSpecialBinaryOperator(ASTNodeType op, std::string_view opText,
+bool parseSpecialBinaryOperator(Source::Location loc, ASTNodeType op,
+                                std::string_view opText,
                                 std::unique_ptr<Expr> &left,
                                 std::unique_ptr<Expr> &right);
 
 std::unique_ptr<UnaryOperation>
-makeUnaryOperation(ASTNodeType op, std::unique_ptr<Expr> operand);
+makeUnaryOperation(Source::Location loc, ASTNodeType op,
+                   std::unique_ptr<Expr> operand);
 
 std::unique_ptr<BinaryOperation>
-makeBinaryOperation(ASTNodeType op, std::unique_ptr<Expr> left,
-                    std::unique_ptr<Expr> right);
+makeBinaryOperation(Source::Location loc, ASTNodeType op,
+                    std::unique_ptr<Expr> left, std::unique_ptr<Expr> right);
 
 std::unique_ptr<Expr> parseExprHelper(TokenStream &s, int precedence);
 inline std::unique_ptr<Expr> parseExpr(TokenStream &s) {

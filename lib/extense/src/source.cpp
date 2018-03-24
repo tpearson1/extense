@@ -28,7 +28,7 @@ SOFTWARE.
 
 #include <ostream>
 
-std::ostream &operator<<(std::ostream &os, extense::Source::Char c) {
+std::ostream &extense::operator<<(std::ostream &os, Source::Char c) {
   if (c.isBeforeSource())
     os << "<before source>";
   else if (c.isAfterSource())
@@ -104,8 +104,11 @@ void extense::seek(Source &s, int index) {
   }
 }
 
-std::ostream &operator<<(std::ostream &os,
-                         const extense::Source::Location &loc) {
-  os << loc.lineNumber() << ':' << loc.linePosition();
+std::ostream &extense::operator<<(std::ostream &os,
+                                  const Source::Location &loc) {
+  if (loc.index() < 0)
+    os << "<unknown location>";
+  else
+    os << loc.lineNumber() << ':' << loc.linePosition();
   return os;
 }

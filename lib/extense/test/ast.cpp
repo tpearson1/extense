@@ -69,8 +69,10 @@ TEST_CASE("Manipulating and dumping expressions", "[Expr]") {
   makeIndent(indent, -5);
   REQUIRE(indent.str() == "      ");
 
+  Source::Location dummyLoc;
+
   SECTION("ValueExpr") {
-    auto e = ValueExpr{Value{"Hello"_es}};
+    auto e = ValueExpr{dummyLoc, Value{"Hello"_es}};
     REQUIRE(e.type() == ASTNodeType::ValueExpr);
     REQUIRE(e.value().is<String>());
     REQUIRE(get<String>(e.value()).value == "Hello");
@@ -78,7 +80,7 @@ TEST_CASE("Manipulating and dumping expressions", "[Expr]") {
     e.dump(dump);
     REQUIRE(dump.str() == "ValueExpr: \"Hello\"\n");
 
-    auto e2 = ValueExpr{Value{17_ei}};
+    auto e2 = ValueExpr{dummyLoc, Value{17_ei}};
     REQUIRE(e2.type() == ASTNodeType::ValueExpr);
     REQUIRE(e2.value().is<Int>());
     REQUIRE(get<Int>(e2.value()).value == 17);
@@ -89,7 +91,7 @@ TEST_CASE("Manipulating and dumping expressions", "[Expr]") {
 
   // REVIEW: Evaluation once labels are properly implemented
   SECTION("LabelDeclaration") {
-    auto label = LabelDeclaration{"outer"};
+    auto label = LabelDeclaration{dummyLoc, "outer"};
     REQUIRE(label.type() == ASTNodeType::LabelDeclaration);
     REQUIRE(label.name() == "outer");
     label.rename("inner");
@@ -102,7 +104,7 @@ TEST_CASE("Manipulating and dumping expressions", "[Expr]") {
 
   // REVIEW: Evaluation once identifiers are properly implemented
   SECTION("Identifier") {
-    auto ident = Identifier{"sum"};
+    auto ident = Identifier{dummyLoc, "sum"};
     REQUIRE(ident.type() == ASTNodeType::Identifier);
     REQUIRE(ident.name() == "sum");
     ident.rename("product");
@@ -121,11 +123,12 @@ TEST_CASE("Manipulating and dumping expressions", "[Expr]") {
 
   SECTION("MapConstructor") {
     std::vector<ParsedMapping> mappings;
-    mappings.push_back({std::make_unique<ValueExpr>(Value{7_ei}),
-                        std::make_unique<ValueExpr>(Value{"Number"_es})});
-    mappings.push_back({std::make_unique<ValueExpr>(Value{"key"_es}),
-                        std::make_unique<ValueExpr>(Value{'v'_ec})});
-    auto mapConstructor = MapConstructor{std::move(mappings)};
+    mappings.push_back(
+        {std::make_unique<ValueExpr>(dummyLoc, Value{7_ei}),
+         std::make_unique<ValueExpr>(dummyLoc, Value{"Number"_es})});
+    mappings.push_back({std::make_unique<ValueExpr>(dummyLoc, Value{"key"_es}),
+                        std::make_unique<ValueExpr>(dummyLoc, Value{'v'_ec})});
+    auto mapConstructor = MapConstructor{dummyLoc, std::move(mappings)};
 
     REQUIRE(mapConstructor.type() == ASTNodeType::MapConstructor);
 
@@ -133,10 +136,10 @@ TEST_CASE("Manipulating and dumping expressions", "[Expr]") {
     mapConstructor.dump(dump);
     REQUIRE(dump.str() ==
             R"(MapConstructor: Mappings below
-  Mapping
+  Mapping:
     ValueExpr: 7
     ValueExpr: "Number"
-  Mapping
+  Mapping:
     ValueExpr: "key"
     ValueExpr: `v
 )");
@@ -153,10 +156,11 @@ TEST_CASE("Manipulating and dumping expressions", "[Expr]") {
 
   SECTION("ListConstructor") {
     std::vector<std::unique_ptr<Expr>> elements;
-    elements.push_back(std::make_unique<ValueExpr>(Value{4_ei}));
-    elements.push_back(std::make_unique<ValueExpr>(Value{"element"_es}));
-    elements.push_back(std::make_unique<ValueExpr>(Value{'a'_ec}));
-    auto listConstructor = ListConstructor{std::move(elements)};
+    elements.push_back(std::make_unique<ValueExpr>(dummyLoc, Value{4_ei}));
+    elements.push_back(
+        std::make_unique<ValueExpr>(dummyLoc, Value{"element"_es}));
+    elements.push_back(std::make_unique<ValueExpr>(dummyLoc, Value{'a'_ec}));
+    auto listConstructor = ListConstructor{dummyLoc, std::move(elements)};
 
     REQUIRE(listConstructor.type() == ASTNodeType::ListConstructor);
 
@@ -182,10 +186,11 @@ TEST_CASE("Manipulating and dumping expressions", "[Expr]") {
 
   SECTION("ExprList") {
     std::vector<std::unique_ptr<Expr>> expressions;
-    expressions.push_back(std::make_unique<ValueExpr>(Value{4_ei}));
-    expressions.push_back(std::make_unique<ValueExpr>(Value{"element"_es}));
-    expressions.push_back(std::make_unique<ValueExpr>(Value{'a'_ec}));
-    auto exprList = ExprList{std::move(expressions)};
+    expressions.push_back(std::make_unique<ValueExpr>(dummyLoc, Value{4_ei}));
+    expressions.push_back(
+        std::make_unique<ValueExpr>(dummyLoc, Value{"element"_es}));
+    expressions.push_back(std::make_unique<ValueExpr>(dummyLoc, Value{'a'_ec}));
+    auto exprList = ExprList{dummyLoc, std::move(expressions)};
 
     REQUIRE(exprList.type() == ASTNodeType::ExprList);
 
@@ -209,16 +214,16 @@ TEST_CASE("Manipulating and dumping expressions", "[Expr]") {
   }
 
   SECTION("UnaryOperation") {
-    auto v1 = std::make_unique<ValueExpr>(Value{7_ei});
+    auto v1 = std::make_unique<ValueExpr>(dummyLoc, Value{7_ei});
     UnaryOperation uop{
-        ASTNodeType::Custom,
+        dummyLoc, ASTNodeType::Custom,
         [](Scope &s, Expr &e) { return Value{-get<Int>(constEval(s, e))}; },
         std::move(v1)};
 
     std::ostringstream dump;
     uop.dump(dump);
     REQUIRE(dump.str() ==
-            R"(UnaryOperation: type 'Custom'
+            R"(Custom: UnaryOperation
   ValueExpr: 7
 )");
 
@@ -228,9 +233,9 @@ TEST_CASE("Manipulating and dumping expressions", "[Expr]") {
   }
 
   SECTION("BinaryOperation") {
-    auto v2 = std::make_unique<ValueExpr>(Value{4_ei});
-    auto v3 = std::make_unique<ValueExpr>(Value{8_ei});
-    BinaryOperation bop{ASTNodeType::Custom,
+    auto v2 = std::make_unique<ValueExpr>(dummyLoc, Value{4_ei});
+    auto v3 = std::make_unique<ValueExpr>(dummyLoc, Value{8_ei});
+    BinaryOperation bop{dummyLoc, ASTNodeType::Custom,
                         [](Scope &s, Expr &a, Expr &b) {
                           return Value{get<Int>(constEval(s, a)) *
                                        get<Int>(constEval(s, b))};

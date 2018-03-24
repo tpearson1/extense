@@ -31,6 +31,7 @@ SOFTWARE.
 #include <iosfwd>
 #include <variant>
 
+#include <extense/exception.hpp>
 #include <extense/source.hpp>
 
 #define _LIB_EXTENSE__TOKEN__TYPE_ENUM                                         \
@@ -156,7 +157,7 @@ private:
   Data data_;
 
 public:
-  Token(Source::Location location) : loc(std::move(location)) {}
+  explicit Token(Source::Location location) : loc(std::move(location)) {}
   Token(Source::Location location, std::string_view text, Type type)
       : loc(std::move(location)), tokenText(text), tokenType(type) {}
 
@@ -189,7 +190,7 @@ public:
  * The source string must not be destructed until the tokens are no longer in
  * use.
  *
- * May throw an InvalidTokenError exception if the source could not be
+ * May throw an LexingError exception if the source could not be
  * tokenized.
  */
 std::vector<Token> tokenize(Source &source);
@@ -201,17 +202,10 @@ inline std::vector<Token> tokenize(std::string_view source) {
 /*
  * Exception thrown when tokenize was unable to fetch a token.
  */
-class LexingError : public std::runtime_error {
-  Source::Location loc;
-
+class LexingError : public LocatableError {
 public:
-  LexingError(Source::Location location, const std::string &what)
-      : std::runtime_error(what), loc(location) {}
-
-  LexingError(Source::Location location, const char *what)
-      : std::runtime_error(what), loc(location) {}
-
-  Source::Location location() const { return loc; }
+  LexingError(Source::Location location, std::string what)
+      : LocatableError(std::move(location), std::move(what)) {}
 };
 
 namespace detail {

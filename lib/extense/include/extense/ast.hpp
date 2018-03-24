@@ -31,6 +31,7 @@ SOFTWARE.
 #include <memory>
 #include <tuple>
 
+#include <extense/source.hpp>
 #include <extense/value.hpp>
 
 namespace extense {
@@ -124,14 +125,21 @@ inline constexpr int indentAmount = 2;
 class Expr {
 private:
   ASTNodeType type_;
+  Source::Location location_;
 
 protected:
   void setType(ASTNodeType type) { type_ = type; }
 
+  void displayHeaderWithIndent(std::ostream &os, int indent) const;
+
 public:
-  explicit Expr(ASTNodeType type) : type_(type) {}
+  explicit Expr(Source::Location location, ASTNodeType type)
+      : type_(type), location_(std::move(location)) {}
 
   ASTNodeType type() const { return type_; }
+  Source::Location location() const { return location_; }
+
+  void displayHeader(std::ostream &os) const { displayHeaderWithIndent(os, 0); }
 
   void dump(std::ostream &os) { dumpWithIndent(os, 0); }
   virtual void dumpWithIndent(std::ostream &os, int indent) const = 0;
@@ -178,8 +186,9 @@ class ValueExpr : public Expr {
   Value value_;
 
 public:
-  explicit ValueExpr(Value v)
-      : Expr(ASTNodeType::ValueExpr), value_(std::move(v)) {}
+  explicit ValueExpr(Source::Location location, Value v)
+      : Expr(std::move(location), ASTNodeType::ValueExpr),
+        value_(std::move(v)) {}
 
   void dumpWithIndent(std::ostream &os, int indent) const override;
 
@@ -193,8 +202,9 @@ class LabelDeclaration : public Expr {
   std::string name_;
 
 public:
-  explicit LabelDeclaration(std::string name)
-      : Expr(ASTNodeType::LabelDeclaration), name_(std::move(name)) {}
+  explicit LabelDeclaration(Source::Location location, std::string name)
+      : Expr(std::move(location), ASTNodeType::LabelDeclaration),
+        name_(std::move(name)) {}
 
   void dumpWithIndent(std::ostream &os, int indent) const override;
 
@@ -208,8 +218,9 @@ class Identifier : public Expr {
   std::string name_;
 
 public:
-  explicit Identifier(std::string name)
-      : Expr(ASTNodeType::Identifier), name_(std::move(name)) {}
+  explicit Identifier(Source::Location location, std::string name)
+      : Expr(std::move(location), ASTNodeType::Identifier),
+        name_(std::move(name)) {}
 
   void dumpWithIndent(std::ostream &os, int indent) const override;
 
@@ -225,10 +236,10 @@ class ScopeCall : public Expr {
   std::unique_ptr<Expr> argument_;
 
 public:
-  explicit ScopeCall(std::unique_ptr<Expr> scope,
+  explicit ScopeCall(Source::Location location, std::unique_ptr<Expr> scope,
                      std::unique_ptr<Expr> argument)
-      : Expr(ASTNodeType::ScopeCall), scope_(std::move(scope)),
-        argument_(std::move(argument)) {}
+      : Expr(std::move(location), ASTNodeType::ScopeCall),
+        scope_(std::move(scope)), argument_(std::move(argument)) {}
 
   void dumpWithIndent(std::ostream &os, int indent) const override;
 
@@ -249,8 +260,10 @@ class MapConstructor : public Expr {
   std::vector<ParsedMapping> mappings_;
 
 public:
-  explicit MapConstructor(std::vector<ParsedMapping> mappings)
-      : Expr(ASTNodeType::MapConstructor), mappings_(std::move(mappings)) {}
+  explicit MapConstructor(Source::Location location,
+                          std::vector<ParsedMapping> mappings)
+      : Expr(std::move(location), ASTNodeType::MapConstructor),
+        mappings_(std::move(mappings)) {}
 
   void dumpWithIndent(std::ostream &os, int indent) const override;
 
@@ -262,8 +275,10 @@ class ListConstructor : public Expr {
   std::vector<std::unique_ptr<Expr>> elements_;
 
 public:
-  explicit ListConstructor(std::vector<std::unique_ptr<Expr>> elements)
-      : Expr(ASTNodeType::ListConstructor), elements_(std::move(elements)) {}
+  explicit ListConstructor(Source::Location location,
+                           std::vector<std::unique_ptr<Expr>> elements)
+      : Expr(std::move(location), ASTNodeType::ListConstructor),
+        elements_(std::move(elements)) {}
 
   void dumpWithIndent(std::ostream &os, int indent) const override;
 
@@ -277,7 +292,8 @@ class ExprList : public Expr {
   std::vector<Label> labels;
 
 public:
-  explicit ExprList(std::vector<std::unique_ptr<Expr>> exprs);
+  explicit ExprList(Source::Location location,
+                    std::vector<std::unique_ptr<Expr>> exprs);
 
   void dumpWithIndent(std::ostream &os, int indent) const override;
 
@@ -296,9 +312,10 @@ class UnaryOperation : public Expr {
 public:
   using Function = Value(Scope &, Expr &);
 
-  explicit UnaryOperation(ASTNodeType opType, Function *operation,
-                          std::unique_ptr<Expr> operand)
-      : Expr(opType), operation_(operation), operand_(std::move(operand)) {}
+  explicit UnaryOperation(Source::Location location, ASTNodeType opType,
+                          Function *operation, std::unique_ptr<Expr> operand)
+      : Expr(std::move(location), opType), operation_(operation),
+        operand_(std::move(operand)) {}
 
   void dumpWithIndent(std::ostream &os, int indent) const override;
 
@@ -318,11 +335,11 @@ class BinaryOperation : public Expr {
 public:
   using Function = Value(Scope &, Expr &, Expr &);
 
-  explicit BinaryOperation(ASTNodeType opType, Function *operation,
-                           std::unique_ptr<Expr> operand1,
+  explicit BinaryOperation(Source::Location location, ASTNodeType opType,
+                           Function *operation, std::unique_ptr<Expr> operand1,
                            std::unique_ptr<Expr> operand2)
-      : Expr(opType), operation_(operation), operand1_(std::move(operand1)),
-        operand2_(std::move(operand2)) {}
+      : Expr(std::move(location), opType), operation_(operation),
+        operand1_(std::move(operand1)), operand2_(std::move(operand2)) {}
 
   void dumpWithIndent(std::ostream &os, int indent) const override;
 
@@ -345,10 +362,12 @@ class CustomOperation : public Expr {
   std::string op_;
 
 public:
-  explicit CustomOperation(std::string op, std::unique_ptr<Expr> operand1,
+  explicit CustomOperation(Source::Location location, std::string op,
+                           std::unique_ptr<Expr> operand1,
                            std::unique_ptr<Expr> operand2)
-      : Expr(ASTNodeType::CustomOperator), op_(std::move(op)),
-        operand1_(std::move(operand1)), operand2_(std::move(operand2)) {}
+      : Expr(std::move(location), ASTNodeType::CustomOperator),
+        op_(std::move(op)), operand1_(std::move(operand1)),
+        operand2_(std::move(operand2)) {}
 
   const std::string &operatorString() const { return op_; }
 
@@ -370,12 +389,13 @@ class MutableBinaryOperation : public BinaryOperation {
 public:
   using MutableFunction = Value *(Scope &, Expr &, Expr &);
 
-  explicit MutableBinaryOperation(ASTNodeType opType, Function *operation,
+  explicit MutableBinaryOperation(Source::Location location, ASTNodeType opType,
+                                  Function *operation,
                                   MutableFunction *mutableOperation,
                                   std::unique_ptr<Expr> operand1,
                                   std::unique_ptr<Expr> operand2)
-      : BinaryOperation(opType, operation, std::move(operand1),
-                        std::move(operand2)),
+      : BinaryOperation(std::move(location), opType, operation,
+                        std::move(operand1), std::move(operand2)),
         mutableOperation_(mutableOperation) {}
 
   void dumpWithIndent(std::ostream &os, int indent) const override;
@@ -392,13 +412,15 @@ class CharMutableBinaryOperation : public MutableBinaryOperation {
 public:
   using CharMutableFunction = Char *(Scope &, Expr &, Expr &);
 
-  explicit CharMutableBinaryOperation(ASTNodeType opType, Function *operation,
+  explicit CharMutableBinaryOperation(Source::Location location,
+                                      ASTNodeType opType, Function *operation,
                                       MutableFunction *mutableOperation,
                                       CharMutableFunction *charMutableOperation,
                                       std::unique_ptr<Expr> operand1,
                                       std::unique_ptr<Expr> operand2)
-      : MutableBinaryOperation(opType, operation, mutableOperation,
-                               std::move(operand1), std::move(operand2)),
+      : MutableBinaryOperation(std::move(location), opType, operation,
+                               mutableOperation, std::move(operand1),
+                               std::move(operand2)),
         charMutableOperation_(charMutableOperation) {}
 
   void dumpWithIndent(std::ostream &os, int indent) const override;

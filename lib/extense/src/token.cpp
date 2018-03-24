@@ -56,7 +56,7 @@ std::vector<extense::Token> extense::tokenize(Source &source) {
 
 /*
  * Fetches the next token and adds it to the end of tokens.
- * May throw an InvalidTokenError exception.
+ * May throw an LexingErrror exception.
  */
 extense::Token extense::detail::fetchNextToken(Source &source) {
   skipWhitespace(source);

@@ -170,9 +170,9 @@ TEST_CASE("Detail parsing functions", "[parse]") {
 
     std::ostringstream os;
     result->dump(os);
-    REQUIRE(os.str() == R"(ExprList: Expressions below
-  ValueExpr: 7
-  ValueExpr: 3
+    REQUIRE(os.str() == R"(ExprList (at 1:0): Expressions below
+  ValueExpr (at 1:1): 7
+  ValueExpr (at 1:3): 3
 )");
   }
 
@@ -185,13 +185,13 @@ TEST_CASE("Detail parsing functions", "[parse]") {
 
     std::ostringstream os;
     result->dump(os);
-    REQUIRE(os.str() == R"(MapConstructor: Mappings below
-  Mapping
-    ValueExpr: 7
-    ValueExpr: 6
-  Mapping
-    ValueExpr: 5
-    ValueExpr: 4
+    REQUIRE(os.str() == R"(MapConstructor (at 1:0): Mappings below
+  Mapping:
+    ValueExpr (at 1:1): 7
+    ValueExpr (at 1:6): 6
+  Mapping:
+    ValueExpr (at 1:9): 5
+    ValueExpr (at 1:14): 4
 )");
 
     s.seek(1);
@@ -217,10 +217,10 @@ TEST_CASE("Detail parsing functions", "[parse]") {
 
     std::ostringstream os;
     result->dump(os);
-    REQUIRE(os.str() == R"(ListConstructor: Elements below
-  ValueExpr: 3
-  ValueExpr: 4
-  ValueExpr: 5
+    REQUIRE(os.str() == R"(ListConstructor (at 1:0): Elements below
+  ValueExpr (at 1:1): 3
+  ValueExpr (at 1:4): 4
+  ValueExpr (at 1:7): 5
 )");
 
     // Parenthesized expression
@@ -231,7 +231,7 @@ TEST_CASE("Detail parsing functions", "[parse]") {
 
     std::ostringstream os2;
     result->dump(os2);
-    REQUIRE(os2.str() == "ValueExpr: 3\n");
+    REQUIRE(os2.str() == "ValueExpr (at 1:1): 3\n");
   }
 
   SECTION("parseLabel") {
@@ -269,24 +269,27 @@ TEST_CASE("Detail parsing functions", "[parse]") {
 
     std::ostringstream os;
     result->dump(os);
-    REQUIRE(os.str() == R"(UnaryOperation: type 'UnaryMinus'
-  ValueExpr: 43
+    REQUIRE(os.str() == R"(UnaryMinus (at 1:0): UnaryOperation
+  ValueExpr (at 1:1): 43
 )");
   }
+
+  Source::Location dummyLoc;
 
   SECTION("parseBinaryOperator") {
     auto tokens = tokenize("* 43");
     detail::TokenStream s{tokens};
 
-    std::unique_ptr<Expr> v = std::make_unique<ValueExpr>(Value{17_ei});
+    std::unique_ptr<Expr> v =
+        std::make_unique<ValueExpr>(dummyLoc, Value{17_ei});
     REQUIRE(detail::parseBinaryOperator(s, v, 0));
     REQUIRE(v->type() == ASTNodeType::Mul);
 
     std::ostringstream os;
     v->dump(os);
-    REQUIRE(os.str() == R"(BinaryOperation: type 'Mul'
+    REQUIRE(os.str() == R"(Mul (at 1:0): BinaryOperation
   ValueExpr: 17
-  ValueExpr: 43
+  ValueExpr (at 1:2): 43
 )");
   }
 
@@ -295,15 +298,16 @@ TEST_CASE("Detail parsing functions", "[parse]") {
     auto argument = tokenize("43");
     detail::TokenStream s{argument};
 
-    std::unique_ptr<Expr> v = std::make_unique<ValueExpr>(Value{42_ei});
+    std::unique_ptr<Expr> v =
+        std::make_unique<ValueExpr>(dummyLoc, Value{42_ei});
     REQUIRE(detail::parseScopeCall(s, v, 0));
     REQUIRE(v->type() == ASTNodeType::ScopeCall);
 
     std::ostringstream os;
     v->dump(os);
-    REQUIRE(os.str() == R"(ScopeCall: Scope and argument below
+    REQUIRE(os.str() == R"(ScopeCall (at 1:0): Scope and argument below
   ValueExpr: 42
-  ValueExpr: 43
+  ValueExpr (at 1:0): 43
 )");
   }
 }
@@ -315,15 +319,15 @@ TEST_CASE("Parsing functions", "[parseExpr, parse]") {
 
     std::ostringstream os;
     expr->dump(os);
-    REQUIRE(os.str() == R"(BinaryOperation: type 'Plus'
-  ValueExpr: 3
-  BinaryOperation: type 'Div'
-    BinaryOperation: type 'Mul'
-      ScopeCall: Scope and argument below
-        Identifier: name 'x'
-        ValueExpr: 4
-      ValueExpr: 2
-    ValueExpr: 3
+    REQUIRE(os.str() == R"(Plus (at 1:2): BinaryOperation
+  ValueExpr (at 1:0): 3
+  Div (at 1:14): BinaryOperation
+    Mul (at 1:9): BinaryOperation
+      ScopeCall (at 1:7): Scope and argument below
+        Identifier (at 1:5): name 'x'
+        ValueExpr (at 1:7): 4
+      ValueExpr (at 1:11): 2
+    ValueExpr (at 1:16): 3
 )");
 
     bool threw = false;
@@ -339,27 +343,25 @@ TEST_CASE("Parsing functions", "[parseExpr, parse]") {
 
     std::ostringstream os;
     exprList->dump(os);
-    REQUIRE(os.str() == R"(ExprList: Expressions below
-  UnaryOperation: type 'UnaryMinus'
-    Identifier: name 'q'
-  BinaryOperation: type 'Plus'
-    ValueExpr: 3
-    ValueExpr: 4
-  BinaryOperation: type 'Minus'
-    Identifier: name 'a'
-    Identifier: name 'b'
-  BinaryOperation: type 'MulEquals'
-    Identifier: name 'c'
-    Identifier: name 'd'
-  LabelDeclaration: name 'xyz'
+    REQUIRE(os.str() == R"(ExprList (at 1:0): Expressions below
+  UnaryMinus (at 1:0): UnaryOperation
+    Identifier (at 1:1): name 'q'
+  Plus (at 1:6): BinaryOperation
+    ValueExpr (at 1:4): 3
+    ValueExpr (at 1:8): 4
+  Minus (at 1:13): BinaryOperation
+    Identifier (at 1:11): name 'a'
+    Identifier (at 1:15): name 'b'
+  MulEquals (at 1:20): BinaryOperation
+    Identifier (at 1:18): name 'c'
+    Identifier (at 1:23): name 'd'
+  LabelDeclaration (at 1:26): name 'xyz'
 )");
 
     auto empty = parse("");
     REQUIRE(empty);
     std::ostringstream os2;
     empty->dump(os2);
-    REQUIRE(os2.str() == R"(ExprList: Expressions below
-  ValueExpr: None
-)");
+    REQUIRE(os2.str() == "ExprList (at 1:0): EMPTY\n");
   }
 }

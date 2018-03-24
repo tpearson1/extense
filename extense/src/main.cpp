@@ -73,11 +73,11 @@ int main(int argc, const char *argv[]) {
   try {
     expr = extense::parse(source);
   } catch (const extense::LexingError &error) {
-    std::cerr << "Error tokenizing file at " << error.location() << ": \""
+    std::cerr << "Error tokenizing file at " << error.throwLocation() << ": \""
               << error.what() << "\"\n";
     return 1;
   } catch (const extense::ParseError &e) {
-    std::cerr << "Encountered ParseError at " << e.location()
+    std::cerr << "Encountered ParseError at " << e.throwLocation()
               << ", with token '" << e.tokenText() << "' (type '"
               << e.tokenType() << "'), and with message '" << e.what() << "'\n";
     return 1;

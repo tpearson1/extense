@@ -53,8 +53,9 @@ static void consume(extense::detail::TokenStream &s,
 }
 
 bool extense::detail::parseNone(TokenStream &s, std::unique_ptr<Expr> &out) {
+  auto loc = s.current()->location();
   if (parseToken(s, Token::Type::None)) {
-    out = std::make_unique<ValueExpr>(noneValue);
+    out = std::make_unique<ValueExpr>(std::move(loc), noneValue);
     return true;
   }
   return false;
@@ -68,11 +69,12 @@ static bool skipEndStatement(extense::detail::TokenStream &s) {
 }
 
 std::unique_ptr<extense::Expr> extense::detail::parseLabel(TokenStream &s) {
+  auto loc = s.current()->location();
   if (s.current()->type() != Token::Type::LabelDeclaration) return nullptr;
   auto fullText = s.current()->text();
   auto withoutAtSymbol = std::string(fullText.begin() + 1, fullText.end());
   s.next();
-  return std::make_unique<LabelDeclaration>(withoutAtSymbol);
+  return std::make_unique<LabelDeclaration>(std::move(loc), withoutAtSymbol);
 }
 
 std::unique_ptr<extense::Expr>
@@ -103,6 +105,8 @@ parseExpressionList(extense::detail::TokenStream &s,
 }
 
 bool extense::detail::parseScope(TokenStream &s, std::unique_ptr<Expr> &out) {
+  auto loc = s.current()->location();
+
   // Left bracket
   if (!parseToken(s, Token::Type::LeftBracket)) return false;
   expectToken(s);
@@ -112,11 +116,13 @@ bool extense::detail::parseScope(TokenStream &s, std::unique_ptr<Expr> &out) {
   auto exprs = parseExpressionList<std::unique_ptr<Expr>>(
       s, Token::Type::RightBracket, parseExprOrLabel);
 
-  out = std::make_unique<ExprList>(std::move(exprs));
+  out = std::make_unique<ExprList>(std::move(loc), std::move(exprs));
   return true;
 }
 
 bool extense::detail::parseMap(TokenStream &s, std::unique_ptr<Expr> &out) {
+  auto loc = s.current()->location();
+
   // Left brace
   if (!parseToken(s, Token::Type::LeftBrace)) return false;
   expectToken(s);
@@ -126,7 +132,7 @@ bool extense::detail::parseMap(TokenStream &s, std::unique_ptr<Expr> &out) {
   auto mappings = parseExpressionList<ParsedMapping>(s, Token::Type::RightBrace,
                                                      parseMapping);
 
-  out = std::make_unique<MapConstructor>(std::move(mappings));
+  out = std::make_unique<MapConstructor>(std::move(loc), std::move(mappings));
   return true;
 }
 
@@ -144,6 +150,7 @@ extense::ParsedMapping extense::detail::parseMapping(TokenStream &s) {
 }
 
 bool extense::detail::parseList(TokenStream &s, std::unique_ptr<Expr> &out) {
+  auto loc = s.current()->location();
   return tryMatch(s, [&]() {
     // If there is not an EndStatement in the parentheses, then it is not a List
     // and is instead used for operator precedence purposes
@@ -161,7 +168,8 @@ bool extense::detail::parseList(TokenStream &s, std::unique_ptr<Expr> &out) {
 
     std::vector<std::unique_ptr<Expr>> elements;
     if (parseToken(s, Token::Type::RightParen)) {
-      out = std::make_unique<ListConstructor>(std::move(elements));
+      out = std::make_unique<ListConstructor>(std::move(loc),
+                                              std::move(elements));
       return true;
     }
 
@@ -185,7 +193,8 @@ bool extense::detail::parseList(TokenStream &s, std::unique_ptr<Expr> &out) {
     }
 
     s.next();
-    out = std::make_unique<ListConstructor>(std::move(elements));
+    out =
+        std::make_unique<ListConstructor>(std::move(loc), std::move(elements));
     return true;
   });
 }
@@ -193,6 +202,8 @@ bool extense::detail::parseList(TokenStream &s, std::unique_ptr<Expr> &out) {
 bool extense::detail::parseParenthesizedCustomOperator(
     TokenStream &s, std::unique_ptr<Expr> &out) {
   return tryMatch(s, [&]() {
+    auto loc = s.current()->location();
+
     if (!parseToken(s, Token::Type::LeftParen)) return false;
     expectToken(s);
     if (s.current()->type() != Token::Type::CustomOperator) return false;
@@ -200,7 +211,7 @@ bool extense::detail::parseParenthesizedCustomOperator(
     s.next();
     expectToken(s);
     if (!parseToken(s, Token::Type::RightParen)) return false;
-    out = std::make_unique<Identifier>(std::string(text));
+    out = std::make_unique<Identifier>(std::move(loc), std::string(text));
     return true;
   });
 }
@@ -215,7 +226,8 @@ bool extense::detail::parseIdentifier(TokenStream &s,
                                       std::unique_ptr<Expr> &out) {
   if (s.current()->type() != Token::Type::Identifier)
     return parseParenthesizedCustomOperator(s, out);
-  out = std::make_unique<Identifier>(std::string(s.current()->text()));
+  out = std::make_unique<Identifier>(s.current()->location(),
+                                     std::string(s.current()->text()));
   s.next();
   return true;
 }
@@ -229,6 +241,7 @@ std::unique_ptr<extense::Expr> extense::detail::parsePrimary(TokenStream &s) {
 std::unique_ptr<extense::Expr>
 extense::detail::parseUnaryOperator(TokenStream &s) {
   auto &opToken = *s.current();
+  auto opLoc = opToken.location();
   auto opTokenType = opToken.type();
   if (!isTokenTypeUnaryOperator(opTokenType)) return nullptr;
 
@@ -240,7 +253,7 @@ extense::detail::parseUnaryOperator(TokenStream &s) {
     throw ParseError{opToken, "Expected expression after unary operator"};
 
   auto operand = parseExprHelper(s, opPrecedence);
-  return makeUnaryOperation(op, std::move(operand));
+  return makeUnaryOperation(opLoc, op, std::move(operand));
 }
 
 std::unique_ptr<extense::Expr> extense::detail::parsePrefix(TokenStream &s) {
@@ -259,6 +272,7 @@ bool extense::detail::parseBinaryOperator(TokenStream &s,
                                           std::unique_ptr<Expr> &left,
                                           int prec) {
   auto &opToken = *s.current();
+  auto opLoc = opToken.location();
   auto opTokenType = opToken.type();
   if (!isTokenTypeBinaryOperator(opTokenType)) return false;
 
@@ -273,14 +287,18 @@ bool extense::detail::parseBinaryOperator(TokenStream &s,
   auto right = parseExprHelper(s, rightAssociative(op) ? (opPrecedence - 1) :
                                                          opPrecedence);
 
-  if (parseSpecialBinaryOperator(op, opToken.text(), left, right)) return true;
+  if (parseSpecialBinaryOperator(opLoc, op, opToken.text(), left, right))
+    return true;
 
-  left = makeBinaryOperation(op, std::move(left), std::move(right));
+  left = makeBinaryOperation(std::move(opLoc), op, std::move(left),
+                             std::move(right));
   return true;
 }
 
 bool extense::detail::parseScopeCall(TokenStream &s,
                                      std::unique_ptr<Expr> &left, int prec) {
+  auto loc = s.current()->location();
+
   constexpr int functionCallPrecedence = 16;
   if (isTokenTypeBinaryOperator(s.current()->type()) ||
       prec >= functionCallPrecedence)
@@ -290,7 +308,8 @@ bool extense::detail::parseScopeCall(TokenStream &s,
   // One is subtracted from parseExpr's precedence argument, for
   // right-associativity.
   auto argument = parseExprHelper(s, functionCallPrecedence - 1);
-  left = std::make_unique<ScopeCall>(std::move(left), std::move(argument));
+  left = std::make_unique<ScopeCall>(std::move(loc), std::move(left),
+                                     std::move(argument));
   return true;
 }
 
@@ -309,10 +328,12 @@ std::unique_ptr<extense::Expr> extense::detail::parseExprHelper(TokenStream &s,
 }
 
 std::unique_ptr<extense::ExprList> extense::detail::parse(TokenStream &s) {
+  auto loc = s.current()->location();
+
   std::vector<std::unique_ptr<Expr>> exprs;
   if (!s.current()) {
     // An empty TokenStream is still forms a valid (but empty) AST
-    return std::make_unique<ExprList>(std::move(exprs));
+    return std::make_unique<ExprList>(loc, std::move(exprs));
   }
 
   // Parsing is considered a failure if the whole input is not parsed
@@ -320,7 +341,6 @@ std::unique_ptr<extense::ExprList> extense::detail::parse(TokenStream &s) {
   expectToken(s);
   exprs = parseExpressionList<std::unique_ptr<Expr>>(s, Token::Type::EndSource,
                                                      parseExprOrLabel);
-  if (exprs.empty()) exprs.push_back(std::make_unique<ValueExpr>(noneValue));
 
   // On failure we do not need to reset the TokenStream's index as a
   // TokenStream will have been created just for this function
@@ -328,7 +348,7 @@ std::unique_ptr<extense::ExprList> extense::detail::parse(TokenStream &s) {
     throw ParseError{*s.current(), "Unable to parse the entire input"};
 
   // Success
-  return std::make_unique<ExprList>(std::move(exprs));
+  return std::make_unique<ExprList>(std::move(loc), std::move(exprs));
 }
 
 extense::String extense::detail::getIdentifierName(Expr &e) {
@@ -578,19 +598,20 @@ auto extense::detail::binaryOperationFunc(ASTNodeType type) {
   return binaryOperationFuncs[static_cast<int>(type) - 1];
 }
 
-bool extense::detail::parseSpecialBinaryOperator(ASTNodeType op,
+bool extense::detail::parseSpecialBinaryOperator(Source::Location loc,
+                                                 ASTNodeType op,
                                                  std::string_view opText,
                                                  std::unique_ptr<Expr> &left,
                                                  std::unique_ptr<Expr> &right) {
   if (op == ASTNodeType::CustomOperator) {
-    left = std::make_unique<CustomOperation>(std::string(opText),
-                                             std::move(left), std::move(right));
+    left = std::make_unique<CustomOperation>(
+        std::move(loc), std::string(opText), std::move(left), std::move(right));
     return true;
   }
 
   if (op == ASTNodeType::Colon) {
     left = std::make_unique<CharMutableBinaryOperation>(
-        op, binaryOperationFunc(op),
+        std::move(loc), op, binaryOperationFunc(op),
         [](auto &s, auto &a, auto &i) {
           auto iEvaled = constEval(s, i);
           return mutableEval(s, a, [&iEvaled](Value &aEvaled) -> Value * {
@@ -616,7 +637,7 @@ bool extense::detail::parseSpecialBinaryOperator(ASTNodeType op,
 
   if (op == ASTNodeType::Semicolon) {
     left = std::make_unique<MutableBinaryOperation>(
-        op, binaryOperationFunc(op),
+        std::move(loc), op, binaryOperationFunc(op),
         [](auto &s, auto &a, auto &i) {
           return mutableEval(s, a, [&](auto &aEvaled) {
             return &ops::mutableIndex(aEvaled, Value{getIdentifierName(i)});
@@ -630,15 +651,17 @@ bool extense::detail::parseSpecialBinaryOperator(ASTNodeType op,
 }
 
 std::unique_ptr<extense::UnaryOperation>
-extense::detail::makeUnaryOperation(ASTNodeType op,
+extense::detail::makeUnaryOperation(Source::Location loc, ASTNodeType op,
                                     std::unique_ptr<Expr> operand) {
-  return std::make_unique<UnaryOperation>(op, unaryOperationFunc(op),
-                                          std::move(operand));
+  return std::make_unique<UnaryOperation>(
+      std::move(loc), op, unaryOperationFunc(op), std::move(operand));
 }
 
 std::unique_ptr<extense::BinaryOperation>
-extense::detail::makeBinaryOperation(ASTNodeType op, std::unique_ptr<Expr> left,
+extense::detail::makeBinaryOperation(Source::Location loc, ASTNodeType op,
+                                     std::unique_ptr<Expr> left,
                                      std::unique_ptr<Expr> right) {
-  return std::make_unique<BinaryOperation>(op, binaryOperationFunc(op),
+  return std::make_unique<BinaryOperation>(std::move(loc), op,
+                                           binaryOperationFunc(op),
                                            std::move(left), std::move(right));
 }

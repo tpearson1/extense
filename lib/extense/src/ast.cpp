@@ -34,25 +34,32 @@ static constexpr std::array astNodeEnumStrings{
 #undef X
 };
 
+void extense::Expr::displayHeaderWithIndent(std::ostream &os,
+                                            int indent) const {
+  makeIndent(os, indent);
+  os << type_;
+  if (location_.valid()) os << " (at " << location_ << ')';
+}
+
 std::ostream &extense::operator<<(std::ostream &os, ASTNodeType type) {
   os << astNodeEnumStrings[static_cast<int>(type)];
   return os;
 }
 
 void extense::ValueExpr::dumpWithIndent(std::ostream &os, int indent) const {
-  makeIndent(os, indent);
-  os << "ValueExpr: " << LiteralShow{value_} << '\n';
+  displayHeaderWithIndent(os, indent);
+  os << ": " << LiteralShow{value_} << '\n';
 }
 
 void extense::LabelDeclaration::dumpWithIndent(std::ostream &os,
                                                int indent) const {
-  makeIndent(os, indent);
-  os << "LabelDeclaration: name '" << name_ << "'\n";
+  displayHeaderWithIndent(os, indent);
+  os << ": name '" << name_ << "'\n";
 }
 
 void extense::Identifier::dumpWithIndent(std::ostream &os, int indent) const {
-  makeIndent(os, indent);
-  os << "Identifier: name '" << name_ << "'\n";
+  displayHeaderWithIndent(os, indent);
+  os << ": name '" << name_ << "'\n";
 }
 
 extense::Expr::EvalResult extense::Identifier::eval(Scope &s) {
@@ -64,8 +71,8 @@ extense::Value *extense::Identifier::tryMutableEval(Scope &s) {
 }
 
 void extense::ScopeCall::dumpWithIndent(std::ostream &os, int indent) const {
-  makeIndent(os, indent);
-  os << "ScopeCall: Scope and argument below\n";
+  displayHeaderWithIndent(os, indent);
+  os << ": Scope and argument below\n";
   scope_->dumpWithIndent(os, indent + indentAmount);
   argument_->dumpWithIndent(os, indent + indentAmount);
 }
@@ -106,7 +113,6 @@ extense::Expr::EvalResult extense::ScopeCall::eval(Scope &scope) {
   if (scope_->type() == ASTNodeType::ColonColon ||
       scope_->type() == ASTNodeType::SemicolonSemicolon) {
     auto &indexExpr = *static_cast<BinaryOperation *>(scope_.get());
-    indexExpr.dump(std::cout);
     auto map = constEval(scope, indexExpr.leftOperand());
     auto toCallValue = ops::index(
         map, Value{detail::getIdentifierName(indexExpr.rightOperand())});
@@ -121,8 +127,8 @@ extense::Expr::EvalResult extense::ScopeCall::eval(Scope &scope) {
 
 void extense::MapConstructor::dumpWithIndent(std::ostream &os,
                                              int indent) const {
-  makeIndent(os, indent);
-  os << "MapConstructor: ";
+  displayHeaderWithIndent(os, indent);
+  os << ": ";
   if (mappings_.empty()) {
     os << "EMPTY\n";
     return;
@@ -131,7 +137,7 @@ void extense::MapConstructor::dumpWithIndent(std::ostream &os,
   os << "Mappings below\n";
   for (const auto & [ key, value ] : mappings_) {
     makeIndent(os, indent + indentAmount);
-    os << "Mapping\n";
+    os << "Mapping:\n";
     key->dumpWithIndent(os, indent + indentAmount * 2);
     value->dumpWithIndent(os, indent + indentAmount * 2);
   }
@@ -150,8 +156,8 @@ extense::Expr::EvalResult extense::MapConstructor::eval(Scope &scope) {
 
 void extense::ListConstructor::dumpWithIndent(std::ostream &os,
                                               int indent) const {
-  makeIndent(os, indent);
-  os << "ListConstructor: ";
+  displayHeaderWithIndent(os, indent);
+  os << ": ";
   if (elements_.empty()) {
     os << "EMPTY\n";
     return;
@@ -170,8 +176,10 @@ extense::Expr::EvalResult extense::ListConstructor::eval(Scope &scope) {
   return {false, Value{l}};
 }
 
-extense::ExprList::ExprList(std::vector<std::unique_ptr<Expr>> exprs)
-    : Expr(ASTNodeType::ExprList), exprs_(std::move(exprs)) {
+extense::ExprList::ExprList(Source::Location location,
+                            std::vector<std::unique_ptr<Expr>> exprs)
+    : Expr(std::move(location), ASTNodeType::ExprList),
+      exprs_(std::move(exprs)) {
   // Find and add label declarations to their corresponding list
   for (auto it = exprs_.begin(); it != exprs_.end(); it++) {
     if ((*it)->type() != ASTNodeType::LabelDeclaration) continue;
@@ -182,8 +190,13 @@ extense::ExprList::ExprList(std::vector<std::unique_ptr<Expr>> exprs)
 }
 
 void extense::ExprList::dumpWithIndent(std::ostream &os, int indent) const {
-  makeIndent(os, indent);
-  os << "ExprList: Expressions below\n";
+  displayHeaderWithIndent(os, indent);
+  if (exprs_.empty()) {
+    os << ": EMPTY\n";
+    return;
+  }
+
+  os << ": Expressions below\n";
   for (const auto &expr : exprs_)
     expr->dumpWithIndent(os, indent + indentAmount);
 }
@@ -211,23 +224,23 @@ extense::Scope extense::ExprList::toScope(Scope &outer) {
 
 void extense::UnaryOperation::dumpWithIndent(std::ostream &os,
                                              int indent) const {
-  makeIndent(os, indent);
-  os << "UnaryOperation: type '" << type() << "'\n";
+  displayHeaderWithIndent(os, indent);
+  os << ": UnaryOperation\n";
   operand_->dumpWithIndent(os, indent + indentAmount);
 }
 
 void extense::BinaryOperation::dumpWithIndent(std::ostream &os,
                                               int indent) const {
-  makeIndent(os, indent);
-  os << "BinaryOperation: type '" << type() << "'\n";
+  displayHeaderWithIndent(os, indent);
+  os << ": BinaryOperation\n";
   operand1_->dumpWithIndent(os, indent + indentAmount);
   operand2_->dumpWithIndent(os, indent + indentAmount);
 }
 
 void extense::CustomOperation::dumpWithIndent(std::ostream &os,
                                               int indent) const {
-  makeIndent(os, indent);
-  os << "CustomOperation: '" << op_ << "'\n";
+  displayHeaderWithIndent(os, indent);
+  os << ": '" << op_ << "'\n";
   operand1_->dumpWithIndent(os, indent + indentAmount);
   operand2_->dumpWithIndent(os, indent + indentAmount);
 }
@@ -240,16 +253,16 @@ extense::Expr::EvalResult extense::CustomOperation::eval(Scope &s) {
 
 void extense::MutableBinaryOperation::dumpWithIndent(std::ostream &os,
                                                      int indent) const {
-  makeIndent(os, indent);
-  os << "MutableBinaryOperation: type '" << type() << "'\n";
+  displayHeaderWithIndent(os, indent);
+  os << ": MutableBinaryOperation\n";
   leftOperand().dumpWithIndent(os, indent + indentAmount);
   rightOperand().dumpWithIndent(os, indent + indentAmount);
 }
 
 void extense::CharMutableBinaryOperation::dumpWithIndent(std::ostream &os,
                                                          int indent) const {
-  makeIndent(os, indent);
-  os << "CharMutableBinaryOperation: type '" << type() << "'\n";
+  displayHeaderWithIndent(os, indent);
+  os << ": CharMutableBinaryOperation\n";
   leftOperand().dumpWithIndent(os, indent + indentAmount);
   rightOperand().dumpWithIndent(os, indent + indentAmount);
 }
