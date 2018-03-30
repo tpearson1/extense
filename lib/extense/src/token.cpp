@@ -56,7 +56,7 @@ std::vector<extense::Token> extense::tokenize(Source &source) {
 
 /*
  * Fetches the next token and adds it to the end of tokens.
- * May throw an LexingErrror exception.
+ * May throw an LexingError exception.
  */
 extense::Token extense::detail::fetchNextToken(Source &source) {
   skipWhitespace(source);
@@ -97,7 +97,7 @@ extense::Token extense::detail::fetchNextToken(Source &source) {
 
     std::ostringstream errorMsg;
     errorMsg << "Unexpected character '" << current << '\'';
-    throw LexingError{source.location(), errorMsg.str()};
+    throw LexingError{errorMsg.str(), source.location()};
   }
   }
 #undef SINGLE_CHAR_TOKEN
@@ -173,7 +173,7 @@ static void lexUnsignedInteger(extense::Source &source, std::int64_t &out,
   // Throw LexingError if first digit is invalid
   if (source.currentChar().isAfterSource() ||
       (digit = df(source.currentChar().get())) == invalidDigit)
-    throw extense::LexingError{source.location(), "Expected number"};
+    throw extense::LexingError{"Expected number", source.location()};
   out = digit;
 
   while (!source.nextChar().isAfterSource()) {
@@ -226,8 +226,8 @@ static void lexEscapeSequenceNumber(extense::Source &source, char &out,
   lf(source, hex);
   if (hex > 255) {
     // The number is too large to store in a character
-    throw extense::LexingError{source.location(),
-                               "Number number in escape sequence too large"};
+    throw extense::LexingError{"Number number in escape sequence too large",
+                               source.location()};
   }
 
   out = static_cast<char>(hex);
@@ -236,8 +236,8 @@ static void lexEscapeSequenceNumber(extense::Source &source, char &out,
 void extense::detail::lexEscapeSequence(Source &source, char &out) {
   assert(source.currentChar() == '\\');
   if (source.nextChar().isAfterSource()) {
-    throw LexingError{source.location(),
-                      "Unexpected end of source in escape sequence"};
+    throw LexingError{"Unexpected end of source in escape sequence",
+                      source.location()};
   }
 
   auto c = source.currentChar().get();
@@ -264,7 +264,7 @@ void extense::detail::lexEscapeSequence(Source &source, char &out) {
   }
   default: {
     if (!safeIsDigit(c))
-      throw LexingError{source.location(), "Unrecognized escape sequence"};
+      throw LexingError{"Unrecognized escape sequence", source.location()};
 
     // Since the sequence is a backslash followed by a digit, the escape
     // sequence must be octal
@@ -291,7 +291,7 @@ bool extense::detail::lexCharacter(Source &source, Token &out) {
 
   if (source.currentChar().isAfterSource()) {
     throw extense::LexingError{
-        source.location(), "Expected character after '`', not end of source"};
+        "Expected character after '`', not end of source", source.location()};
   }
 
   out.setType(Token::Type::Character);
@@ -308,8 +308,8 @@ bool extense::detail::lexString(Source &source, Token &out) {
   std::string value;
   while (true) {
     if (source.currentChar().isAfterSource()) {
-      throw LexingError{source.location(),
-                        "Unexpected end of source while lexing String literal"};
+      throw LexingError{"Unexpected end of source while lexing String literal",
+                        source.location()};
     }
 
     char c = source.currentChar().get();
@@ -336,12 +336,12 @@ bool extense::detail::lexLabel(Source &source, Token &out) {
 
   if (source.nextChar().isAfterSource()) {
     throw extense::LexingError{
-        source.location(), "Expected identifier after '@', not end of source"};
+        "Expected identifier after '@', not end of source", source.location()};
   }
 
   if (!lexIdentifier(source, out)) {
-    throw extense::LexingError{source.location(),
-                               "Expected valid identifier after '@'"};
+    throw extense::LexingError{"Expected valid identifier after '@'",
+                               source.location()};
   }
 
   out.setType(Token::Type::LabelDeclaration);

@@ -204,8 +204,8 @@ inline std::vector<Token> tokenize(std::string_view source) {
  */
 class LexingError : public LocatableError {
 public:
-  LexingError(Source::Location location, std::string what)
-      : LocatableError(std::move(location), std::move(what)) {}
+  LexingError(std::string error, Source::Location loc)
+      : LocatableError(std::move(error), std::move(loc)) {}
 };
 
 namespace detail {
@@ -243,7 +243,7 @@ void lexBinaryNumber(Source &source, std::int64_t &out);
 // EOS = End of Source
 inline void throwUnexpectedEOS(Source &source) {
   if (source.currentChar().isValidChar()) return;
-  throw LexingError{source.location(), "Unexpected end of source"};
+  throw LexingError{"Unexpected end of source", source.location()};
 }
 
 template <typename Pred>

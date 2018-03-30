@@ -233,8 +233,7 @@ class ConstrainedValue {
 
 public:
   ConstrainedValue(TValue &value) : data(value) {
-    if (!(value.template is<PermittedVTs>() || ...))
-      throw std::runtime_error{"Cannot constrain types"};
+    if (!(value.template is<PermittedVTs>() || ...)) throw ConstraintFailure{};
   }
 
   template <typename T>
@@ -324,10 +323,8 @@ decltype(auto) visit(Visitor visitor, Values &&... values) {
                            std::decay_t<decltype(args)>> &&
                        ...)) {
           return visitor(std::forward<decltype(args)>(args)...);
-        } else {
-          // TODO: Custom exception - same type as in constrain
-          throw std::runtime_error{"Unsatisfied constraint in visit"};
-        }
+        } else
+          throw LogicError{"Unsatisfied constraint in visit"};
       },
       (tryFlatten(std::forward<decltype(values)>(values))
            .internalVariant())...);
@@ -354,9 +351,8 @@ T &mutableGet(const Value &v) {
   static_assert(Value::supportsType<T>,
                 "Invalid template argument given to 'extense::mutableGet'");
   auto ref = std::get<Reference>(v.internalVariant());
-  // TODO: Custom exception
   if constexpr (std::is_same_v<T, Reference>)
-    throw std::runtime_error{"Unable to get a mutable value type"};
+    throw MutableAccessError{};
   else
     return get<T>(ref->internalVariant());
 }
@@ -425,10 +421,8 @@ FlatValueTo constrain(FlatValueFrom from) {
 
   // FlatValueTo may not be default constructible
   std::optional<FlatValueTo> to;
-  if (!QueryFlatValue<FlatValueTo>::canConstrain(from)) {
-    // TODO: Custom exception type
-    throw std::runtime_error{"Could not constrain type"};
-  }
+  if (!QueryFlatValue<FlatValueTo>::canConstrain(from))
+    throw ConstraintFailure{};
 
   visit(
       [&to](auto v) {

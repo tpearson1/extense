@@ -30,6 +30,21 @@
 
 using namespace extense::literals;
 
+extense::InvalidBinaryOperation::InvalidBinaryOperation(const Value &a,
+                                                        const Value &b,
+                                                        std::string reason)
+    : Exception("") {
+  setError(build(a.typeAsString(), b.typeAsString(), std::move(reason)));
+  setType("InvalidBinaryOperation");
+}
+
+extense::InvalidUnaryOperation::InvalidUnaryOperation(const Value &a,
+                                                      std::string reason)
+    : Exception("") {
+  setError(build(a.typeAsString(), std::move(reason)));
+  setType("InvalidUnaryOperation");
+}
+
 namespace extense::ops {
 #define VALID_OP(resultVar, op)                                                \
   template <typename A, typename B, typename = void>                           \
@@ -54,7 +69,7 @@ namespace extense::ops {
           using A = std::decay_t<decltype(a)>;                                 \
           using B = std::decay_t<decltype(b)>;                                 \
           if constexpr (!canDoOperation##opFuncName<A, B>)                     \
-            throw InvalidOperation::Create<A, B>();                            \
+            throw InvalidBinaryOperation::Create<A, B>();                      \
           else                                                                 \
             return Value{opFuncName(a, b)};                                    \
         },                                                                     \
@@ -83,8 +98,7 @@ namespace extense::ops {
 
 Value add(const Value &a) {
   if (a.is<Int>() || a.is<Float>()) return a;
-  // TODO: Custom InvalidUnaryOperation exception
-  throw std::runtime_error{"Cannot use unary '+' operator on non-numeric type"};
+  throw InvalidUnaryOperation{a};
 }
 
 OP_VISITOR(add)
@@ -105,8 +119,7 @@ List &addEquals(List &a, const List &b) {
 Value sub(const Value &a) {
   if (a.is<Int>()) return Value{-get<Int>(a)};
   if (a.is<Float>()) return Value{-get<Float>(a)};
-  // TODO: Custom InvalidUnaryOperation exception
-  throw std::runtime_error{"Cannot use unary '-' operator on non-numeric type"};
+  throw InvalidUnaryOperation{a};
 }
 
 OP_VISITOR(sub)
@@ -123,7 +136,7 @@ String mul(String a, Int times) {
 template <typename ValueType>
 static ValueType &mulEquals(ValueType &a, Int times_) {
   if (times_.value < 0) {
-    throw InvalidOperation::Create<ValueType, Int>(
+    throw InvalidBinaryOperation::Create<ValueType, Int>(
         "Expected Int to be greater than 0");
   }
   auto times = static_cast<std::size_t>(times_.value);
@@ -161,13 +174,13 @@ constexpr const auto powMessage = "Invalid values for base and/or exponent";
 // The power functions consider raising 0 to the 0 as 1
 Float pow(Float a, Float b) {
   if (a.value < 0.0 || (a.value == 0.0 && b.value < 0.0))
-    throw InvalidOperation::Create<Float, Float>(powMessage);
+    throw InvalidBinaryOperation::Create<Float, Float>(powMessage);
   return Float{std::pow(a.value, b.value)};
 }
 
 Float pow(Float a, Int b) {
   if (a.value == 0.0 && b.value < 0)
-    throw InvalidOperation::Create<Float, Int>(powMessage);
+    throw InvalidBinaryOperation::Create<Float, Int>(powMessage);
   return Float{std::pow(a.value, b.value)};
 }
 
@@ -175,9 +188,10 @@ OP_VISITOR(dotDot)
 
 List dotDot(Int a, Int b) {
   if (b.value < a.value) {
-    throw InvalidOperation::Create<Int, Int>("Operator '..' requires upper "
-                                             "bound to be greater than or "
-                                             "equal to lower bound");
+    throw InvalidBinaryOperation::Create<Int, Int>(
+        "Operator '..' requires upper "
+        "bound to be greater than or "
+        "equal to lower bound");
   }
   // Should contain b - a + 1 elements (a, a+1, a+2, ... b)
   List::ValueType list(b.value - a.value + 1);
@@ -190,19 +204,20 @@ Value index(const Value &a, const Value &b) {
   if (a.is<List>()) return get<List>(a).at(b);
 
   if (!a.is<String>() || !b.is<Int>())
-    throw InvalidOperation(a, b, "Unable to index type");
+    throw InvalidBinaryOperation(a, b, "Unable to index type");
   return Value{get<String>(a).at(get<Int>(b))};
 }
 
 Value &mutableIndex(Value &a, const Value &b) {
   if (a.is<Map>()) return get<Map>(a)[b];
 
-  if (!a.is<List>()) throw InvalidOperation(a, b, "Unable to index type");
+  if (!a.is<List>()) throw InvalidBinaryOperation(a, b, "Unable to index type");
   if (!b.is<Int>())
-    throw InvalidOperation("List", b.typeAsString(), "Unable to index type");
+    throw InvalidBinaryOperation("List", b.typeAsString(),
+                                 "Unable to index type");
 
   if (b.is<List>())
-    throw InvalidOperation("List", "List", "Unable to mutate sub-list");
+    throw InvalidBinaryOperation("List", "List", "Unable to mutate sub-list");
   return get<List>(a)[get<Int>(b)];
 }
 
@@ -219,8 +234,7 @@ COMPOUND_OP_VISITOR(bitXorEquals, bitXor)
 
 Value bitNot(const Value &a) {
   if (a.is<Int>()) return Value{bitNot(get<Int>(a))};
-  // TODO: Custom InvalidUnaryOperation exception
-  throw std::runtime_error{"Operation 'bitNot' is only permitted on Ints"};
+  throw InvalidUnaryOperation{a};
 }
 
 OP_VISITOR(bitLShift)
@@ -239,8 +253,7 @@ OP_VISITOR(logicalOr)
 
 Value logicalNot(const Value &a) {
   if (a.is<Bool>()) return Value{logicalNot(get<Bool>(a))};
-  // TODO: Custom InvalidUnaryOperation exception
-  throw std::runtime_error{"Operation 'not' is only permitted on Bools"};
+  throw InvalidUnaryOperation{a};
 }
 
 OP_VISITOR(lessThan)

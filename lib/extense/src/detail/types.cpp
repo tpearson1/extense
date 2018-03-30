@@ -24,11 +24,13 @@
   -------------------------------------------------------------------------------
 */
 
+#include <extense/ast.hpp>
 #include <extense/value.hpp>
 
 const extense::Char &extense::String::operator[](Int i) const {
   if (i >= size() || i.value < 0)
-    throw InvalidOperation::Create<String, Int>("Out of bounds string access");
+    throw InvalidBinaryOperation::Create<String, Int>(
+        "Out of bounds string access");
   // Can reinterpret_cast because the memory layout of Char and char is the same
   return reinterpret_cast<const Char &>(value[i.value]);
 }
@@ -77,8 +79,8 @@ const extense::Value &extense::Map::at(const KeyType &i) const {
   try {
     return value.at(i);
   } catch (std::out_of_range &) {
-    throw InvalidOperation{"Map", "Map's key type",
-                           "Element not present in map"};
+    throw InvalidBinaryOperation{"Map", "Map's key type",
+                                 "Element not present in map"};
   }
 }
 
@@ -87,7 +89,8 @@ extense::List::List(detail::Wrap<std::initializer_list<Value>> values)
 
 const extense::Value &extense::List::operator[](extense::Int i) const {
   if (i.value >= static_cast<Int::ValueType>(value.size()) || i.value < 0)
-    throw InvalidOperation::Create<List, Int>("Out of bounds array access");
+    throw InvalidBinaryOperation::Create<List, Int>(
+        "Out of bounds array access");
   return value[i.value];
 }
 
@@ -97,12 +100,12 @@ const extense::Value &extense::List::at(extense::Int i) const {
 
 extense::List extense::List::operator[](const extense::List &i) const {
   if (i.value.size() != 2) {
-    throw InvalidOperation::Create<List, List>(
+    throw InvalidBinaryOperation::Create<List, List>(
         "Indexing using list with size not equal to 2");
   }
 
   if (!i.value[0].is<Int>() || !i.value[1].is<Int>()) {
-    throw InvalidOperation::Create<List, List>(
+    throw InvalidBinaryOperation::Create<List, List>(
         "Bounds specified in indexing list must be Ints");
   }
 
@@ -110,17 +113,18 @@ extense::List extense::List::operator[](const extense::List &i) const {
   auto &upperBound = get<Int>(i.value[1]).value;
 
   if (upperBound < lowerBound) {
-    throw InvalidOperation::Create<List, List>(
+    throw InvalidBinaryOperation::Create<List, List>(
         "Indexing using an list with second element less than the first");
   }
 
   if (lowerBound < 0) {
-    throw InvalidOperation::Create<List, List>(
+    throw InvalidBinaryOperation::Create<List, List>(
         "First element in indexing list is less than 0");
   }
 
   if (upperBound >= static_cast<Int::ValueType>(value.size()))
-    throw InvalidOperation::Create<List, List>("Out of bounds list access");
+    throw InvalidBinaryOperation::Create<List, List>(
+        "Out of bounds list access");
 
   List sublist;
   const auto &begin = std::begin(value);
@@ -134,7 +138,8 @@ extense::Value extense::List::at(const Value &i) const {
     return Value{at(get<Int>(i))};
   else if (i.is<List>())
     return Value{at(get<List>(i))};
-  throw InvalidOperation("List", i.typeAsString(), "Invalid type for indexer");
+  throw InvalidBinaryOperation("List", i.typeAsString(),
+                               "Invalid type for indexer");
 }
 
 extense::Value extense::Scope::call(const Value &v) {
@@ -146,11 +151,7 @@ extense::Value extense::Scope::call(const Value &v) {
 const extense::Value &
 extense::Scope::getIdentifier(const std::string &name) const {
   auto *v = findIdentifier(name);
-  if (!v) {
-    // TODO: Custom exception
-    throw std::runtime_error{"Undefined identifier"};
-  }
-
+  if (!v) throw IdentifierError{name};
   return *v;
 }
 
@@ -194,7 +195,7 @@ std::ostream &extense::operator<<(std::ostream &os, const List &v) {
 std::ostream &extense::operator<<(std::ostream &os, const Map &v) {
   auto &map = v.value;
   os << (map.empty() ? "{" : "{\n");
-  for (const auto & [ k, v ] : map)
+  for (const auto &[k, v] : map)
     os << extense::LiteralShow{k} << " -> " << extense::LiteralShow{v} << '\n';
   os << '}';
   return os;

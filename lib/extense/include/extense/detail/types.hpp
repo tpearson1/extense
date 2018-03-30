@@ -321,8 +321,8 @@ public:
 private:
   Function func;
   Scope *outer_;
-  // Using map as it does not require definition of Value, and iterators are not
-  // invalidated unless the iterator's element is removed.
+  // Using map as it does not require the definition of Value, and iterators are
+  // not invalidated unless the iterator's element is removed.
   std::map<std::string, Value> identifiers;
 
   Value call(const Value &v);

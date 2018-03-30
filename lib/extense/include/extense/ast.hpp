@@ -122,6 +122,19 @@ inline void makeIndent(std::ostream &os, int amount) {
 
 inline constexpr int indentAmount = 2;
 
+class ExceptionWrapper {
+  Exception data_;
+  Source::Location location_;
+
+public:
+  ExceptionWrapper(Exception e, Source::Location loc)
+      : data_(std::move(e)), location_(std::move(loc)) {}
+
+  const Exception &data() const { return data_; }
+  const Source::Location &location() const { return location_; }
+  const std::string &type() const { return data_.type(); }
+};
+
 class Expr {
 private:
   ASTNodeType type_;
@@ -149,11 +162,20 @@ public:
     Value value;
   };
 
-  virtual EvalResult eval(Scope &scope) = 0;
-  virtual Value *tryMutableEval(Scope &) { return nullptr; }
+protected:
+  virtual EvalResult evalImpl(Scope &scope) = 0;
+  virtual Value *tryMutableEvalImpl(Scope &) { return nullptr; }
 
   // For mutating elements in a string
-  virtual Char *tryMutableCharEval(Scope &) { return nullptr; }
+  virtual Char *tryMutableCharEvalImpl(Scope &) { return nullptr; }
+
+public:
+  EvalResult eval(Scope &scope);
+
+  Value *tryMutableEval(Scope &scope);
+
+  // For mutating elements in a string
+  Char *tryMutableCharEval(Scope &scope);
 
   virtual ~Expr() {}
 };
@@ -168,72 +190,96 @@ auto mutableEval(Scope &scope, Expr &a, OpFunc f) {
   if (charLhs) {
     auto toAssign = Value{*charLhs};
     auto ret = f(toAssign);
-    // TODO: Custom exception
-    if (!toAssign.is<Char>())
-      throw std::runtime_error{"Expected Char in assignment"};
+    if (!toAssign.is<Char>()) {
+      throw InvalidBinaryOperation{"Mutable Char", toAssign.typeAsString(),
+                                   "Expected Char in assignment"};
+    }
     *charLhs = get<Char>(toAssign);
     return ret;
   }
 
-  auto[isMutable, value] = a.eval(scope);
-  // TODO: Custom exception
+  auto [isMutable, value] = a.eval(scope);
   if (!isMutable || !value.is<Reference>())
-    throw std::runtime_error{"Expected mutable expression"};
+    throw InvalidBinaryOperation{"Constant expression", "<Unknown>",
+                                 "Expected mutable expression"};
   return f(value);
 }
 
 class ValueExpr : public Expr {
   Value value_;
 
+protected:
+  EvalResult evalImpl(Scope &) override { return {false, value_}; }
+
+  void dumpWithIndent(std::ostream &os, int indent) const override;
+
 public:
   explicit ValueExpr(Source::Location location, Value v)
       : Expr(std::move(location), ASTNodeType::ValueExpr),
         value_(std::move(v)) {}
 
-  void dumpWithIndent(std::ostream &os, int indent) const override;
-
   const Value &value() const { return value_; }
   Value &value() { return value_; }
-
-  EvalResult eval(Scope &) override { return {false, value_}; }
 };
 
 class LabelDeclaration : public Expr {
   std::string name_;
+
+protected:
+  EvalResult evalImpl(Scope &) override { return {false, noneValue}; }
+
+  void dumpWithIndent(std::ostream &os, int indent) const override;
 
 public:
   explicit LabelDeclaration(Source::Location location, std::string name)
       : Expr(std::move(location), ASTNodeType::LabelDeclaration),
         name_(std::move(name)) {}
 
-  void dumpWithIndent(std::ostream &os, int indent) const override;
-
   const std::string &name() const { return name_; }
   void rename(std::string name) { name_ = std::move(name); }
+};
 
-  EvalResult eval(Scope &) override { return {false, noneValue}; }
+/*
+ * Exception thrown when attempting to access an undefined identifier.
+ */
+class IdentifierError : public Exception {
+  std::string identifier_;
+
+public:
+  explicit IdentifierError(std::string ident)
+      : Exception("Undefined identifier"), identifier_(std::move(ident)) {
+    setType("IdentifierError");
+  }
+
+  const std::string &identifier() const { return identifier_; }
 };
 
 class Identifier : public Expr {
   std::string name_;
+
+protected:
+  EvalResult evalImpl(Scope &s) override;
+  Value *tryMutableEvalImpl(Scope &s) override;
+
+  void dumpWithIndent(std::ostream &os, int indent) const override;
 
 public:
   explicit Identifier(Source::Location location, std::string name)
       : Expr(std::move(location), ASTNodeType::Identifier),
         name_(std::move(name)) {}
 
-  void dumpWithIndent(std::ostream &os, int indent) const override;
-
   const std::string &name() const { return name_; }
   void rename(std::string name) { name_ = std::move(name); }
-
-  EvalResult eval(Scope &s) override;
-  Value *tryMutableEval(Scope &s) override;
 };
 
 class ScopeCall : public Expr {
   std::unique_ptr<Expr> scope_;
   std::unique_ptr<Expr> argument_;
+
+protected:
+  EvalResult evalImpl(Scope &) override;
+
+  void dumpWithIndent(std::ostream &os, int indent) const override;
 
 public:
   explicit ScopeCall(Source::Location location, std::unique_ptr<Expr> scope,
@@ -241,15 +287,11 @@ public:
       : Expr(std::move(location), ASTNodeType::ScopeCall),
         scope_(std::move(scope)), argument_(std::move(argument)) {}
 
-  void dumpWithIndent(std::ostream &os, int indent) const override;
-
   const Expr &scope() const { return *scope_; }
   Expr &scope() { return *scope_; }
 
   const Expr &argument() const { return *argument_; }
   Expr &argument() { return *argument_; }
-
-  EvalResult eval(Scope &) override;
 };
 
 struct ParsedMapping {
@@ -259,31 +301,33 @@ struct ParsedMapping {
 class MapConstructor : public Expr {
   std::vector<ParsedMapping> mappings_;
 
+protected:
+  // Returns a Map created from the evaluated mappings
+  EvalResult evalImpl(Scope &) override;
+
+  void dumpWithIndent(std::ostream &os, int indent) const override;
+
 public:
   explicit MapConstructor(Source::Location location,
                           std::vector<ParsedMapping> mappings)
       : Expr(std::move(location), ASTNodeType::MapConstructor),
         mappings_(std::move(mappings)) {}
-
-  void dumpWithIndent(std::ostream &os, int indent) const override;
-
-  // Returns a Map created from the evaluated mappings
-  EvalResult eval(Scope &) override;
 };
 
 class ListConstructor : public Expr {
   std::vector<std::unique_ptr<Expr>> elements_;
+
+protected:
+  // Returns a List constructed from the evaluated elements
+  EvalResult evalImpl(Scope &) override;
+
+  void dumpWithIndent(std::ostream &os, int indent) const override;
 
 public:
   explicit ListConstructor(Source::Location location,
                            std::vector<std::unique_ptr<Expr>> elements)
       : Expr(std::move(location), ASTNodeType::ListConstructor),
         elements_(std::move(elements)) {}
-
-  void dumpWithIndent(std::ostream &os, int indent) const override;
-
-  // Returns a List constructed from the evaluated elements
-  EvalResult eval(Scope &) override;
 };
 
 class ExprList : public Expr {
@@ -291,16 +335,18 @@ class ExprList : public Expr {
   ExprContainer exprs_;
   std::vector<Label> labels;
 
+protected:
+  EvalResult evalImpl(Scope &outer) override {
+    return {false, Value{toScope(outer)}};
+  }
+
+  void dumpWithIndent(std::ostream &os, int indent) const override;
+
 public:
   explicit ExprList(Source::Location location,
                     std::vector<std::unique_ptr<Expr>> exprs);
 
-  void dumpWithIndent(std::ostream &os, int indent) const override;
-
   Scope toScope(Scope &outer);
-  EvalResult eval(Scope &outer) override {
-    return {false, Value{toScope(outer)}};
-  }
 
   using const_iterator = ExprContainer::const_iterator;
 
@@ -309,6 +355,13 @@ public:
 };
 
 class UnaryOperation : public Expr {
+protected:
+  EvalResult evalImpl(Scope &s) override {
+    return {true, operation_(s, *operand_)};
+  }
+
+  void dumpWithIndent(std::ostream &os, int indent) const override;
+
 public:
   using Function = Value(Scope &, Expr &);
 
@@ -316,12 +369,6 @@ public:
                           Function *operation, std::unique_ptr<Expr> operand)
       : Expr(std::move(location), opType), operation_(operation),
         operand_(std::move(operand)) {}
-
-  void dumpWithIndent(std::ostream &os, int indent) const override;
-
-  EvalResult eval(Scope &s) override {
-    return {true, operation_(s, *operand_)};
-  }
 
   const Expr &operand() const { return *operand_; }
   Expr &operand() { return *operand_; }
@@ -332,6 +379,13 @@ private:
 };
 
 class BinaryOperation : public Expr {
+protected:
+  EvalResult evalImpl(Scope &s) override {
+    return {true, operation_(s, *operand1_, *operand2_)};
+  }
+
+  void dumpWithIndent(std::ostream &os, int indent) const override;
+
 public:
   using Function = Value(Scope &, Expr &, Expr &);
 
@@ -340,12 +394,6 @@ public:
                            std::unique_ptr<Expr> operand2)
       : Expr(std::move(location), opType), operation_(operation),
         operand1_(std::move(operand1)), operand2_(std::move(operand2)) {}
-
-  void dumpWithIndent(std::ostream &os, int indent) const override;
-
-  EvalResult eval(Scope &s) override {
-    return {true, operation_(s, *operand1_, *operand2_)};
-  }
 
   const Expr &leftOperand() const { return *operand1_; }
   Expr &leftOperand() { return *operand1_; }
@@ -361,6 +409,11 @@ private:
 class CustomOperation : public Expr {
   std::string op_;
 
+protected:
+  EvalResult evalImpl(Scope &s) override;
+
+  void dumpWithIndent(std::ostream &os, int indent) const override;
+
 public:
   explicit CustomOperation(Source::Location location, std::string op,
                            std::unique_ptr<Expr> operand1,
@@ -370,10 +423,6 @@ public:
         operand2_(std::move(operand2)) {}
 
   const std::string &operatorString() const { return op_; }
-
-  void dumpWithIndent(std::ostream &os, int indent) const override;
-
-  EvalResult eval(Scope &s) override;
 
   const Expr &leftOperand() const { return *operand1_; }
   Expr &leftOperand() { return *operand1_; }
@@ -386,6 +435,13 @@ private:
 };
 
 class MutableBinaryOperation : public BinaryOperation {
+protected:
+  Value *tryMutableEvalImpl(Scope &s) override {
+    return mutableOperation_(s, leftOperand(), rightOperand());
+  }
+
+  void dumpWithIndent(std::ostream &os, int indent) const override;
+
 public:
   using MutableFunction = Value *(Scope &, Expr &, Expr &);
 
@@ -398,17 +454,18 @@ public:
                         std::move(operand1), std::move(operand2)),
         mutableOperation_(mutableOperation) {}
 
-  void dumpWithIndent(std::ostream &os, int indent) const override;
-
-  Value *tryMutableEval(Scope &s) override {
-    return mutableOperation_(s, leftOperand(), rightOperand());
-  }
-
 private:
   MutableFunction *mutableOperation_;
 };
 
 class CharMutableBinaryOperation : public MutableBinaryOperation {
+protected:
+  Char *tryMutableCharEvalImpl(Scope &s) override {
+    return charMutableOperation_(s, leftOperand(), rightOperand());
+  }
+
+  void dumpWithIndent(std::ostream &os, int indent) const override;
+
 public:
   using CharMutableFunction = Char *(Scope &, Expr &, Expr &);
 
@@ -422,12 +479,6 @@ public:
                                mutableOperation, std::move(operand1),
                                std::move(operand2)),
         charMutableOperation_(charMutableOperation) {}
-
-  void dumpWithIndent(std::ostream &os, int indent) const override;
-
-  Char *tryMutableCharEval(Scope &s) override {
-    return charMutableOperation_(s, leftOperand(), rightOperand());
-  }
 
 private:
   CharMutableFunction *charMutableOperation_;

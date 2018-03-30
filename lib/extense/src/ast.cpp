@@ -41,6 +41,29 @@ void extense::Expr::displayHeaderWithIndent(std::ostream &os,
   if (location_.valid()) os << " (at " << location_ << ')';
 }
 
+[[noreturn]] static void handleThrow(const extense::Exception &e,
+                                     const extense::Source::Location &loc) {
+  throw extense::ExceptionWrapper(e, loc);
+}
+
+extense::Expr::EvalResult extense::Expr::eval(Scope &scope) {
+  try {
+    return evalImpl(scope);
+  } catch (const Exception &e) { handleThrow(e, location_); }
+}
+
+extense::Value *extense::Expr::tryMutableEval(Scope &scope) {
+  try {
+    return tryMutableEvalImpl(scope);
+  } catch (const Exception &e) { handleThrow(e, location_); }
+}
+
+extense::Char *extense::Expr::tryMutableCharEval(Scope &scope) {
+  try {
+    return tryMutableCharEvalImpl(scope);
+  } catch (const Exception &e) { handleThrow(e, location_); }
+}
+
 std::ostream &extense::operator<<(std::ostream &os, ASTNodeType type) {
   os << astNodeEnumStrings[static_cast<int>(type)];
   return os;
@@ -62,11 +85,11 @@ void extense::Identifier::dumpWithIndent(std::ostream &os, int indent) const {
   os << ": name '" << name_ << "'\n";
 }
 
-extense::Expr::EvalResult extense::Identifier::eval(Scope &s) {
+extense::Expr::EvalResult extense::Identifier::evalImpl(Scope &s) {
   return {true, s.getIdentifier(name_)};
 }
 
-extense::Value *extense::Identifier::tryMutableEval(Scope &s) {
+extense::Value *extense::Identifier::tryMutableEvalImpl(Scope &s) {
   return &s.createOrGetIdentifier(name_);
 }
 
@@ -90,15 +113,12 @@ extense::Value extense::detail::buildArgumentsForScopeCall(const Value &lhs,
 }
 
 static extense::Scope &getScopeForCall(extense::Value &scope) {
-  if (!scope.is<extense::Scope>()) {
-    // TODO: Custom exception
-    throw std::runtime_error{"Can only call Scopes"};
-  }
-
+  if (!scope.is<extense::Scope>())
+    throw extense::InvalidUnaryOperation{scope, "Can only call Scopes"};
   return extense::get<extense::Scope>(scope);
 }
 
-extense::Expr::EvalResult extense::ScopeCall::eval(Scope &scope) {
+extense::Expr::EvalResult extense::ScopeCall::evalImpl(Scope &scope) {
   auto argEvaled = argument_->eval(scope).value;
 
   // Handle special cases
@@ -135,7 +155,7 @@ void extense::MapConstructor::dumpWithIndent(std::ostream &os,
   }
 
   os << "Mappings below\n";
-  for (const auto & [ key, value ] : mappings_) {
+  for (const auto &[key, value] : mappings_) {
     makeIndent(os, indent + indentAmount);
     os << "Mapping:\n";
     key->dumpWithIndent(os, indent + indentAmount * 2);
@@ -143,11 +163,9 @@ void extense::MapConstructor::dumpWithIndent(std::ostream &os,
   }
 }
 
-extense::Expr::EvalResult extense::MapConstructor::eval(Scope &scope) {
+extense::Expr::EvalResult extense::MapConstructor::evalImpl(Scope &scope) {
   Map s;
-  // TODO: Catch exception which may be thrown by constrain and throw a custom
-  // one
-  for (auto & [ key, value ] : mappings_) {
+  for (auto &[key, value] : mappings_) {
     auto keyValue = key->eval(scope).value;
     s[keyValue] = value->eval(scope).value;
   }
@@ -168,7 +186,7 @@ void extense::ListConstructor::dumpWithIndent(std::ostream &os,
     elem->dumpWithIndent(os, indent + indentAmount);
 }
 
-extense::Expr::EvalResult extense::ListConstructor::eval(Scope &scope) {
+extense::Expr::EvalResult extense::ListConstructor::evalImpl(Scope &scope) {
   List l;
   std::transform(elements_.begin(), elements_.end(),
                  std::back_inserter(l.value),
@@ -245,7 +263,7 @@ void extense::CustomOperation::dumpWithIndent(std::ostream &os,
   operand2_->dumpWithIndent(os, indent + indentAmount);
 }
 
-extense::Expr::EvalResult extense::CustomOperation::eval(Scope &s) {
+extense::Expr::EvalResult extense::CustomOperation::evalImpl(Scope &s) {
   auto opFuncVal = s.getIdentifier(op_);
   return {true, get<Scope>(opFuncVal)(constEval(s, *operand1_),
                                       constEval(s, *operand2_))};

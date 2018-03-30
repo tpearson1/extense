@@ -39,8 +39,8 @@ class ParseError : public LocatableError {
   Token::Type tokenType_;
 
 public:
-  explicit ParseError(const Token &at, std::string what)
-      : LocatableError(at.location(), std::move(what)), tokenText_(at.text()),
+  explicit ParseError(std::string what, const Token &at)
+      : LocatableError(std::move(what), at.location()), tokenText_(at.text()),
         tokenType_(at.type()) {}
 
   const std::string &tokenText() const { return tokenText_; }

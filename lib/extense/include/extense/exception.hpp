@@ -34,28 +34,76 @@ SOFTWARE.
 
 namespace extense {
 class Exception : public std::exception {
-  const std::string type_;
+  std::string type_ = "Exception";
+  std::string error_;
+
+protected:
+  void setType(std::string type) { type_ = std::move(type); }
+  void setError(std::string error) { error_ = std::move(error); }
 
 public:
-  explicit Exception(std::string type = "Exception") : type_(std::move(type)) {}
+  explicit Exception(std::string error) : error_(std::move(error)) {}
 
   const std::string &type() const { return type_; }
-  const char *what() const noexcept override { return "Unknown Exception"; }
+
+  const char *what() const noexcept override { return error_.c_str(); }
+  const std::string &error() const noexcept { return error_; }
 };
 
 class LocatableError : public Exception {
   Source::Location throwLocation_;
-  std::string error_;
-  static inline std::string type = "LocatableError";
 
 public:
-  explicit LocatableError(Source::Location loc, std::string error)
-      : Exception(type), throwLocation_(std::move(loc)),
-        error_(std::move(error)) {}
+  LocatableError(std::string error, Source::Location loc)
+      : Exception(std::move(error)), throwLocation_(std::move(loc)) {
+    setType("LocatableError");
+  }
 
   const Source::Location &throwLocation() const { return throwLocation_; }
+};
 
-  const char *what() const noexcept override { return error_.c_str(); }
+/*
+ * Exception thrown in cases which are thought to be impossible.
+ */
+class LogicError : public Exception {
+public:
+  explicit LogicError(std::string error) : Exception(std::move(error)) {
+    setType("LogicError");
+  }
+};
+
+/*
+ * Exception thrown when asked to get a mutable value from a const type.
+ */
+class MutableAccessError : public Exception {
+public:
+  explicit MutableAccessError(
+      std::string error = "Unable to get a mutable value type")
+      : Exception(std::move(error)) {
+    setType("MutableAccessError");
+  }
+};
+
+/*
+ * Exception thrown when unable to constrain a FlatValue.
+ */
+class ConstraintFailure : public Exception {
+public:
+  explicit ConstraintFailure(std::string error = "Could not constrain type")
+      : Exception(std::move(error)) {
+    setType("ConstraintFailure");
+  }
+};
+
+/*
+ * Exception thrown when the number of arguments given to a function is invalid,
+ * or argument value(s) are invalid.
+ */
+class ArgumentError : public Exception {
+public:
+  explicit ArgumentError(std::string error) : Exception(std::move(error)) {
+    setType("ArgumentError");
+  }
 };
 } // namespace extense
 

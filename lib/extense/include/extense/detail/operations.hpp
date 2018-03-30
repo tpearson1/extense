@@ -30,46 +30,85 @@
 #include <cmath>
 
 #include <extense/detail/types.hpp>
+#include <extense/exception.hpp>
 
 namespace extense {
-// TODO: Exception hierarchy for execution, with base Exception class
 /*
- * Exception thrown when an operation is found to be invalid, such as the
+ * Exception thrown when a binary operation is found to be invalid, such as the
  * addition of two Values with contained type Char.
  */
-class InvalidOperation : public std::exception {
-  std::string v1, v2, reason;
-  std::string whatStr;
+class InvalidBinaryOperation : public Exception {
+  std::string v1_, v2_, reason_;
 
-  inline static constexpr auto defaultMessage = "Incompatible types";
+  inline static constexpr auto defaultReason =
+      "Operation not defined on instances of the given types";
 
-  void buildWhatStr() {
-    whatStr =
-        "Invalid operation with types '" + v1 + "' + '" + v2 + "': " + reason;
+  std::string build(std::string v1, std::string v2, std::string reason) {
+    v1_ = std::move(v1);
+    v2_ = std::move(v2);
+    reason_ = std::move(reason);
+    return "Invalid binary operation with types '" + v1_ + "' + '" + v2_ +
+           "': " + reason_;
   }
 
 public:
-  InvalidOperation(std::string firstType, std::string secondType,
-                   std::string message = defaultMessage)
-      : v1(std::move(firstType)), v2(std::move(secondType)),
-        reason(std::move(message)) {
-    buildWhatStr();
+  InvalidBinaryOperation(std::string firstType, std::string secondType,
+                         std::string reason = defaultReason)
+      : Exception("") {
+    setError(
+        build(std::move(firstType), std::move(secondType), std::move(reason)));
+    setType("InvalidBinaryOperation");
   }
 
-  InvalidOperation(const Value &a, const Value &b,
-                   std::string message = defaultMessage);
+  InvalidBinaryOperation(const Value &a, const Value &b,
+                         std::string reason = defaultReason);
 
   template <typename V1, typename V2>
-  static InvalidOperation Create(std::string message = defaultMessage) {
-    return InvalidOperation{std::string{typeAsString<V1>},
-                            std::string{typeAsString<V2>}, std::move(message)};
+  static InvalidBinaryOperation Create(std::string reason = defaultReason) {
+    return InvalidBinaryOperation{std::string{typeAsString<V1>},
+                                  std::string{typeAsString<V2>},
+                                  std::move(reason)};
   }
 
-  const std::string &firstType() const noexcept { return v1; }
-  const std::string &secondType() const noexcept { return v2; }
-  const std::string &message() const noexcept { return reason; }
+  const std::string &firstType() const noexcept { return v1_; }
+  const std::string &secondType() const noexcept { return v2_; }
+  const std::string &message() const noexcept { return reason_; }
+};
 
-  virtual const char *what() const noexcept override { return whatStr.c_str(); }
+/*
+ * Exception thrown when a binary operation is found to be invalid, such as the
+ * addition of two Values with contained type Char.
+ */
+class InvalidUnaryOperation : public Exception {
+  std::string v1_, v2_, reason_;
+
+  inline static constexpr auto defaultReason =
+      "Operation not defined on an instance of the given type";
+
+  std::string build(std::string v1, std::string reason) {
+    v1_ = std::move(v1);
+    reason_ = std::move(reason);
+    return "Invalid unary operation with type '" + v1_ + "': " + reason_;
+  }
+
+public:
+  InvalidUnaryOperation(std::string firstType,
+                        std::string reason = defaultReason)
+      : Exception("") {
+    setError(build(std::move(firstType), std::move(reason)));
+    setType("InvalidUnaryOperation");
+  }
+
+  InvalidUnaryOperation(const Value &a, std::string reason = defaultReason);
+
+  template <typename V1>
+  static InvalidUnaryOperation Create(std::string reason = defaultReason) {
+    return InvalidUnaryOperation{std::string{typeAsString<V1>},
+                                 std::move(reason)};
+  }
+
+  const std::string &firstType() const noexcept { return v1_; }
+  const std::string &message() const noexcept { return reason_; }
 };
 
 namespace detail {
@@ -184,12 +223,29 @@ String &mulEquals(String &a, Int times);
 List mul(List a, Int times);
 List &mulEquals(List &a, Int times);
 
+/*
+ * Exception thrown when input to a mathematical function is invalid.
+ */
+class DomainError : public Exception {
+public:
+  explicit DomainError(std::string error) : Exception(std::move(error)) {
+    setType("DomainError");
+  }
+};
+
+class DivisionByZeroError : public Exception {
+public:
+  explicit DivisionByZeroError(std::string error = "Division by zero")
+      : Exception(std::move(error)) {
+    setType("DivisionByZeroError");
+  }
+};
+
 namespace {
 template <typename ValueType>
 inline static void checkDivision(ValueType b) {
   if (b.value != 0) return;
-  throw InvalidOperation::Create<ValueType, ValueType>(
-      "Division/modulo by zero");
+  throw DivisionByZeroError{};
 }
 } // namespace
 

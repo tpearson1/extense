@@ -40,8 +40,8 @@ static bool parseToken(extense::detail::TokenStream &s,
 
 static void expectToken(extense::detail::TokenStream &s) {
   if (s.current()) return;
-  throw extense::ParseError{s.data()[s.index() - 1],
-                            "Unexpected end of source"};
+  throw extense::ParseError{"Unexpected end of source",
+                            s.data()[s.index() - 1]};
 }
 
 static void consume(extense::detail::TokenStream &s,
@@ -49,7 +49,7 @@ static void consume(extense::detail::TokenStream &s,
   if (parseToken(s, type)) return;
   std::ostringstream os;
   os << "Expected " << type;
-  throw extense::ParseError{*s.current(), os.str()};
+  throw extense::ParseError{os.str(), *s.current()};
 }
 
 bool extense::detail::parseNone(TokenStream &s, std::unique_ptr<Expr> &out) {
@@ -250,7 +250,7 @@ extense::detail::parseUnaryOperator(TokenStream &s) {
 
   s.next();
   if (!s.current())
-    throw ParseError{opToken, "Expected expression after unary operator"};
+    throw ParseError{"Expected expression after unary operator", opToken};
 
   auto operand = parseExprHelper(s, opPrecedence);
   return makeUnaryOperation(opLoc, op, std::move(operand));
@@ -265,7 +265,7 @@ std::unique_ptr<extense::Expr> extense::detail::parsePrefix(TokenStream &s) {
   out = parseUnaryOperator(s);
   if (out) return out;
 
-  throw ParseError{*s.current(), "Unable to parse expression"};
+  throw ParseError{"Unable to parse expression", *s.current()};
 }
 
 bool extense::detail::parseBinaryOperator(TokenStream &s,
@@ -282,7 +282,7 @@ bool extense::detail::parseBinaryOperator(TokenStream &s,
 
   s.next();
   if (!s.current())
-    throw ParseError{opToken, "Expected expression after binary operator"};
+    throw ParseError{"Expected expression after binary operator", opToken};
 
   auto right = parseExprHelper(s, rightAssociative(op) ? (opPrecedence - 1) :
                                                          opPrecedence);
@@ -345,16 +345,15 @@ std::unique_ptr<extense::ExprList> extense::detail::parse(TokenStream &s) {
   // On failure we do not need to reset the TokenStream's index as a
   // TokenStream will have been created just for this function
   if (s.current() && s.current()->type() == Token::Type::EndSource)
-    throw ParseError{*s.current(), "Unable to parse the entire input"};
+    throw ParseError{"Unable to parse the entire input", *s.current()};
 
   // Success
   return std::make_unique<ExprList>(std::move(loc), std::move(exprs));
 }
 
 extense::String extense::detail::getIdentifierName(Expr &e) {
-  // TODO: Custom exception
   if (e.type() != ASTNodeType::Identifier)
-    throw std::runtime_error{"Expected identifier"};
+    throw InvalidUnaryOperation{"<Not identifier>", "Expected identifier"};
   return String{static_cast<const Identifier &>(e).name()};
 }
 
@@ -386,8 +385,11 @@ auto extense::detail::unaryOperationFunc(extense::ASTNodeType type) {
 
 static extense::Value reflexiveIndexCall(extense::Value a, extense::Value v) {
   auto scopeElement = extense::ops::index(a, v);
-  if (!scopeElement.is<extense::Scope>())
-    throw std::runtime_error{"Expected scope as result of indexing lhs"};
+  if (!scopeElement.is<extense::Scope>()) {
+    throw extense::InvalidBinaryOperation{
+        a, v, "Expected scope as result of indexing lhs"};
+  }
+
   return extense::get<extense::Scope>(scopeElement)(a);
 }
 
@@ -534,8 +536,12 @@ auto extense::detail::binaryOperationFunc(ASTNodeType type) {
        // Dot
        [](auto &s, auto &a, auto &b) {
          Value bEvaled = constEval(s, b);
-         if (!bEvaled.is<Scope>())
-           throw std::runtime_error{"Expected scope to call with '.' operator"};
+         if (!bEvaled.is<Scope>()) {
+           throw InvalidBinaryOperation{
+               "<Unknown type>", bEvaled.typeAsString(),
+               "Expected scope to call with '.' operator"};
+         }
+
          return get<Scope>(bEvaled)(constEval(s, a));
        },
        // SemicolonSemicolon
@@ -550,9 +556,7 @@ auto extense::detail::binaryOperationFunc(ASTNodeType type) {
        // Is
        [](auto &s, auto &a, auto &t) {
          Value tStr = constEval(s, t);
-         // TODO: Custom exception
-         if (!tStr.is<String>())
-           throw std::runtime_error{"Invalid type string for 'is'"};
+         if (!tStr.is<String>()) throw InvalidUnaryOperation{tStr};
          return Value{ops::is(constEval(s, a), get<String>(tStr).value)};
        },
        // DotDot
