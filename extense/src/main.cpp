@@ -52,8 +52,14 @@ SOFTWARE.
 //   std::cout << '\n';
 // }
 
+template <typename Func>
+static void injectFunction(extense::Scope &scope, std::string name, Func f) {
+  scope.createIdentifier(std::move(name)) =
+      extense::Value{extense::Scope{[=](auto &, auto &v) { return f(v); }}};
+}
+
 int main(int argc, const char *argv[]) {
-  std::cout << "Extense version " << extense::version << "\n\n";
+  // std::cout << "Extense version " << extense::version << "\n\n";
 
   if (argc != 2) {
     std::cerr << "Expected input file\n";
@@ -83,14 +89,109 @@ int main(int argc, const char *argv[]) {
     return 1;
   }
 
-  std::cout << "Parse tree:\n"
-               "-----------\n\n";
-  expr->dump(std::cout);
+  using namespace extense;
+  using namespace extense::literals;
 
   extense::Scope global{[](auto &, auto &) { return extense::noneValue; }};
+  injectFunction(global, "getInt", [](auto &) {
+    int i;
+    std::cin >> i;
+    return Value{Int{i}};
+  });
+  injectFunction(global, "print", [](auto &v) {
+    std::cout << v;
+    return extense::noneValue;
+  });
+  injectFunction(global, "println", [](auto &v) {
+    std::cout << v << '\n';
+    return extense::noneValue;
+  });
+  injectFunction(global, "for", [](auto &v) {
+    auto &args = get<List>(v);
+    auto lower = get<Int>(args[0_ei]);
+    auto upper = get<Int>(args[1_ei]);
+    auto &func = mutableGet<Scope>(args[2_ei]);
+
+    for (auto i = lower; i < upper; i.value++) func(i);
+    return noneValue;
+  });
+  injectFunction(global, "?", [](auto &v) {
+    auto &args = get<List>(v);
+    auto cond = get<Bool>(args[0_ei]);
+    auto &func = mutableGet<Scope>(args[1_ei]);
+    if (cond) { func(); }
+    return Value{cond};
+  });
+
+  auto switchValue = [](const Value &v) -> Value {
+    auto &args = get<List>(v);
+    if (args.value.size() % 2 != 0)
+      throw ArgumentError{"Expected an even number of arguments"};
+    for (auto i = 0_ei; i < args.size(); i += 2_ei) {
+      auto condition = get<Bool>(args[i]);
+      if (!condition) continue;
+
+      auto value = args[i + 1_ei];
+      return value;
+    }
+
+    return noneValue;
+  };
+  injectFunction(global, "switchValue", switchValue);
+  injectFunction(global, "switch", [&](const Value &v) -> Value {
+    auto toCall = switchValue(v);
+    if (toCall.is<None>()) return Value{Bool::f};
+    if (!toCall.is<Scope>()) throw ArgumentError{"Expected scope to call"};
+    get<Scope>(toCall)();
+    return Value{Bool::t};
+  });
+
+  injectFunction(global, "forEach", [](const Value &v) {
+    auto &args = get<List>(v);
+    auto &list = get<List>(args[0_ei]);
+    auto &func = mutableGet<Scope>(args[1_ei]);
+    for (auto i = 0_ei; i < list.size(); i.value++) func(list[i], i);
+    return noneValue;
+  });
+  injectFunction(global, "anyOf", [](const Value &v) {
+    // ...
+    return noneValue;
+  });
+  injectFunction(global, "size", [](const Value &v) -> Value {
+    if (v.is<Map>()) return Value{get<Map>(v).size()};
+    if (v.is<List>()) return Value{get<List>(v).size()};
+    if (v.is<String>()) return Value{get<String>(v).size()};
+    throw ArgumentError{"Can only call 'size' with String, Map or List type"};
+  });
+
+  auto lippincott = []() {
+    try {
+      throw;
+    } catch (const ExceptionWrapper &e) {
+      return String{e.location()} + ": "_es + String{e.data().error()};
+    } catch (const Exception &e) { return String{e.error()}; } catch (...) {
+      return "Unknown exception"_es;
+    }
+  };
+
+  auto tryExec = [lippincott](const Value &v) -> Value {
+    auto &args = get<List>(v);
+    auto &toTry = mutableGet<Scope>(args[0_ei]);
+    auto &catchFunc = mutableGet<Scope>(args[1_ei]);
+    try {
+      return toTry();
+    } catch (...) { return catchFunc(lippincott()); }
+  };
+
+  injectFunction(global, "try", tryExec);
+
+  // expr->dump(std::cout);
+
   auto evaluated = extense::constEval(global, *expr);
   auto &s = extense::get<extense::Scope>(evaluated);
-  std::cout << s() << '\n';
+  try {
+    s();
+  } catch (...) { std::cout << lippincott() << '\n'; }
 
   return 0;
 }
