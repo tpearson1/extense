@@ -187,6 +187,22 @@ int main(int argc, const char *argv[]) {
 
   // expr->dump(std::cout);
 
+  injectFunction(global, "set", [](const Value &v) -> Value {
+    auto &args = mutableGet<List>(v);
+    auto &toSet = args[0_ei];
+    auto &assignValue = args[1_ei];
+
+    if (!toSet.is<Reference>()) toSet = assignValue;
+    *get<Reference>(toSet) = assignValue.flatten();
+    return noneValue;
+  });
+
+  injectFunction(global, "copy", [](const Value &v) -> Value {
+    if (!v.is<Reference>()) return v;
+    auto copied = *get<Reference>(v);
+    return Value{copied};
+  });
+
   auto evaluated = extense::constEval(global, *expr);
   auto &s = extense::get<extense::Scope>(evaluated);
   try {

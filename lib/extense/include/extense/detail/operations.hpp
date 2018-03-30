@@ -111,6 +111,16 @@ public:
   const std::string &message() const noexcept { return reason_; }
 };
 
+class OperatorOverloadError : public Exception {
+public:
+  explicit OperatorOverloadError(
+      std::string error = "Operator not defined for given Map, or operator "
+                          "changed type of first argument")
+      : Exception(std::move(error)) {
+    setType("OperatorOverloadError");
+  }
+};
+
 namespace detail {
 template <typename T>
 struct IsBasicFlatValue : public std::false_type {};
@@ -467,9 +477,9 @@ inline Bool notEqual(const VT1 &a, const VT2 &b) {
   return Bool{!equal(a, b).value};
 }
 
-// Set overload operations.
+// Map overload operations.
 // The following operations cannot be overloaded:
-//   : :: !
+//   ':', '::', ';', ';;', '!', 'unary /'
 Value add(Map &a, const Value &b);
 Value addEquals(Map &a, const Value &b);
 Value add(Map &a);

@@ -267,13 +267,25 @@ Bool equal(const List &a, const List &b) { return Bool{a.value == b.value}; }
 
 static extense::Value binaryFunction(const extense::String &op, extense::Map &a,
                                      const extense::Value &b) {
-  auto v = extense::Value{a};
-  return extense::get<extense::Scope>(a[op])(v, b);
+  try {
+    auto v = extense::Value{a};
+    auto ret = extense::get<extense::Scope>(a[op])(v, b);
+    a = extense::get<extense::Map>(v);
+    return ret;
+  } catch (const extense::ValueGetError &) {
+    throw extense::OperatorOverloadError{};
+  }
 }
 static extense::Value unaryFunction(const extense::String &op,
                                     extense::Map &a) {
-  auto v = extense::Value{a};
-  return extense::get<extense::Scope>(a[op])(v);
+  try {
+    auto v = extense::Value{a};
+    auto ret = extense::get<extense::Scope>(a[op])(v);
+    a = extense::get<extense::Map>(v);
+    return ret;
+  } catch (const extense::ValueGetError &) {
+    throw extense::OperatorOverloadError{};
+  }
 }
 
 namespace extense::ops {

@@ -330,15 +330,26 @@ decltype(auto) visit(Visitor visitor, Values &&... values) {
            .internalVariant())...);
 }
 
+class ValueGetError : public Exception {
+public:
+  explicit ValueGetError(
+      std::string error = "Unable to get element of given type from Value")
+      : Exception(std::move(error)) {
+    setType("ValueGetError");
+  }
+};
+
 template <typename T, typename TValue>
 const T &get(const TValue &v) {
   static_assert(TValue::template supportsType<T>,
                 "Invalid template argument given to 'extense::get'");
-  if constexpr (std::is_same_v<T, Reference>) {
-    // If we flatten we will not be able to get the Reference
-    return std::get<Reference>(v.internalVariant());
-  } else
-    return std::get<T>(tryFlatten(v).internalVariant());
+  try {
+    if constexpr (std::is_same_v<T, Reference>) {
+      // If we flatten we will not be able to get the Reference
+      return std::get<Reference>(v.internalVariant());
+    } else
+      return std::get<T>(tryFlatten(v).internalVariant());
+  } catch (const std::bad_variant_access &) { throw ValueGetError{}; }
 }
 
 template <typename T, typename TValue>
@@ -350,11 +361,13 @@ template <typename T>
 T &mutableGet(const Value &v) {
   static_assert(Value::supportsType<T>,
                 "Invalid template argument given to 'extense::mutableGet'");
-  auto ref = std::get<Reference>(v.internalVariant());
-  if constexpr (std::is_same_v<T, Reference>)
-    throw MutableAccessError{};
-  else
-    return get<T>(ref->internalVariant());
+  try {
+    auto ref = std::get<Reference>(v.internalVariant());
+    if constexpr (std::is_same_v<T, Reference>)
+      throw MutableAccessError{};
+    else
+      return std::get<T>(ref->internalVariant());
+  } catch (const std::bad_variant_access &) { throw ValueGetError{}; }
 }
 
 template <typename T, typename TValue>

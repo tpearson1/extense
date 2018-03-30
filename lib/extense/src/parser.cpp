@@ -400,11 +400,7 @@ auto extense::detail::binaryOperationFunc(ASTNodeType type) {
       {// Assign
        [](auto &s, auto &a, auto &b) {
          return mutableEval(s, a, [&s, &b](Value &mutA) {
-           Value rhs = constEval(s, b);
-           if (mutA.is<Reference>() && !rhs.is<Reference>())
-             *get<Reference>(mutA) = rhs.flatten();
-           else
-             mutA = rhs;
+           mutA = constEval(s, b);
            return noneValue;
          });
        },
