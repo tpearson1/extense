@@ -324,7 +324,7 @@ decltype(auto) visit(Visitor visitor, Values &&... values) {
                        ...)) {
           return visitor(std::forward<decltype(args)>(args)...);
         } else
-          throw LogicError{"Unsatisfied constraint in visit"};
+          throw InternalLogicError{"Unsatisfied constraint in visit"};
       },
       (tryFlatten(std::forward<decltype(values)>(values))
            .internalVariant())...);

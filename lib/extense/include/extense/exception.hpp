@@ -73,6 +73,17 @@ public:
 };
 
 /*
+ * Exception thrown in cases which are thought to be impossible by the API. If
+ * this is thrown there is a bug in our API.
+ */
+class InternalLogicError : public Exception {
+public:
+  explicit InternalLogicError(std::string error) : Exception(std::move(error)) {
+    setType("InternalLogicError");
+  }
+};
+
+/*
  * Exception thrown when asked to get a mutable value from a const type.
  */
 class MutableAccessError : public Exception {
