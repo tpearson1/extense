@@ -29,6 +29,7 @@ SOFTWARE.
 
 #include <functional>
 #include <map>
+#include <memory>
 #include <optional>
 #include <ostream>
 #include <sstream>
@@ -50,6 +51,7 @@ class Map;
 class List;
 class Label;
 class Scope;
+class UserObject;
 
 class Reference;
 
@@ -77,7 +79,7 @@ struct Convert<Char, String>;
 template <typename T>
 inline constexpr bool isFlatValueType =
     detail::isAnyOf<T, None, Int, Float, Bool, Char, List, String, Map, Label,
-                    Scope>;
+                    Scope, UserObject>;
 
 // Whether or not T is a valid type for a Value - either a FlatValue type or a
 // Reference
@@ -99,6 +101,7 @@ constexpr std::string_view typeAsString() {
   if (std::is_same_v<Map, T>) return "Map";
   if (std::is_same_v<Label, T>) return "Label";
   if (std::is_same_v<Scope, T>) return "Scope";
+  if (std::is_same_v<UserObject, T>) return "UserObject";
   if (std::is_same_v<Reference, T>) return "Reference";
 }
 } // namespace detail
@@ -181,7 +184,7 @@ template <typename... ValueTypes>
 class BasicFlatValue;
 
 using FlatValue = BasicFlatValue<None, Int, Float, Bool, Char, String, List,
-                                 Map, Label, Scope>;
+                                 Map, Label, Scope, UserObject>;
 
 namespace detail {
 using MapKeyType = BasicFlatValue<Int, Float, Bool, Char, String>;
@@ -370,6 +373,197 @@ public:
   Value operator()(Values &&... values);
 };
 
+namespace detail {
+[[noreturn]] void throwOperatorOverloadError();
+}
+
+class UserObject final {
+public:
+  class Data {
+  public:
+    virtual std::unique_ptr<Data> clone() const = 0;
+
+    virtual ~Data() {}
+
+    virtual void print(std::ostream &os) const { os << "<UserObject::Data>"; }
+
+    virtual Value &operator[](const Value &) {
+      detail::throwOperatorOverloadError();
+    }
+    template <typename VT>
+    Value &operator[](const VT &i) {
+      return (*this)[Value{i}];
+    }
+
+    virtual Value &at(const Value &) { detail::throwOperatorOverloadError(); }
+    template <typename VT>
+    Value &at(const VT &i) {
+      return at(Value{i});
+    }
+
+    virtual const Value &at(const Value &) const {
+      detail::throwOperatorOverloadError();
+    }
+    template <typename VT>
+    const Value &at(const VT &i) const {
+      return at(Value{i});
+    }
+
+    virtual Value add(const Value &);
+    virtual Value addEquals(const Value &);
+    virtual Value unaryPlus();
+
+    virtual Value sub(const Value &);
+    virtual Value subEquals(const Value &);
+    virtual Value unaryMinus();
+
+    virtual Value mul(const Value &);
+    virtual Value mulEquals(const Value &);
+
+    virtual Value div(const Value &);
+    virtual Value divEquals(const Value &);
+
+    virtual Value mod(const Value &);
+    virtual Value modEquals(const Value &);
+
+    virtual Value floorDiv(const Value &);
+    virtual Value floorDivEquals(const Value &);
+
+    virtual Value pow(const Value &);
+    virtual Value powEquals(const Value &);
+
+    virtual Value dotDot(const Value &);
+
+    virtual Value bitAnd(const Value &);
+    virtual Value bitAndEquals(const Value &);
+
+    virtual Value bitOr(const Value &);
+    virtual Value bitOrEquals(const Value &);
+
+    virtual Value bitXor(const Value &);
+    virtual Value bitXorEquals(const Value &);
+
+    virtual Value bitNot();
+
+    virtual Value bitLShift(const Value &);
+    virtual Value bitLShiftEquals(const Value &);
+
+    virtual Value bitRShift(const Value &);
+    virtual Value bitRShiftEquals(const Value &);
+
+    virtual Value logicalAnd(const Value &);
+    virtual Value logicalOr(const Value &);
+
+    virtual Value lessThan(const Value &);
+    virtual Value lessEquals(const Value &);
+    virtual Value greaterThan(const Value &);
+    virtual Value greaterEquals(const Value &);
+
+    virtual Value equal(const Value &);
+    virtual Value notEqual(const Value &);
+  };
+
+private:
+  std::unique_ptr<Data> data_;
+
+public:
+  explicit UserObject(std::unique_ptr<Data> data) : data_(std::move(data)) {}
+
+  const Data &data() const { return *data_; }
+  Data &data() { return *data_; }
+
+  template <typename Derived, typename... Args>
+  static UserObject make(Args &&... args) {
+    static_assert(
+        std::is_base_of_v<Data, Derived>,
+        "Expected template argument to be derived from UserObject::Data");
+    return UserObject{std::make_unique<Derived>(std::forward<Args>(args)...)};
+  }
+
+  UserObject(const UserObject &u) { data_ = u.data_->clone(); }
+  UserObject &operator=(const UserObject &u) {
+    if (&u != this) data_ = u.data_->clone();
+    return *this;
+  }
+
+  UserObject(UserObject &&) = default;
+  UserObject &operator=(UserObject &&) = default;
+
+  // The below functions delegate to the corresponding virtual functions in Data
+  void print(std::ostream &os) const { data_->print(os); }
+
+  Value &operator[](const Value &v) { return (*data_)[v]; }
+  template <typename VT>
+  Value &operator[](const VT &i) {
+    return (*this)[Value{i}];
+  }
+
+  Value &at(const Value &v) { return data_->at(v); }
+  template <typename VT>
+  Value &at(const VT &i) {
+    return at(Value{i});
+  }
+
+  const Value &at(const Value &v) const { return data_->at(v); }
+  template <typename VT>
+  const Value &at(const VT &i) const {
+    return at(Value{i});
+  }
+
+  Value add(const Value &v);
+  Value addEquals(const Value &);
+  Value unaryPlus();
+
+  Value sub(const Value &);
+  Value subEquals(const Value &);
+  Value unaryMinus();
+
+  Value mul(const Value &);
+  Value mulEquals(const Value &);
+
+  Value div(const Value &);
+  Value divEquals(const Value &);
+
+  Value mod(const Value &);
+  Value modEquals(const Value &);
+
+  Value floorDiv(const Value &);
+  Value floorDivEquals(const Value &);
+
+  Value pow(const Value &);
+  Value powEquals(const Value &);
+
+  Value dotDot(const Value &);
+
+  Value bitAnd(const Value &);
+  Value bitAndEquals(const Value &);
+
+  Value bitOr(const Value &);
+  Value bitOrEquals(const Value &);
+
+  Value bitXor(const Value &);
+  Value bitXorEquals(const Value &);
+
+  Value bitNot();
+
+  Value bitLShift(const Value &);
+  Value bitLShiftEquals(const Value &);
+
+  Value bitRShift(const Value &);
+  Value bitRShiftEquals(const Value &);
+
+  Value logicalAnd(const Value &);
+  Value logicalOr(const Value &);
+
+  Value lessThan(const Value &);
+  Value lessEquals(const Value &);
+  Value greaterThan(const Value &);
+  Value greaterEquals(const Value &);
+
+  Value equal(const Value &);
+  Value notEqual(const Value &);
+};
+
 namespace literals {
 inline Int operator"" _ei(unsigned long long v) {
   return Int{static_cast<Int::ValueType>(v)};
@@ -429,6 +623,11 @@ inline std::ostream &operator<<(std::ostream &os, const Scope &) {
 
 inline std::ostream &operator<<(std::ostream &os, const Label &v) {
   os << "<Label with name '" << v.name() << " '>";
+  return os;
+}
+
+inline std::ostream &operator<<(std::ostream &os, const UserObject &v) {
+  v.print(os);
   return os;
 }
 

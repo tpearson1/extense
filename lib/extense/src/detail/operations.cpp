@@ -63,7 +63,9 @@ namespace extense::ops {
   VALID_OP(canDoOperation##opFuncName, opFuncName)                             \
                                                                                \
   Value opFuncName(const Value &a, const Value &b) {                           \
-    if (a.is<Map>()) return opFuncName(get<Map>(*get<Reference>(a)), b);       \
+    if (a.is<Map>()) return opFuncName(mutableGet<Map>(a), b);                 \
+    if (a.is<UserObject>()) return opFuncName(mutableGet<UserObject>(a), b);   \
+                                                                               \
     return visit(                                                              \
         [](const auto &a, const auto &b) -> Value {                            \
           using A = std::decay_t<decltype(a)>;                                 \
@@ -81,6 +83,8 @@ namespace extense::ops {
                                                                                \
   Value opFuncName(Value &av, const Value &bv) {                               \
     if (av.is<Map>()) return opFuncName(get<Map>(av), bv);                     \
+    if (av.is<UserObject>()) return opFuncName(get<UserObject>(av), bv);       \
+                                                                               \
     visit(                                                                     \
         [&av, &bv](auto &a, const auto &b) {                                   \
           using A = std::decay_t<decltype(a)>;                                 \
@@ -202,6 +206,7 @@ List dotDot(Int a, Int b) {
 Value index(const Value &a, const Value &b) {
   if (a.is<Map>()) return get<Map>(a).at(b);
   if (a.is<List>()) return get<List>(a).at(b);
+  if (a.is<UserObject>()) return get<UserObject>(a).at(b);
 
   if (!a.is<String>() || !b.is<Int>())
     throw InvalidBinaryOperation(a, b, "Unable to index type");
@@ -210,6 +215,7 @@ Value index(const Value &a, const Value &b) {
 
 Value &mutableIndex(Value &a, const Value &b) {
   if (a.is<Map>()) return get<Map>(a)[b];
+  if (a.is<UserObject>()) return get<UserObject>(a)[b];
 
   if (!a.is<List>()) throw InvalidBinaryOperation(a, b, "Unable to index type");
   if (!b.is<Int>())
@@ -289,6 +295,7 @@ static extense::Value unaryFunction(const extense::String &op,
 }
 
 namespace extense::ops {
+// Map operations
 Value add(Map &a, const Value &b) { return binaryFunction("+"_es, a, b); }
 Value addEquals(Map &a, const Value &b) {
   return binaryFunction("+="_es, a, b);
@@ -379,4 +386,69 @@ Value greaterEquals(Map &a, const Value &b) {
 
 Value equal(Map &a, const Value &b) { return binaryFunction("=="_es, a, b); }
 Value notEqual(Map &a, const Value &b) { return binaryFunction("!="_es, a, b); }
+
+// UserObject operations
+Value index(const UserObject &a, const Value &b) { return a.at(b); }
+Value &mutableIndex(UserObject &a, const Value &b) { return a[b]; }
+
+Value add(UserObject &a, const Value &b) { return a.add(b); }
+Value addEquals(UserObject &a, const Value &b) { return a.addEquals(b); }
+Value add(UserObject &a) { return a.unaryPlus(); }
+
+Value sub(UserObject &a, const Value &b) { return a.sub(b); }
+Value subEquals(UserObject &a, const Value &b) { return a.subEquals(b); }
+Value sub(UserObject &a) { return a.unaryMinus(); }
+
+Value mul(UserObject &a, const Value &b) { return a.mul(b); }
+Value mulEquals(UserObject &a, const Value &b) { return a.mulEquals(b); }
+
+Value div(UserObject &a, const Value &b) { return a.div(b); }
+Value divEquals(UserObject &a, const Value &b) { return a.divEquals(b); }
+
+Value mod(UserObject &a, const Value &b) { return a.mod(b); }
+Value modEquals(UserObject &a, const Value &b) { return a.modEquals(b); }
+
+Value floorDiv(UserObject &a, const Value &b) { return a.floorDiv(b); }
+Value floorDivEquals(UserObject &a, const Value &b) {
+  return a.floorDivEquals(b);
+}
+
+Value pow(UserObject &a, const Value &b) { return a.pow(b); }
+Value powEquals(UserObject &a, const Value &b) { return a.powEquals(b); }
+
+Value dotDot(UserObject &a, const Value &b) { return a.dotDot(b); }
+
+Value bitAnd(UserObject &a, const Value &b) { return a.bitAnd(b); }
+Value bitAndEquals(UserObject &a, const Value &b) { return a.bitAndEquals(b); }
+
+Value bitOr(UserObject &a, const Value &b) { return a.bitOr(b); }
+Value bitOrEquals(UserObject &a, const Value &b) { return a.bitOrEquals(b); }
+
+Value bitXor(UserObject &a, const Value &b) { return a.bitXor(b); }
+Value bitXorEquals(UserObject &a, const Value &b) { return a.bitXorEquals(b); }
+
+Value bitNot(UserObject &a) { return a.bitNot(); }
+
+Value bitLShift(UserObject &a, const Value &b) { return a.bitLShift(b); }
+Value bitLShiftEquals(UserObject &a, const Value &b) {
+  return a.bitLShiftEquals(b);
+}
+
+Value bitRShift(UserObject &a, const Value &b) { return a.bitRShift(b); }
+Value bitRShiftEquals(UserObject &a, const Value &b) {
+  return a.bitRShiftEquals(b);
+}
+
+Value logicalAnd(UserObject &a, const Value &b) { return a.logicalAnd(b); }
+Value logicalOr(UserObject &a, const Value &b) { return a.logicalOr(b); }
+
+Value lessThan(UserObject &a, const Value &b) { return a.lessThan(b); }
+Value lessEquals(UserObject &a, const Value &b) { return a.lessEquals(b); }
+Value greaterThan(UserObject &a, const Value &b) { return a.greaterThan(b); }
+Value greaterEquals(UserObject &a, const Value &b) {
+  return a.greaterEquals(b);
+}
+
+Value equal(UserObject &a, const Value &b) { return a.equal(b); }
+Value notEqual(UserObject &a, const Value &b) { return a.notEqual(b); }
 } // namespace extense::ops

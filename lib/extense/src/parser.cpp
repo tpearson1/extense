@@ -552,7 +552,8 @@ auto extense::detail::binaryOperationFunc(ASTNodeType type) {
        // Is
        [](auto &s, auto &a, auto &t) {
          Value tStr = constEval(s, t);
-         if (!tStr.is<String>()) throw InvalidUnaryOperation{tStr};
+         if (!tStr.is<String>())
+           throw InvalidBinaryOperation{"<Unknown>", tStr.typeAsString()};
          return Value{ops::is(constEval(s, a), get<String>(tStr).value)};
        },
        // DotDot

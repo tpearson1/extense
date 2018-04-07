@@ -184,13 +184,13 @@ TEST_CASE("Constraining Values", "[ConstrainedValue, constrain]") {
   bool threw = false;
   try {
     ConstrainedValue<Value>{v};
-  } catch (const std::runtime_error &) { threw = true; }
+  } catch (const ConstraintFailure &) { threw = true; }
   REQUIRE(threw);
 
   threw = false;
   try {
     ConstrainedValue<Value, Float, String>{v};
-  } catch (const std::runtime_error &) { threw = true; }
+  } catch (const ConstraintFailure &) { threw = true; }
   REQUIRE(threw);
 
   SECTION("Visiting") {
@@ -218,7 +218,7 @@ TEST_CASE("Constraining Values", "[ConstrainedValue, constrain]") {
     bool threw = false;
     try {
       constrain<BasicFlatValue<Float, Char>>(a);
-    } catch (const std::runtime_error &) { threw = true; }
+    } catch (const ConstraintFailure &) { threw = true; }
     REQUIRE(threw);
   }
 }

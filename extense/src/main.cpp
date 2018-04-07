@@ -52,47 +52,26 @@ SOFTWARE.
 //   std::cout << '\n';
 // }
 
+using namespace extense;
+using namespace extense::literals;
+
 template <typename Func>
-static void injectFunction(extense::Scope &scope, std::string name, Func f) {
+static void injectFunction(Scope &scope, std::string name, Func f) {
   scope.createIdentifier(std::move(name)) =
-      extense::Value{extense::Scope{[=](auto &, auto &v) { return f(v); }}};
+      Value{Scope{[=](auto &, auto &v) { return f(v); }}};
 }
 
-int main(int argc, const char *argv[]) {
-  // std::cout << "Extense version " << extense::version << "\n\n";
-
-  if (argc != 2) {
-    std::cerr << "Expected input file\n";
-    return 1;
-  }
-
-  std::ifstream file{argv[1]};
-  if (!file.good()) {
-    std::cerr << "Could not find input file\n";
-    return 1;
-  }
-  std::stringstream buffer;
-  buffer << file.rdbuf();
-  auto source = buffer.str();
-
-  std::unique_ptr<extense::Expr> expr;
+static String lippincott() {
   try {
-    expr = extense::parse(source);
-  } catch (const extense::LexingError &error) {
-    std::cerr << "Error tokenizing file at " << error.throwLocation() << ": \""
-              << error.what() << "\"\n";
-    return 1;
-  } catch (const extense::ParseError &e) {
-    std::cerr << "Encountered ParseError at " << e.throwLocation()
-              << ", with token '" << e.tokenText() << "' (type '"
-              << e.tokenType() << "'), and with message '" << e.what() << "'\n";
-    return 1;
+    throw;
+  } catch (const ExceptionWrapper &e) {
+    return String{e.location()} + ": "_es + String{e.data().error()};
+  } catch (const Exception &e) { return String{e.error()}; } catch (...) {
+    return "Unknown exception"_es;
   }
+}
 
-  using namespace extense;
-  using namespace extense::literals;
-
-  extense::Scope global{[](auto &, auto &) { return extense::noneValue; }};
+static void injectAll(Scope &global) {
   injectFunction(global, "getInt", [](auto &) {
     int i;
     std::cin >> i;
@@ -100,11 +79,11 @@ int main(int argc, const char *argv[]) {
   });
   injectFunction(global, "print", [](auto &v) {
     std::cout << v;
-    return extense::noneValue;
+    return noneValue;
   });
   injectFunction(global, "println", [](auto &v) {
     std::cout << v << '\n';
-    return extense::noneValue;
+    return noneValue;
   });
   injectFunction(global, "for", [](auto &v) {
     auto &args = get<List>(v);
@@ -164,17 +143,7 @@ int main(int argc, const char *argv[]) {
     throw ArgumentError{"Can only call 'size' with String, Map or List type"};
   });
 
-  auto lippincott = []() {
-    try {
-      throw;
-    } catch (const ExceptionWrapper &e) {
-      return String{e.location()} + ": "_es + String{e.data().error()};
-    } catch (const Exception &e) { return String{e.error()}; } catch (...) {
-      return "Unknown exception"_es;
-    }
-  };
-
-  auto tryExec = [lippincott](const Value &v) -> Value {
+  auto tryExec = [](const Value &v) -> Value {
     auto &args = get<List>(v);
     auto &toTry = mutableGet<Scope>(args[0_ei]);
     auto &catchFunc = mutableGet<Scope>(args[1_ei]);
@@ -184,8 +153,6 @@ int main(int argc, const char *argv[]) {
   };
 
   injectFunction(global, "try", tryExec);
-
-  // expr->dump(std::cout);
 
   injectFunction(global, "set", [](const Value &v) -> Value {
     auto &args = mutableGet<List>(v);
@@ -202,9 +169,78 @@ int main(int argc, const char *argv[]) {
     auto copied = *get<Reference>(v);
     return Value{copied};
   });
+}
 
-  auto evaluated = extense::constEval(global, *expr);
-  auto &s = extense::get<extense::Scope>(evaluated);
+int main(int argc, const char *argv[]) {
+  // std::cout << "Extense version " << version << "\n\n";
+
+  if (argc != 2) {
+    std::cerr << "Expected input file\n";
+    return 1;
+  }
+
+  std::ifstream file{argv[1]};
+  if (!file.good()) {
+    std::cerr << "Could not find input file\n";
+    return 1;
+  }
+  std::stringstream buffer;
+  buffer << file.rdbuf();
+  auto source = buffer.str();
+
+  std::unique_ptr<Expr> expr;
+  try {
+    expr = parse(source);
+  } catch (const LexingError &error) {
+    std::cerr << "Error tokenizing file at " << error.throwLocation() << ": \""
+              << error.what() << "\"\n";
+    return 1;
+  } catch (const ParseError &e) {
+    std::cerr << "Encountered ParseError at " << e.throwLocation()
+              << ", with token '" << e.tokenText() << "' (type '"
+              << e.tokenType() << "'), and with message '" << e.what() << "'\n";
+    return 1;
+  }
+
+  Scope global{[](auto &, auto &) { return noneValue; }};
+  injectAll(global);
+
+  class TypeBuilder : public UserObject::Data {
+    Value resultVal = Value{List{}};
+    List &result;
+
+  public:
+    TypeBuilder() : result(get<List>(resultVal)) {}
+
+    std::unique_ptr<UserObject::Data> clone() const override {
+      auto m = std::make_unique<TypeBuilder>();
+      std::cout << "COPY\n";
+      m->result = result;
+      return m;
+    }
+
+    void print(std::ostream &os) const override {
+      std::cout << "Result: " << result;
+    }
+
+    Value addEquals(const Value &v) override {
+      result.value.push_back(Value{String{std::string(v.typeAsString())}});
+      return noneValue;
+    }
+
+    const Value &at(const Value &index) const override {
+      if (index == Value{"result"_es}) return resultVal;
+      throw InvalidBinaryOperation{"UserObject", index.typeAsString(),
+                                   "Key not present"};
+    }
+  };
+
+  injectFunction(global, "CppTypeBuilder", [](const Value &v) -> Value {
+    return Value{UserObject::make<TypeBuilder>()};
+  });
+
+  auto evaluated = constEval(global, *expr);
+  auto &s = get<Scope>(evaluated);
   try {
     s();
   } catch (...) { std::cout << lippincott() << '\n'; }

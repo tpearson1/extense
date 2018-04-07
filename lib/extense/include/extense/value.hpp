@@ -29,7 +29,6 @@ SOFTWARE.
 
 #include <cassert>
 #include <cstdint>
-#include <memory>
 #include <optional>
 #include <type_traits>
 #include <utility>
@@ -158,7 +157,7 @@ Reference makeReference(Args &&... args) {
 
 template <typename VT>
 inline constexpr bool isReferencedOnCopy =
-    detail::isAnyOf<VT, String, List, Map, Scope>;
+    detail::isAnyOf<VT, String, List, Map, Scope, UserObject>;
 
 class Value {
   using Data = std::variant<FlatValue, Reference>;
@@ -175,10 +174,9 @@ public:
   explicit Value(T v) {
     if constexpr (std::is_same_v<T, Reference>)
       data = v;
-    else if constexpr (isReferencedOnCopy<T>) {
-      auto newVal = makeReference(std::move(v));
-      data = newVal;
-    } else
+    else if constexpr (isReferencedOnCopy<T>)
+      data = makeReference(std::move(v));
+    else
       data = FlatValue(std::move(v));
   }
 
@@ -200,7 +198,7 @@ public:
   Value &operator=(const Value &) = default;
   Value &operator=(Value &&) = default;
 
-  std::string typeAsString(bool displayReference = true) const;
+  std::string typeAsString(bool displayReference = false) const;
 
   const FlatValue &flatten() const {
     if (is<Reference>()) return *std::get<Reference>(data);

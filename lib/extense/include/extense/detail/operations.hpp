@@ -114,8 +114,9 @@ public:
 class OperatorOverloadError : public Exception {
 public:
   explicit OperatorOverloadError(
-      std::string error = "Operator not defined for given Map, or operator "
-                          "changed type of first argument")
+      std::string error =
+          "Operator not defined for given Map/UserObject, or operator "
+          "changed type of first argument")
       : Exception(std::move(error)) {
     setType("OperatorOverloadError");
   }
@@ -361,9 +362,6 @@ auto &mutableIndex(Map &a, const VT &i) {
 }
 inline Char &mutableIndex(String &a, Int i) { return a[i]; }
 
-// Reflexive indexing (::) can only be implemented once functions are added as a
-// type
-
 // !
 Reference ref(Value &v);
 
@@ -464,6 +462,7 @@ Bool equal(const Map &a, const Map &b);
 Bool equal(const List &a, const List &b);
 inline Bool equal(const Scope &, const Scope &) { return Bool::f; }
 inline Bool equal(const Label &, const Label &) { return Bool::f; }
+inline Bool equal(const UserObject &, const UserObject &) { return Bool::f; }
 
 template <typename... ValueTypes>
 Bool equal(const BasicFlatValue<ValueTypes...> &,
@@ -532,6 +531,65 @@ Value greaterEquals(Map &a, const Value &b);
 
 Value equal(Map &a, const Value &b);
 Value notEqual(Map &a, const Value &b);
+
+// UserObject overload operations
+// The following operations cannot be overloaded:
+//   '::', ';', ';;', '!', 'unary /'
+Value index(const UserObject &a, const Value &b);
+Value &mutableIndex(UserObject &a, const Value &b);
+
+Value add(UserObject &a, const Value &b);
+Value addEquals(UserObject &a, const Value &b);
+Value add(UserObject &a);
+
+Value sub(UserObject &a, const Value &b);
+Value subEquals(UserObject &a, const Value &b);
+Value sub(UserObject &a);
+
+Value mul(UserObject &a, const Value &b);
+Value mulEquals(UserObject &a, const Value &b);
+
+Value div(UserObject &a, const Value &b);
+Value divEquals(UserObject &a, const Value &b);
+
+Value mod(UserObject &a, const Value &b);
+Value modEquals(UserObject &a, const Value &b);
+
+Value floorDiv(UserObject &a, const Value &b);
+Value floorDivEquals(UserObject &a, const Value &b);
+
+Value pow(UserObject &a, const Value &b);
+Value powEquals(UserObject &a, const Value &b);
+
+Value dotDot(UserObject &a, const Value &b);
+
+Value bitAnd(UserObject &a, const Value &b);
+Value bitAndEquals(UserObject &a, const Value &b);
+
+Value bitOr(UserObject &a, const Value &b);
+Value bitOrEquals(UserObject &a, const Value &b);
+
+Value bitXor(UserObject &a, const Value &b);
+Value bitXorEquals(UserObject &a, const Value &b);
+
+Value bitNot(UserObject &a);
+
+Value bitLShift(UserObject &a, const Value &b);
+Value bitLShiftEquals(UserObject &a, const Value &b);
+
+Value bitRShift(UserObject &a, const Value &b);
+Value bitRShiftEquals(UserObject &a, const Value &b);
+
+Value logicalAnd(UserObject &a, const Value &b);
+Value logicalOr(UserObject &a, const Value &b);
+
+Value lessThan(UserObject &a, const Value &b);
+Value lessEquals(UserObject &a, const Value &b);
+Value greaterThan(UserObject &a, const Value &b);
+Value greaterEquals(UserObject &a, const Value &b);
+
+Value equal(UserObject &a, const Value &b);
+Value notEqual(UserObject &a, const Value &b);
 } // namespace ops
 
 template <typename VT, detail::enableValidOpArgs<VT> * = nullptr>
@@ -551,7 +609,7 @@ auto operator+(const VT1 &a, const VT2 &b) {
 }
 template <typename VT1, typename VT2,
           detail::enableValidOpArgs<VT1, VT2> * = nullptr>
-VT1 &operator+=(VT1 &a, const VT2 &b) {
+auto operator+=(VT1 &a, const VT2 &b) {
   return extense::ops::addEquals(a, b);
 }
 
@@ -567,7 +625,7 @@ auto operator-(const VT1 &a, const VT2 &b) {
 }
 template <typename VT1, typename VT2,
           detail::enableValidOpArgs<VT1, VT2> * = nullptr>
-VT1 &operator-=(VT1 &a, const VT2 &b) {
+auto operator-=(VT1 &a, const VT2 &b) {
   return extense::ops::subEquals(a, b);
 }
 
@@ -583,7 +641,7 @@ auto operator*(const VT1 &a, const VT2 &b) {
 }
 template <typename VT1, typename VT2,
           detail::enableValidOpArgs<VT1, VT2> * = nullptr>
-VT1 &operator*=(VT1 &a, const VT2 &b) {
+auto operator*=(VT1 &a, const VT2 &b) {
   return extense::ops::mulEquals(a, b);
 }
 
@@ -594,7 +652,7 @@ auto operator/(const VT1 &a, const VT2 &b) {
 }
 template <typename VT1, typename VT2,
           detail::enableValidOpArgs<VT1, VT2> * = nullptr>
-VT1 &operator/=(VT1 &a, const VT2 &b) {
+auto operator/=(VT1 &a, const VT2 &b) {
   return extense::ops::divEquals(a, b);
 }
 
@@ -605,7 +663,7 @@ auto operator%(const VT1 &a, const VT2 &b) {
 }
 template <typename VT1, typename VT2,
           detail::enableValidOpArgs<VT1, VT2> * = nullptr>
-VT1 &operator%=(VT1 &a, const VT2 &b) {
+auto operator%=(VT1 &a, const VT2 &b) {
   return extense::ops::modEquals(a, b);
 }
 
@@ -616,7 +674,7 @@ auto operator&(const VT1 &a, const VT2 &b) {
 }
 template <typename VT1, typename VT2,
           detail::enableValidOpArgs<VT1, VT2> * = nullptr>
-VT1 &operator&=(VT1 &a, const VT2 &b) {
+auto operator&=(VT1 &a, const VT2 &b) {
   return extense::ops::bitAndEquals(a, b);
 }
 
@@ -627,7 +685,7 @@ auto operator|(const VT1 &a, const VT2 &b) {
 }
 template <typename VT1, typename VT2,
           detail::enableValidOpArgs<VT1, VT2> * = nullptr>
-VT1 &operator|=(VT1 &a, const VT2 &b) {
+auto operator|=(VT1 &a, const VT2 &b) {
   return extense::ops::bitOrEquals(a, b);
 }
 
@@ -638,7 +696,7 @@ auto operator^(const VT1 &a, const VT2 &b) {
 }
 template <typename VT1, typename VT2,
           detail::enableValidOpArgs<VT1, VT2> * = nullptr>
-VT1 &operator^=(VT1 &a, const VT2 &b) {
+auto operator^=(VT1 &a, const VT2 &b) {
   return extense::ops::bitXorEquals(a, b);
 }
 
@@ -650,14 +708,14 @@ auto operator~(const VT &a) {
 inline auto operator<<(extense::Int a, extense::Int b) {
   return extense::ops::bitLShift(a, b);
 }
-inline auto &operator<<=(extense::Int &a, extense::Int b) {
+inline auto operator<<=(extense::Int &a, extense::Int b) {
   return extense::ops::bitLShiftEquals(a, b);
 }
 
 inline auto operator>>(extense::Int a, extense::Int b) {
   return extense::ops::bitRShift(a, b);
 }
-inline auto &operator>>=(extense::Int &a, extense::Int b) {
+inline auto operator>>=(extense::Int &a, extense::Int b) {
   return extense::ops::bitRShiftEquals(a, b);
 }
 

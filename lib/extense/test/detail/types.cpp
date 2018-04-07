@@ -24,6 +24,7 @@ SOFTWARE.
 -------------------------------------------------------------------------------
 */
 
+#include <extense/ast.hpp>
 #include <extense/value.hpp>
 
 #include "../common.hpp"
@@ -174,7 +175,36 @@ TEST_CASE("Using Scopes", "[Scope]") {
     bool threw = false;
     try {
       global.getIdentifier("y");
-    } catch (const std::runtime_error &) { threw = true; }
+    } catch (const IdentifierError &) { threw = true; }
     REQUIRE(threw);
   }
+}
+
+TEST_CASE("Using UserObjects", "[UserObject]") {
+  class MyUserObject : public UserObject::Data {
+  public:
+    Value value;
+
+    MyUserObject(Value init) : value(std::move(init)) {}
+
+    Value add(const Value &a) override {
+      return Value{UserObject::make<MyUserObject>(value + a)};
+    }
+
+    Value addEquals(const Value &a) override {
+      value += a;
+      return noneValue;
+    }
+
+    std::unique_ptr<UserObject::Data> clone() const override {
+      return std::make_unique<MyUserObject>(value);
+    }
+  };
+
+  auto myUserObject = UserObject::make<MyUserObject>(Value{3_ei});
+
+  auto sumValue = myUserObject.add(Value{2_ei});
+  REQUIRE(sumValue.is<UserObject>());
+  auto sum = get<UserObject>(sumValue);
+  REQUIRE(static_cast<const MyUserObject &>(sum.data()).value == Value{5_ei});
 }
