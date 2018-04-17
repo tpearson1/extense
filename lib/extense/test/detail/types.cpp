@@ -191,11 +191,6 @@ TEST_CASE("Using UserObjects", "[UserObject]") {
       return Value{UserObject::make<MyUserObject>(value + a)};
     }
 
-    Value addEquals(const Value &a) override {
-      value += a;
-      return noneValue;
-    }
-
     std::unique_ptr<UserObject::Data> clone() const override {
       return std::make_unique<MyUserObject>(value);
     }

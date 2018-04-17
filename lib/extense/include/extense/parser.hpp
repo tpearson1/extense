@@ -53,23 +53,10 @@ struct BinaryOperatorProperties {
   bool rightAssociative;
 };
 
-constexpr const std::array<BinaryOperatorProperties, 41> binaryOperators = {{
+constexpr const std::array<BinaryOperatorProperties, 29> binaryOperators = {{
     // { Precedence, RightAssociative }
     {14, false}, // CustomOperator
     {1, true}, // Assign
-    {1, true}, // PlusEquals
-    {1, true}, // MinusEquals
-    {1, true}, // MulEquals
-    {1, true}, // DivEquals
-    {1, true}, // FloorDivEquals
-    {1, true}, // PowEquals
-    {1, true}, // ModEquals
-    {1, true}, // BitAndEquals
-    {1, true}, // BitOrEquals
-    {1, true}, // BitXorEquals
-    {1, true}, // BitLShiftEquals
-    {1, true}, // BitRShiftEquals
-
     {11, false}, // BitAnd
     {9, false}, // BitOr
     {10, false}, // BitXor

@@ -183,128 +183,108 @@ void extense::detail::throwOperatorOverloadError() {
   extense::Value extense::UserObject::Data::name(const Value &) {              \
     extense::detail::throwOperatorOverloadError();                             \
   }
+
+#define USER_OBJECT_COMPARISON_FUNCTION(name)                                  \
+  extense::Bool extense::UserObject::Data::name(const Value &) const {         \
+    extense::detail::throwOperatorOverloadError();                             \
+  }
+
 #define USER_OBJECT_UNARY_FUNCTION(name)                                       \
   extense::Value extense::UserObject::Data::name() {                           \
     extense::detail::throwOperatorOverloadError();                             \
   }
 
 USER_OBJECT_BINARY_FUNCTION(add)
-USER_OBJECT_BINARY_FUNCTION(addEquals)
 USER_OBJECT_UNARY_FUNCTION(unaryPlus)
 
 USER_OBJECT_BINARY_FUNCTION(sub)
-USER_OBJECT_BINARY_FUNCTION(subEquals)
 USER_OBJECT_UNARY_FUNCTION(unaryMinus)
 
 USER_OBJECT_BINARY_FUNCTION(mul)
-USER_OBJECT_BINARY_FUNCTION(mulEquals)
-
 USER_OBJECT_BINARY_FUNCTION(div)
-USER_OBJECT_BINARY_FUNCTION(divEquals)
-
 USER_OBJECT_BINARY_FUNCTION(mod)
-USER_OBJECT_BINARY_FUNCTION(modEquals)
-
 USER_OBJECT_BINARY_FUNCTION(floorDiv)
-USER_OBJECT_BINARY_FUNCTION(floorDivEquals)
-
 USER_OBJECT_BINARY_FUNCTION(pow)
-USER_OBJECT_BINARY_FUNCTION(powEquals)
 
 USER_OBJECT_BINARY_FUNCTION(dotDot)
 
 USER_OBJECT_BINARY_FUNCTION(bitAnd)
-USER_OBJECT_BINARY_FUNCTION(bitAndEquals)
-
 USER_OBJECT_BINARY_FUNCTION(bitOr)
-USER_OBJECT_BINARY_FUNCTION(bitOrEquals)
-
 USER_OBJECT_BINARY_FUNCTION(bitXor)
-USER_OBJECT_BINARY_FUNCTION(bitXorEquals)
-
 USER_OBJECT_UNARY_FUNCTION(bitNot)
 
 USER_OBJECT_BINARY_FUNCTION(bitLShift)
-USER_OBJECT_BINARY_FUNCTION(bitLShiftEquals)
-
 USER_OBJECT_BINARY_FUNCTION(bitRShift)
-USER_OBJECT_BINARY_FUNCTION(bitRShiftEquals)
 
-USER_OBJECT_BINARY_FUNCTION(logicalAnd)
-USER_OBJECT_BINARY_FUNCTION(logicalOr)
+USER_OBJECT_COMPARISON_FUNCTION(logicalAnd)
+USER_OBJECT_COMPARISON_FUNCTION(logicalOr)
+extense::Bool extense::UserObject::Data::logicalNot() const {
+  extense::detail::throwOperatorOverloadError();
+}
 
-USER_OBJECT_BINARY_FUNCTION(lessThan)
-USER_OBJECT_BINARY_FUNCTION(lessEquals)
-USER_OBJECT_BINARY_FUNCTION(greaterThan)
-USER_OBJECT_BINARY_FUNCTION(greaterEquals)
+USER_OBJECT_COMPARISON_FUNCTION(lessThan)
+USER_OBJECT_COMPARISON_FUNCTION(lessEquals)
+USER_OBJECT_COMPARISON_FUNCTION(greaterThan)
+USER_OBJECT_COMPARISON_FUNCTION(greaterEquals)
 
-USER_OBJECT_BINARY_FUNCTION(equal)
-USER_OBJECT_BINARY_FUNCTION(notEqual)
+USER_OBJECT_COMPARISON_FUNCTION(equal)
+USER_OBJECT_COMPARISON_FUNCTION(notEqual)
 
 #undef USER_OBJECT_UNARY_FUNCTION
+#undef USER_OBJECT_COMPARISON_FUNCTION
 #undef USER_OBJECT_BINARY_FUNCTION
 
 #define USER_OBJECT_BINARY_DELEGATOR(name)                                     \
   extense::Value extense::UserObject::name(const Value &v) {                   \
     return data_->name(v);                                                     \
   }
+
+#define USER_OBJECT_COMPARISON_DELEGATOR(name)                                 \
+  extense::Bool extense::UserObject::name(const Value &v) const {              \
+    return data_->name(v);                                                     \
+  }
+
 #define USER_OBJECT_UNARY_DELEGATOR(name)                                      \
   extense::Value extense::UserObject::name() { return data_->name(); }
 
 USER_OBJECT_BINARY_DELEGATOR(add)
-USER_OBJECT_BINARY_DELEGATOR(addEquals)
 USER_OBJECT_UNARY_DELEGATOR(unaryPlus)
 
 USER_OBJECT_BINARY_DELEGATOR(sub)
-USER_OBJECT_BINARY_DELEGATOR(subEquals)
 USER_OBJECT_UNARY_DELEGATOR(unaryMinus)
 
 USER_OBJECT_BINARY_DELEGATOR(mul)
-USER_OBJECT_BINARY_DELEGATOR(mulEquals)
-
 USER_OBJECT_BINARY_DELEGATOR(div)
-USER_OBJECT_BINARY_DELEGATOR(divEquals)
-
 USER_OBJECT_BINARY_DELEGATOR(mod)
-USER_OBJECT_BINARY_DELEGATOR(modEquals)
-
 USER_OBJECT_BINARY_DELEGATOR(floorDiv)
-USER_OBJECT_BINARY_DELEGATOR(floorDivEquals)
-
 USER_OBJECT_BINARY_DELEGATOR(pow)
-USER_OBJECT_BINARY_DELEGATOR(powEquals)
 
 USER_OBJECT_BINARY_DELEGATOR(dotDot)
 
 USER_OBJECT_BINARY_DELEGATOR(bitAnd)
-USER_OBJECT_BINARY_DELEGATOR(bitAndEquals)
-
 USER_OBJECT_BINARY_DELEGATOR(bitOr)
-USER_OBJECT_BINARY_DELEGATOR(bitOrEquals)
-
 USER_OBJECT_BINARY_DELEGATOR(bitXor)
-USER_OBJECT_BINARY_DELEGATOR(bitXorEquals)
-
 USER_OBJECT_UNARY_DELEGATOR(bitNot)
 
 USER_OBJECT_BINARY_DELEGATOR(bitLShift)
-USER_OBJECT_BINARY_DELEGATOR(bitLShiftEquals)
-
 USER_OBJECT_BINARY_DELEGATOR(bitRShift)
-USER_OBJECT_BINARY_DELEGATOR(bitRShiftEquals)
 
-USER_OBJECT_BINARY_DELEGATOR(logicalAnd)
-USER_OBJECT_BINARY_DELEGATOR(logicalOr)
+USER_OBJECT_COMPARISON_DELEGATOR(logicalAnd)
+USER_OBJECT_COMPARISON_DELEGATOR(logicalOr)
+extense::Bool extense::UserObject::logicalNot() const {
+  return data_->logicalNot();
+}
 
-USER_OBJECT_BINARY_DELEGATOR(lessThan)
-USER_OBJECT_BINARY_DELEGATOR(lessEquals)
-USER_OBJECT_BINARY_DELEGATOR(greaterThan)
-USER_OBJECT_BINARY_DELEGATOR(greaterEquals)
+USER_OBJECT_COMPARISON_DELEGATOR(lessThan)
+USER_OBJECT_COMPARISON_DELEGATOR(lessEquals)
+USER_OBJECT_COMPARISON_DELEGATOR(greaterThan)
+USER_OBJECT_COMPARISON_DELEGATOR(greaterEquals)
 
-USER_OBJECT_BINARY_DELEGATOR(equal)
-USER_OBJECT_BINARY_DELEGATOR(notEqual)
+USER_OBJECT_COMPARISON_DELEGATOR(equal)
+USER_OBJECT_COMPARISON_DELEGATOR(notEqual)
 
 #undef USER_OBJECT_UNARY_DELEGATOR
+#undef USER_OBJECT_COMPARISON_DELEGATOR
 #undef USER_OBJECT_BINARY_DELEGATOR
 
 std::ostream &extense::operator<<(std::ostream &os, const List &v) {
