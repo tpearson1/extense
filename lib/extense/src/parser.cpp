@@ -374,8 +374,7 @@ auto extense::detail::unaryOperationFunc(extense::ASTNodeType type) {
            },
            // Exclamation
            [](auto &s, auto &e) {
-             return mutableEval(
-                 s, e, [](auto &mutE) { return Value{ops::ref(mutE)}; });
+             return Value{ops::ref(referenceEval(s, e))};
            },
            // BitNot
            [](auto &s, auto &e) { return ops::bitNot(constEval(s, e)); }}};
@@ -401,10 +400,8 @@ auto extense::detail::binaryOperationFunc(ASTNodeType type) {
   constexpr std::array<BinaryOperation::Function *, 28> binaryOperationFuncs = {
       {// Assign
        [](auto &s, auto &a, auto &b) {
-         return mutableEval(s, a, [&s, &b](Value &mutA) {
-           mutA = constEval(s, b);
-           return noneValue;
-         });
+         mutateExpr(s, a, constEval(s, b));
+         return noneValue;
        },
        // BitAnd
        [](auto &s, auto &a, auto &b) {
@@ -540,26 +537,32 @@ bool extense::detail::parseSpecialBinaryOperator(Source::Location loc,
   }
 
   if (op == ASTNodeType::Colon) {
-    left = std::make_unique<CharMutableBinaryOperation>(
+    left = std::make_unique<MutableBinaryOperation>(
         std::move(loc), op, binaryOperationFunc(op),
-        [](auto &s, auto &a, auto &i) {
-          auto iEvaled = constEval(s, i);
-          return mutableEval(s, a, [&iEvaled](Value &aEvaled) -> Value * {
-            // This is handled separately (tryCharMutableEval)
-            if (aEvaled.is<String>()) return nullptr;
-
-            return &ops::mutableIndex(aEvaled, iEvaled);
-          });
-        },
-        [](auto &s, auto &a, auto &i) {
+        [](auto &s, auto &a, auto &i) -> Expr::Setter {
+          Value left = constEval(s, a);
           Value iEvaled = constEval(s, i);
-          return mutableEval(s, a, [&iEvaled](Value &aEvaled) -> Char * {
-            // Can only get a mutable character from indexing a String with an
-            // Int
-            if (!aEvaled.is<String>() || !iEvaled.is<Int>()) return nullptr;
+          return [left, iEvaled](Value v) {
+            if (left.is<String>()) {
+              if (!iEvaled.is<Int>()) {
+                throw InvalidBinaryOperation{
+                    "String", iEvaled.typeAsString(),
+                    "Cannot index String with given type"};
+              }
 
-            return &get<String>(aEvaled)[get<Int>(iEvaled)];
-          });
+              if (!v.is<Char>()) {
+                throw InvalidBinaryOperation{
+                    "String", iEvaled.typeAsString(),
+                    "Can only assign to String indices with Char type"};
+              }
+
+              mutableGet<String>(left).value[get<Int>(iEvaled).value] =
+                  get<Char>(v).value;
+              return;
+            }
+
+            ops::mutableIndex(left, iEvaled) = std::move(v);
+          };
         },
         std::move(left), std::move(right));
     return true;
@@ -568,10 +571,12 @@ bool extense::detail::parseSpecialBinaryOperator(Source::Location loc,
   if (op == ASTNodeType::Semicolon) {
     left = std::make_unique<MutableBinaryOperation>(
         std::move(loc), op, binaryOperationFunc(op),
-        [](auto &s, auto &a, auto &i) {
-          return mutableEval(s, a, [&](auto &aEvaled) {
-            return &ops::mutableIndex(aEvaled, Value{getIdentifierName(i)});
-          });
+        [](auto &s, auto &a, auto &i) -> Expr::Setter {
+          auto &left = referenceEval(s, a);
+          auto index = Value{getIdentifierName(i)};
+          return [&left, index](Value v) {
+            ops::mutableIndex(left, index) = std::move(v);
+          };
         },
         std::move(left), std::move(right));
     return true;

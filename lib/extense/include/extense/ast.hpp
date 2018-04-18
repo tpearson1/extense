@@ -149,48 +149,25 @@ public:
     Value value;
   };
 
+  using Setter = std::function<void(Value)>;
+
 protected:
   virtual EvalResult evalImpl(Scope &scope) = 0;
-  virtual Value *tryMutableEvalImpl(Scope &) { return nullptr; }
-
-  // For mutating elements in a string
-  virtual Char *tryMutableCharEvalImpl(Scope &) { return nullptr; }
+  virtual Value *tryPointerEvalImpl(Scope &) { return nullptr; }
+  virtual Setter tryMutableEvalImpl(Scope &) { return nullptr; }
 
 public:
   EvalResult eval(Scope &scope);
+  Value *tryPointerEval(Scope &);
 
-  Value *tryMutableEval(Scope &scope);
-
-  // For mutating elements in a string
-  Char *tryMutableCharEval(Scope &scope);
+  Setter tryMutableEval(Scope &scope);
 
   virtual ~Expr() {}
 };
 
 inline Value constEval(Scope &scope, Expr &e) { return e.eval(scope).value; }
-
-template <typename OpFunc>
-auto mutableEval(Scope &scope, Expr &a, OpFunc f) {
-  auto *lhs = a.tryMutableEval(scope);
-  if (lhs) return f(*lhs);
-  auto *charLhs = a.tryMutableCharEval(scope);
-  if (charLhs) {
-    auto toAssign = Value{*charLhs};
-    auto ret = f(toAssign);
-    if (!toAssign.is<Char>()) {
-      throw InvalidBinaryOperation{"Mutable Char", toAssign.typeAsString(),
-                                   "Expected Char in assignment"};
-    }
-    *charLhs = get<Char>(toAssign);
-    return ret;
-  }
-
-  auto [isMutable, value] = a.eval(scope);
-  if (!isMutable || !value.is<Reference>())
-    throw InvalidBinaryOperation{"Constant expression", "<Unknown>",
-                                 "Expected mutable expression"};
-  return f(value);
-}
+Value &referenceEval(Scope &, Expr &);
+void mutateExpr(Scope &scope, Expr &a, Value v);
 
 class ValueExpr : public Expr {
   Value value_;
@@ -246,7 +223,7 @@ class Identifier : public Expr {
 
 protected:
   EvalResult evalImpl(Scope &s) override;
-  Value *tryMutableEvalImpl(Scope &s) override;
+  Value *tryPointerEvalImpl(Scope &s) override;
 
   void dumpWithIndent(std::ostream &os, int indent) const override;
 
@@ -423,14 +400,14 @@ private:
 
 class MutableBinaryOperation : public BinaryOperation {
 protected:
-  Value *tryMutableEvalImpl(Scope &s) override {
+  Expr::Setter tryMutableEvalImpl(Scope &s) override {
     return mutableOperation_(s, leftOperand(), rightOperand());
   }
 
   void dumpWithIndent(std::ostream &os, int indent) const override;
 
 public:
-  using MutableFunction = Value *(Scope &, Expr &, Expr &);
+  using MutableFunction = std::function<void(Value)>(Scope &, Expr &, Expr &);
 
   explicit MutableBinaryOperation(Source::Location location, ASTNodeType opType,
                                   Function *operation,
@@ -443,32 +420,6 @@ public:
 
 private:
   MutableFunction *mutableOperation_;
-};
-
-class CharMutableBinaryOperation : public MutableBinaryOperation {
-protected:
-  Char *tryMutableCharEvalImpl(Scope &s) override {
-    return charMutableOperation_(s, leftOperand(), rightOperand());
-  }
-
-  void dumpWithIndent(std::ostream &os, int indent) const override;
-
-public:
-  using CharMutableFunction = Char *(Scope &, Expr &, Expr &);
-
-  explicit CharMutableBinaryOperation(Source::Location location,
-                                      ASTNodeType opType, Function *operation,
-                                      MutableFunction *mutableOperation,
-                                      CharMutableFunction *charMutableOperation,
-                                      std::unique_ptr<Expr> operand1,
-                                      std::unique_ptr<Expr> operand2)
-      : MutableBinaryOperation(std::move(location), opType, operation,
-                               mutableOperation, std::move(operand1),
-                               std::move(operand2)),
-        charMutableOperation_(charMutableOperation) {}
-
-private:
-  CharMutableFunction *charMutableOperation_;
 };
 
 namespace detail {

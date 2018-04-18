@@ -266,7 +266,7 @@ List dotDot(Int a, Int b);
 
 // :
 Value index(const Value &a, const Value &b);
-Value &mutableIndex(Value &a, const Value &b);
+Value &mutableIndex(const Value &a, const Value &b);
 
 template <typename VT>
 const auto &index(const List &a, const VT &i) {

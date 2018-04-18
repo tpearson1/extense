@@ -41,9 +41,9 @@ void extense::Expr::displayHeaderWithIndent(std::ostream &os,
   if (location_.valid()) os << " (at " << location_ << ')';
 }
 
-[[noreturn]] static void handleThrow(const extense::Exception &e,
+[[noreturn]] static void handleThrow(extense::Exception e,
                                      const extense::Source::Location &loc) {
-  throw extense::ExceptionWrapper(e, loc);
+  throw extense::ExceptionWrapper(std::move(e), loc);
 }
 
 extense::Expr::EvalResult extense::Expr::eval(Scope &scope) {
@@ -52,16 +52,39 @@ extense::Expr::EvalResult extense::Expr::eval(Scope &scope) {
   } catch (const Exception &e) { handleThrow(e, location_); }
 }
 
-extense::Value *extense::Expr::tryMutableEval(Scope &scope) {
+extense::Value *extense::Expr::tryPointerEval(Scope &scope) {
+  try {
+    return tryPointerEvalImpl(scope);
+  } catch (const Exception &e) { handleThrow(e, location_); }
+}
+
+std::function<void(extense::Value)>
+extense::Expr::tryMutableEval(Scope &scope) {
   try {
     return tryMutableEvalImpl(scope);
   } catch (const Exception &e) { handleThrow(e, location_); }
 }
 
-extense::Char *extense::Expr::tryMutableCharEval(Scope &scope) {
-  try {
-    return tryMutableCharEvalImpl(scope);
-  } catch (const Exception &e) { handleThrow(e, location_); }
+extense::Value &extense::referenceEval(Scope &scope, Expr &e) {
+  auto *pointer = e.tryPointerEval(scope);
+  if (pointer) return *pointer;
+  handleThrow(MutableAccessError{"Expected mutable Reference"}, e.location());
+}
+
+void extense::mutateExpr(Scope &scope, Expr &a, Value v) {
+  auto setter = a.tryMutableEval(scope);
+  if (setter) {
+    setter(std::move(v));
+    return;
+  }
+
+  auto *pointer = a.tryPointerEval(scope);
+  if (pointer) {
+    *pointer = std::move(v);
+    return;
+  }
+
+  throw MutableAccessError{"Expected mutable expression"};
 }
 
 std::ostream &extense::operator<<(std::ostream &os, ASTNodeType type) {
@@ -89,7 +112,7 @@ extense::Expr::EvalResult extense::Identifier::evalImpl(Scope &s) {
   return {true, s.getIdentifier(name_)};
 }
 
-extense::Value *extense::Identifier::tryMutableEvalImpl(Scope &s) {
+extense::Value *extense::Identifier::tryPointerEvalImpl(Scope &s) {
   return &s.createOrGetIdentifier(name_);
 }
 
@@ -273,14 +296,6 @@ void extense::MutableBinaryOperation::dumpWithIndent(std::ostream &os,
                                                      int indent) const {
   displayHeaderWithIndent(os, indent);
   os << ": MutableBinaryOperation\n";
-  leftOperand().dumpWithIndent(os, indent + indentAmount);
-  rightOperand().dumpWithIndent(os, indent + indentAmount);
-}
-
-void extense::CharMutableBinaryOperation::dumpWithIndent(std::ostream &os,
-                                                         int indent) const {
-  displayHeaderWithIndent(os, indent);
-  os << ": CharMutableBinaryOperation\n";
   leftOperand().dumpWithIndent(os, indent + indentAmount);
   rightOperand().dumpWithIndent(os, indent + indentAmount);
 }

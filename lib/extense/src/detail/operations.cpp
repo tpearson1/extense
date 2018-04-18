@@ -171,9 +171,9 @@ Value index(const Value &a, const Value &b) {
   return Value{get<String>(a).at(get<Int>(b))};
 }
 
-Value &mutableIndex(Value &a, const Value &b) {
-  if (a.is<Map>()) return get<Map>(a)[b];
-  if (a.is<UserObject>()) return get<UserObject>(a)[b];
+Value &mutableIndex(const Value &a, const Value &b) {
+  if (a.is<Map>()) return mutableGet<Map>(a)[b];
+  if (a.is<UserObject>()) return mutableGet<UserObject>(a)[b];
 
   if (!a.is<List>()) throw InvalidBinaryOperation(a, b, "Unable to index type");
   if (!b.is<Int>())
@@ -182,7 +182,7 @@ Value &mutableIndex(Value &a, const Value &b) {
 
   if (b.is<List>())
     throw InvalidBinaryOperation("List", "List", "Unable to mutate sub-list");
-  return get<List>(a)[get<Int>(b)];
+  return mutableGet<List>(a)[get<Int>(b)];
 }
 
 Reference ref(Value &v) { return Reference{v}; }
