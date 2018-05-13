@@ -542,42 +542,57 @@ bool extense::detail::lexIdentifier(Source &source, Token &out) {
 static bool lexBuiltinOperatorFromText(std::string_view text,
                                        extense::Token &out) {
   using extense::Token;
-  static std::unordered_map<std::string_view, Token::Type> operators = {
-      {// Miscellaneous operators
-       {"=", Token::Type::Assign},
-       {".", Token::Type::Dot},
-       {"..", Token::Type::DotDot},
-       {";", Token::Type::Semicolon},
-       {":", Token::Type::Colon},
-       {";;", Token::Type::SemicolonSemicolon},
-       {"::", Token::Type::ColonColon},
-       {"->", Token::Type::MapsTo},
-       {"!", Token::Type::Exclamation},
+  std::unordered_map<std::string_view, Token::Type> operators = {{
+      // Miscellaneous operators
+      {"=", Token::Type::Assign},
+      {".", Token::Type::Dot},
+      {"..", Token::Type::DotDot},
+      {";", Token::Type::Semicolon},
+      {":", Token::Type::Colon},
+      {";;", Token::Type::SemicolonSemicolon},
+      {"::", Token::Type::ColonColon},
+      {"->", Token::Type::MapsTo},
+      {"!", Token::Type::Exclamation},
 
-       // Comparison operators
-       {"==", Token::Type::Equals},
-       {"!=", Token::Type::NotEquals},
-       {"<=", Token::Type::LessEquals},
-       {">=", Token::Type::GreaterEquals},
-       {"<", Token::Type::LessThan},
-       {">", Token::Type::GreaterThan},
+      // Comparison operators
+      {"==", Token::Type::Equals},
+      {"!=", Token::Type::NotEquals},
+      {"<=", Token::Type::LessEquals},
+      {">=", Token::Type::GreaterEquals},
+      {"<", Token::Type::LessThan},
+      {">", Token::Type::GreaterThan},
 
-       // Mathematical operators
-       {"+", Token::Type::Plus},
-       {"-", Token::Type::Minus},
-       {"*", Token::Type::Mul},
-       {"**", Token::Type::Pow},
-       {"/", Token::Type::Div},
-       {"//", Token::Type::FloorDiv},
-       {"%", Token::Type::Mod},
+      // Mathematical operators
+      {"+", Token::Type::Plus},
+      {"-", Token::Type::Minus},
+      {"*", Token::Type::Mul},
+      {"**", Token::Type::Pow},
+      {"/", Token::Type::Div},
+      {"//", Token::Type::FloorDiv},
+      {"%", Token::Type::Mod},
 
-       // Bitwise operators
-       {"&", Token::Type::BitAnd},
-       {"|", Token::Type::BitOr},
-       {"^", Token::Type::BitXor},
-       {"~", Token::Type::BitNot},
-       {">>", Token::Type::BitRShift},
-       {"<<", Token::Type::BitLShift}}};
+      {"+=", Token::Type::PlusEquals},
+      {"-=", Token::Type::MinusEquals},
+      {"*=", Token::Type::MulEquals},
+      {"**=", Token::Type::PowEquals},
+      {"/=", Token::Type::DivEquals},
+      {"//=", Token::Type::FloorDivEquals},
+      {"%=", Token::Type::ModEquals},
+
+      // Bitwise operators
+      {"&", Token::Type::BitAnd},
+      {"|", Token::Type::BitOr},
+      {"^", Token::Type::BitXor},
+      {"~", Token::Type::BitNot},
+      {">>", Token::Type::BitRShift},
+      {"<<", Token::Type::BitLShift},
+
+      {"&=", Token::Type::BitAndEquals},
+      {"|=", Token::Type::BitOrEquals},
+      {"^=", Token::Type::BitXorEquals},
+      {"<<=", Token::Type::BitLShiftEquals},
+      {">>=", Token::Type::BitRShiftEquals},
+  }};
 
   auto typeIt = operators.find(text);
   if (typeIt != operators.end()) {

@@ -338,7 +338,7 @@ TEST_CASE("Parsing functions", "[parseExpr, parse]") {
   }
 
   SECTION("parse") {
-    auto exprList = parse("-q, 3 + 4, a - b, c = d, @xyz");
+    auto exprList = parse("-q, 3 + 4, a - b, c *= d, @xyz");
     REQUIRE(exprList);
 
     std::ostringstream os;
@@ -352,10 +352,10 @@ TEST_CASE("Parsing functions", "[parseExpr, parse]") {
   Minus (at 1:13): BinaryOperation
     Identifier (at 1:11): name 'a'
     Identifier (at 1:15): name 'b'
-  Assign (at 1:20): BinaryOperation
+  MulEquals (at 1:20): BinaryOperation
     Identifier (at 1:18): name 'c'
-    Identifier (at 1:22): name 'd'
-  LabelDeclaration (at 1:25): name 'xyz'
+    Identifier (at 1:23): name 'd'
+  LabelDeclaration (at 1:26): name 'xyz'
 )");
 
     auto empty = parse("");

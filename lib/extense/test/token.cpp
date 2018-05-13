@@ -592,6 +592,6 @@ TEST_CASE("Skipping past characters",
 
 TEST_CASE("Token::Type correct ostream output", "[Token::Type]") {
   std::ostringstream out;
-  out << Token::Type::Mod;
-  REQUIRE(out.str() == "Mod");
+  out << Token::Type::ModEquals;
+  REQUIRE(out.str() == "ModEquals");
 }

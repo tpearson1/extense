@@ -39,6 +39,22 @@ SOFTWARE.
   X(CustomOperator) /*   E.g. <=> or |>   */                                   \
   X(Assign) /*   =   */                                                        \
                                                                                \
+  /* Relative math Operators */                                                \
+  X(PlusEquals) /*   +=   */                                                   \
+  X(MinusEquals) /*   -=   */                                                  \
+  X(MulEquals) /*   *=   */                                                    \
+  X(DivEquals) /*   /=   */                                                    \
+  X(FloorDivEquals) /*   //=   */                                              \
+  X(PowEquals) /*   **=   */                                                   \
+  X(ModEquals) /*   %=   */                                                    \
+                                                                               \
+  /* Relative bitwise Operators */                                             \
+  X(BitAndEquals) /*   &=   */                                                 \
+  X(BitOrEquals) /*   |=   */                                                  \
+  X(BitXorEquals) /*   ^=   */                                                 \
+  X(BitLShiftEquals) /*   <<=   */                                             \
+  X(BitRShiftEquals) /*   >>=   */                                             \
+                                                                               \
   /* Binary Bitwise operators */                                               \
   X(BitAnd) /*   &   */                                                        \
   X(BitOr) /*   |   */                                                         \

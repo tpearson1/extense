@@ -51,8 +51,8 @@ TEST_CASE("Classifying and printing AST node types", "[ASTNodeType]") {
   SECTION("Printing") {
     // If these two work, then the others should also
     std::ostringstream os;
-    os << ASTNodeType::Pow;
-    REQUIRE(os.str() == "Pow");
+    os << ASTNodeType::PowEquals;
+    REQUIRE(os.str() == "PowEquals");
 
     std::ostringstream os2;
     os2 << ASTNodeType::Exclamation;
@@ -144,7 +144,7 @@ TEST_CASE("Manipulating and dumping expressions", "[Expr]") {
     ValueExpr: `v
 )");
 
-    auto [isMut, mapValue] = mapConstructor.eval(dummyScope);
+    auto[isMut, mapValue] = mapConstructor.eval(dummyScope);
     REQUIRE(!isMut);
     REQUIRE(mapValue.is<Map>());
 
@@ -173,7 +173,7 @@ TEST_CASE("Manipulating and dumping expressions", "[Expr]") {
   ValueExpr: `a
 )");
 
-    auto [isMut, listValue] = listConstructor.eval(dummyScope);
+    auto[isMut, listValue] = listConstructor.eval(dummyScope);
     REQUIRE(!isMut);
     REQUIRE(listValue.is<List>());
 
@@ -241,7 +241,7 @@ TEST_CASE("Manipulating and dumping expressions", "[Expr]") {
                                        get<Int>(constEval(s, b))};
                         },
                         std::move(v2), std::move(v3)};
-    auto [isMut, result] = bop.eval(dummyScope);
+    auto[isMut, result] = bop.eval(dummyScope);
     REQUIRE(isMut);
     REQUIRE(result.is<Int>());
     REQUIRE(get<Int>(result).value == 32);

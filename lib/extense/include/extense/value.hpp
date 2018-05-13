@@ -166,8 +166,6 @@ class Value {
   template <typename ValueType>
   friend struct detail::InternalData;
 
-  void constructFromFlatValue(FlatValue fv);
-
 public:
   // Initializes with None
   Value() = default;
@@ -176,8 +174,6 @@ public:
   explicit Value(T v) {
     if constexpr (std::is_same_v<T, Reference>)
       data = v;
-    else if constexpr (std::is_same_v<T, FlatValue>)
-      constructFromFlatValue(std::move(v));
     else if constexpr (isReferencedOnCopy<T>)
       data = makeReference(std::move(v));
     else
@@ -457,44 +453,25 @@ namespace ops {
 template <typename... ValueTypes>
 Bool equal(const BasicFlatValue<ValueTypes...> &a,
            const BasicFlatValue<ValueTypes...> &b) {
-  using A = std::decay_t<decltype(a)>;
-  using B = std::decay_t<decltype(b)>;
-
   // We want a Float and Int with the same values (e.g. 1.0 and 1) to compare
   // equal. A variant's default operator== will not do this, and so this special
   // case is handled manually.
-  if constexpr (A::template supportsType<Int> &&
-                B::template supportsType<Float>) {
-    if ((a.template is<Float>() && b.template is<Int>()) ||
-        (a.template is<Int>() && b.template is<Float>()))
-      return as<Float>(a) == as<Float>(b);
-  }
+  if ((a.template is<Float>() && b.template is<Int>()) ||
+      (a.template is<Int>() && b.template is<Float>()))
+    return as<Float>(a) == as<Float>(b);
 
-  if constexpr (A::template supportsType<UserObject>) {
-    if (a.template is<UserObject>()) return get<UserObject>(a).equal(Value{b});
-  }
   return Bool{a.internalVariant() == b.internalVariant()};
 }
 
 template <typename TValue, typename... ValueTypes>
 Bool equal(const ConstrainedValue<TValue, ValueTypes...> &a,
            const ConstrainedValue<TValue, ValueTypes...> &b) {
-  using A = std::decay_t<decltype(a)>;
-  using B = std::decay_t<decltype(b)>;
-
   // We want a Float and Int with the same values (e.g. 1.0 and 1) to compare
   // equal. A variant's default operator== will not do this, and so this special
   // case is handled manually.
-  if constexpr (A::template supportsType<Int> &&
-                B::template supportsType<Float>) {
-    if ((a.template is<Float>() && b.template is<Int>()) ||
-        (a.template is<Int>() && b.template is<Float>()))
-      return as<Float>(a) == as<Float>(b);
-  }
-
-  if constexpr (A::template supportsType<UserObject>) {
-    if (a.template is<UserObject>()) return get<UserObject>(a).equal(Value{b});
-  }
+  if ((a.template is<Float>() && b.template is<Int>()) ||
+      (a.template is<Int>() && b.template is<Float>()))
+    return as<Float>(a) == as<Float>(b);
 
   return Bool{a.internalVariant() == b.internalVariant()};
 }

@@ -37,7 +37,20 @@ SOFTWARE.
 namespace extense {
 #define _LIB_EXTENSE__AST_NODE_TYPE_ENUM                                       \
   X(CustomOperator)                                                            \
+                                                                               \
   X(Assign)                                                                    \
+  X(PlusEquals)                                                                \
+  X(MinusEquals)                                                               \
+  X(MulEquals)                                                                 \
+  X(DivEquals)                                                                 \
+  X(FloorDivEquals)                                                            \
+  X(PowEquals)                                                                 \
+  X(ModEquals)                                                                 \
+  X(BitAndEquals)                                                              \
+  X(BitOrEquals)                                                               \
+  X(BitXorEquals)                                                              \
+  X(BitLShiftEquals)                                                           \
+  X(BitRShiftEquals)                                                           \
                                                                                \
   X(BitAnd)                                                                    \
   X(BitOr)                                                                     \

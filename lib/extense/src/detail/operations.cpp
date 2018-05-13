@@ -59,53 +59,86 @@ namespace extense::ops {
   template <typename A, typename B>                                            \
   constexpr bool resultVar = resultVar##Helper<A, B>::value;
 
-#define OP_VISITOR_WITH_RET(opFuncName, ret)                                   \
+#define OP_VISITOR(opFuncName)                                                 \
   VALID_OP(canDoOperation##opFuncName, opFuncName)                             \
                                                                                \
-  ret opFuncName(const Value &a, const Value &b) {                             \
+  Value opFuncName(const Value &a, const Value &b) {                           \
     if (a.is<Map>()) return opFuncName(mutableGet<Map>(a), b);                 \
-    if (a.is<UserObject>())                                                    \
-      return ret{opFuncName(mutableGet<UserObject>(a), b)};                    \
+    if (a.is<UserObject>()) return opFuncName(mutableGet<UserObject>(a), b);   \
                                                                                \
     return visit(                                                              \
-        [](const auto &a, const auto &b) -> ret {                              \
+        [](const auto &a, const auto &b) -> Value {                            \
           using A = std::decay_t<decltype(a)>;                                 \
           using B = std::decay_t<decltype(b)>;                                 \
-          if constexpr (canDoOperation##opFuncName<A, B>)                      \
-            return ret{opFuncName(a, b)};                                      \
-          else                                                                 \
+          if constexpr (!canDoOperation##opFuncName<A, B>)                     \
             throw InvalidBinaryOperation::Create<A, B>();                      \
+          else                                                                 \
+            return Value{opFuncName(a, b)};                                    \
         },                                                                     \
         a, b);                                                                 \
   }
 
-#define OP_VISITOR(opFuncName) OP_VISITOR_WITH_RET(opFuncName, Value)
+#define COMPOUND_OP_VISITOR(opFuncName, nonCompoundFuncName)                   \
+  VALID_OP(canDoOperation##opFuncName, opFuncName)                             \
+                                                                               \
+  Value opFuncName(Value &av, const Value &bv) {                               \
+    if (av.is<Map>()) return opFuncName(get<Map>(av), bv);                     \
+    if (av.is<UserObject>()) return opFuncName(get<UserObject>(av), bv);       \
+                                                                               \
+    visit(                                                                     \
+        [&av, &bv](auto &a, const auto &b) {                                   \
+          using A = std::decay_t<decltype(a)>;                                 \
+          using B = std::decay_t<decltype(b)>;                                 \
+          if constexpr (!canDoOperation##opFuncName<A, B>) {                   \
+            /* It may be the case that the operation is possible, but */       \
+            /* the mutable argument needs to be converted */                   \
+            av = nonCompoundFuncName(av, bv);                                  \
+          } else                                                               \
+            opFuncName(a, b);                                                  \
+        },                                                                     \
+        av, bv);                                                               \
+    return noneValue;                                                          \
+  }
 
-Value unaryPlus(const Value &a) {
+Value add(const Value &a) {
   if (a.is<Int>() || a.is<Float>()) return a;
   throw InvalidUnaryOperation{a};
 }
 
 OP_VISITOR(add)
+COMPOUND_OP_VISITOR(addEquals, add)
 
 List add(List a, const List &b) {
+  addEquals(a, b);
+  return a;
+}
+
+List &addEquals(List &a, const List &b) {
   auto &av = a.value;
   auto &bv = b.value;
   av.insert(std::end(av), std::begin(bv), std::end(bv));
   return a;
 }
 
-Value unaryMinus(const Value &a) {
+Value sub(const Value &a) {
   if (a.is<Int>()) return Value{-get<Int>(a)};
   if (a.is<Float>()) return Value{-get<Float>(a)};
   throw InvalidUnaryOperation{a};
 }
 
 OP_VISITOR(sub)
+COMPOUND_OP_VISITOR(subEquals, sub)
+
 OP_VISITOR(mul)
+COMPOUND_OP_VISITOR(mulEquals, mul)
+
+String mul(String a, Int times) {
+  mulEquals(a, times);
+  return a;
+}
 
 template <typename ValueType>
-static ValueType mul(ValueType a, Int times_) {
+static ValueType &mulEquals(ValueType &a, Int times_) {
   if (times_.value < 0) {
     throw InvalidBinaryOperation::Create<ValueType, Int>(
         "Expected Int to be greater than 0");
@@ -115,21 +148,30 @@ static ValueType mul(ValueType a, Int times_) {
   auto original = a;
   a.value.clear();
   a.value.reserve(original.value.size() * times);
-  for (std::size_t i = 0; i < times; i++) {
-    auto &av = a.value;
-    const auto &ov = original.value;
-    av.insert(std::end(av), std::begin(ov), std::end(ov));
-  }
+  for (std::size_t i = 0; i < times; i++) addEquals(a, original);
   return a;
 }
 
-String mul(String a, Int times) { return mul<String>(a, times); }
-List mul(List a, Int times) { return mul<List>(a, times); }
+String &mulEquals(String &a, Int times) { return mulEquals<String>(a, times); }
+
+List mul(List a, Int times) {
+  mulEquals(a, times);
+  return a;
+}
+
+List &mulEquals(List &a, Int times) { return mulEquals<List>(a, times); }
 
 OP_VISITOR(div)
+COMPOUND_OP_VISITOR(divEquals, div)
+
 OP_VISITOR(mod)
+COMPOUND_OP_VISITOR(modEquals, mod)
+
 OP_VISITOR(floorDiv)
+COMPOUND_OP_VISITOR(floorDivEquals, floorDiv)
+
 OP_VISITOR(pow)
+COMPOUND_OP_VISITOR(powEquals, pow)
 
 constexpr const auto powMessage = "Invalid values for base and/or exponent";
 
@@ -188,8 +230,13 @@ Value &mutableIndex(const Value &a, const Value &b) {
 Reference ref(Value &v) { return Reference{v}; }
 
 OP_VISITOR(bitAnd)
+COMPOUND_OP_VISITOR(bitAndEquals, bitAnd)
+
 OP_VISITOR(bitOr)
+COMPOUND_OP_VISITOR(bitOrEquals, bitOr)
+
 OP_VISITOR(bitXor)
+COMPOUND_OP_VISITOR(bitXorEquals, bitXor)
 
 Value bitNot(const Value &a) {
   if (a.is<Int>()) return Value{bitNot(get<Int>(a))};
@@ -197,32 +244,31 @@ Value bitNot(const Value &a) {
 }
 
 OP_VISITOR(bitLShift)
+COMPOUND_OP_VISITOR(bitLShiftEquals, bitLShift)
+
 OP_VISITOR(bitRShift)
+COMPOUND_OP_VISITOR(bitRShiftEquals, bitRShift)
 
 Bool is(const Value &a, std::string_view type) {
   if (a.is<Reference>() && type == "Reference") return Bool::t;
   return Bool{a.typeAsString(false) == type};
 }
 
-OP_VISITOR_WITH_RET(logicalAnd, Bool)
-OP_VISITOR_WITH_RET(logicalOr, Bool)
+OP_VISITOR(logicalAnd)
+OP_VISITOR(logicalOr)
 
-Bool logicalNot(const Value &a) {
-  if (a.is<Bool>()) return logicalNot(get<Bool>(a));
+Value logicalNot(const Value &a) {
+  if (a.is<Bool>()) return Value{logicalNot(get<Bool>(a))};
   throw InvalidUnaryOperation{a};
 }
 
-OP_VISITOR_WITH_RET(lessThan, Bool)
-OP_VISITOR_WITH_RET(lessEquals, Bool)
-OP_VISITOR_WITH_RET(greaterThan, Bool)
-OP_VISITOR_WITH_RET(greaterEquals, Bool)
+OP_VISITOR(lessThan)
+OP_VISITOR(lessEquals)
+OP_VISITOR(greaterThan)
+OP_VISITOR(greaterEquals)
 
 Bool equal(const Map &a, const Map &b) { return Bool{a.value == b.value}; }
 Bool equal(const List &a, const List &b) { return Bool{a.value == b.value}; }
-
-Bool equal(const UserObject &a, const UserObject &b) {
-  return a.equal(Value{b});
-}
 } // namespace extense::ops
 
 static extense::Value binaryFunction(const extense::String &op, extense::Map &a,
@@ -236,7 +282,6 @@ static extense::Value binaryFunction(const extense::String &op, extense::Map &a,
     throw extense::OperatorOverloadError{};
   }
 }
-
 static extense::Value unaryFunction(const extense::String &op,
                                     extense::Map &a) {
   try {
@@ -249,106 +294,161 @@ static extense::Value unaryFunction(const extense::String &op,
   }
 }
 
-static extense::Bool getBool(const extense::Value &v) {
-  try {
-    return extense::get<extense::Bool>(v);
-  } catch (const extense::ValueGetError &) {
-    throw extense::OperatorOverloadError{
-        "This custom operator must evaluate to a Bool"};
-  }
-}
-
 namespace extense::ops {
 // Map operations
 Value add(Map &a, const Value &b) { return binaryFunction("+"_es, a, b); }
-Value unaryPlus(Map &a) { return unaryFunction("+"_es, a); }
+Value addEquals(Map &a, const Value &b) {
+  return binaryFunction("+="_es, a, b);
+}
+Value add(Map &a) { return unaryFunction("+"_es, a); }
 
 Value sub(Map &a, const Value &b) { return binaryFunction("-"_es, a, b); }
-Value unaryMinus(Map &a) { return unaryFunction("-"_es, a); }
+Value subEquals(Map &a, const Value &b) {
+  return binaryFunction("-="_es, a, b);
+}
+Value sub(Map &a) { return unaryFunction("-"_es, a); }
 
 Value mul(Map &a, const Value &b) { return binaryFunction("*"_es, a, b); }
+Value mulEquals(Map &a, const Value &b) {
+  return binaryFunction("*="_es, a, b);
+}
+
 Value div(Map &a, const Value &b) { return binaryFunction("/"_es, a, b); }
+Value divEquals(Map &a, const Value &b) {
+  return binaryFunction("/="_es, a, b);
+}
+
 Value mod(Map &a, const Value &b) { return binaryFunction("%"_es, a, b); }
+Value modEquals(Map &a, const Value &b) {
+  return binaryFunction("%="_es, a, b);
+}
+
 Value floorDiv(Map &a, const Value &b) { return binaryFunction("//"_es, a, b); }
+Value floorDivEquals(Map &a, const Value &b) {
+  return binaryFunction("//="_es, a, b);
+}
+
 Value pow(Map &a, const Value &b) { return binaryFunction("**"_es, a, b); }
+Value powEquals(Map &a, const Value &b) {
+  return binaryFunction("**="_es, a, b);
+}
 
 Value dotDot(Map &a, const Value &b) { return binaryFunction(".."_es, a, b); }
 
 Value bitAnd(Map &a, const Value &b) { return binaryFunction("&"_es, a, b); }
+Value bitAndEquals(Map &a, const Value &b) {
+  return binaryFunction("&="_es, a, b);
+}
+
 Value bitOr(Map &a, const Value &b) { return binaryFunction("|"_es, a, b); }
+Value bitOrEquals(Map &a, const Value &b) {
+  return binaryFunction("|="_es, a, b);
+}
+
 Value bitXor(Map &a, const Value &b) { return binaryFunction("^"_es, a, b); }
+Value bitXorEquals(Map &a, const Value &b) {
+  return binaryFunction("^="_es, a, b);
+}
+
 Value bitNot(Map &a) { return unaryFunction("~"_es, a); }
 
 Value bitLShift(Map &a, const Value &b) {
   return binaryFunction("<<"_es, a, b);
 }
+Value bitLShiftEquals(Map &a, const Value &b) {
+  return binaryFunction("<<="_es, a, b);
+}
+
 Value bitRShift(Map &a, const Value &b) {
   return binaryFunction(">>"_es, a, b);
 }
-
-Bool logicalAnd(Map &a, const Value &b) {
-  return getBool(binaryFunction("and"_es, a, b));
-}
-Bool logicalOr(Map &a, const Value &b) {
-  return getBool(binaryFunction("or"_es, a, b));
-}
-Bool logicalNot(Map &a) { return getBool(unaryFunction("or"_es, a)); }
-
-Bool lessThan(Map &a, const Value &b) {
-  return getBool(binaryFunction("<"_es, a, b));
-}
-Bool lessEquals(Map &a, const Value &b) {
-  return getBool(binaryFunction("<="_es, a, b));
-}
-Bool greaterThan(Map &a, const Value &b) {
-  return getBool(binaryFunction(">"_es, a, b));
-}
-Bool greaterEquals(Map &a, const Value &b) {
-  return getBool(binaryFunction(">="_es, a, b));
+Value bitRShiftEquals(Map &a, const Value &b) {
+  return binaryFunction(">>="_es, a, b);
 }
 
-Bool equal(Map &a, const Value &b) {
-  return getBool(binaryFunction("=="_es, a, b));
+Value logicalAnd(Map &a, const Value &b) {
+  return binaryFunction("and"_es, a, b);
 }
-Bool notEqual(Map &a, const Value &b) {
-  return getBool(binaryFunction("!="_es, a, b));
+Value logicalOr(Map &a, const Value &b) {
+  return binaryFunction("or"_es, a, b);
 }
+
+Value lessThan(Map &a, const Value &b) { return binaryFunction("<"_es, a, b); }
+Value lessEquals(Map &a, const Value &b) {
+  return binaryFunction("<="_es, a, b);
+}
+Value greaterThan(Map &a, const Value &b) {
+  return binaryFunction(">"_es, a, b);
+}
+Value greaterEquals(Map &a, const Value &b) {
+  return binaryFunction(">="_es, a, b);
+}
+
+Value equal(Map &a, const Value &b) { return binaryFunction("=="_es, a, b); }
+Value notEqual(Map &a, const Value &b) { return binaryFunction("!="_es, a, b); }
 
 // UserObject operations
 Value index(const UserObject &a, const Value &b) { return a.at(b); }
 Value &mutableIndex(UserObject &a, const Value &b) { return a[b]; }
 
 Value add(UserObject &a, const Value &b) { return a.add(b); }
-Value unaryPlus(UserObject &a) { return a.unaryPlus(); }
+Value addEquals(UserObject &a, const Value &b) { return a.addEquals(b); }
+Value add(UserObject &a) { return a.unaryPlus(); }
 
 Value sub(UserObject &a, const Value &b) { return a.sub(b); }
-Value unaryMinus(UserObject &a) { return a.unaryMinus(); }
+Value subEquals(UserObject &a, const Value &b) { return a.subEquals(b); }
+Value sub(UserObject &a) { return a.unaryMinus(); }
 
 Value mul(UserObject &a, const Value &b) { return a.mul(b); }
+Value mulEquals(UserObject &a, const Value &b) { return a.mulEquals(b); }
+
 Value div(UserObject &a, const Value &b) { return a.div(b); }
+Value divEquals(UserObject &a, const Value &b) { return a.divEquals(b); }
+
 Value mod(UserObject &a, const Value &b) { return a.mod(b); }
+Value modEquals(UserObject &a, const Value &b) { return a.modEquals(b); }
+
 Value floorDiv(UserObject &a, const Value &b) { return a.floorDiv(b); }
+Value floorDivEquals(UserObject &a, const Value &b) {
+  return a.floorDivEquals(b);
+}
+
 Value pow(UserObject &a, const Value &b) { return a.pow(b); }
+Value powEquals(UserObject &a, const Value &b) { return a.powEquals(b); }
 
 Value dotDot(UserObject &a, const Value &b) { return a.dotDot(b); }
 
 Value bitAnd(UserObject &a, const Value &b) { return a.bitAnd(b); }
+Value bitAndEquals(UserObject &a, const Value &b) { return a.bitAndEquals(b); }
+
 Value bitOr(UserObject &a, const Value &b) { return a.bitOr(b); }
+Value bitOrEquals(UserObject &a, const Value &b) { return a.bitOrEquals(b); }
+
 Value bitXor(UserObject &a, const Value &b) { return a.bitXor(b); }
+Value bitXorEquals(UserObject &a, const Value &b) { return a.bitXorEquals(b); }
+
 Value bitNot(UserObject &a) { return a.bitNot(); }
 
 Value bitLShift(UserObject &a, const Value &b) { return a.bitLShift(b); }
+Value bitLShiftEquals(UserObject &a, const Value &b) {
+  return a.bitLShiftEquals(b);
+}
+
 Value bitRShift(UserObject &a, const Value &b) { return a.bitRShift(b); }
+Value bitRShiftEquals(UserObject &a, const Value &b) {
+  return a.bitRShiftEquals(b);
+}
 
-Bool logicalAnd(UserObject &a, const Value &b) { return a.logicalAnd(b); }
-Bool logicalOr(UserObject &a, const Value &b) { return a.logicalOr(b); }
-Bool logicalNot(UserObject &a) { return a.logicalNot(); }
+Value logicalAnd(UserObject &a, const Value &b) { return a.logicalAnd(b); }
+Value logicalOr(UserObject &a, const Value &b) { return a.logicalOr(b); }
 
-Bool lessThan(UserObject &a, const Value &b) { return a.lessThan(b); }
-Bool lessEquals(UserObject &a, const Value &b) { return a.lessEquals(b); }
-Bool greaterThan(UserObject &a, const Value &b) { return a.greaterThan(b); }
-Bool greaterEquals(UserObject &a, const Value &b) { return a.greaterEquals(b); }
+Value lessThan(UserObject &a, const Value &b) { return a.lessThan(b); }
+Value lessEquals(UserObject &a, const Value &b) { return a.lessEquals(b); }
+Value greaterThan(UserObject &a, const Value &b) { return a.greaterThan(b); }
+Value greaterEquals(UserObject &a, const Value &b) {
+  return a.greaterEquals(b);
+}
 
-Bool equal(UserObject &a, const Value &b) { return a.equal(b); }
-Bool notEqual(UserObject &a, const Value &b) { return a.notEqual(b); }
+Value equal(UserObject &a, const Value &b) { return a.equal(b); }
+Value notEqual(UserObject &a, const Value &b) { return a.notEqual(b); }
 } // namespace extense::ops

@@ -159,39 +159,80 @@ inline Float &dec(Float &a) {
   return a;
 }
 
-// +
+// + +=
 Value add(const Value &a, const Value &b);
+Value addEquals(Value &a, const Value &b);
 
 inline Int add(Int a, Int b) { return Int{a.value + b.value}; }
+inline Int &addEquals(Int &a, Int b) {
+  a.value += b.value;
+  return a;
+}
+
 inline Float add(Float a, Float b) { return Float{a.value + b.value}; }
+inline Float &addEquals(Float &a, Float b) {
+  a.value += b.value;
+  return a;
+}
+
 inline String add(const String &a, const String &b) {
   return String{a.value + b.value};
 }
+inline String &addEquals(String &a, const String &b) {
+  a.value += b.value;
+  return a;
+}
+
 List add(List a, const List &b);
+List &addEquals(List &a, const List &b);
 
 // +x
-Value unaryPlus(const Value &a);
-inline Int unaryPlus(Int a) { return a; }
-inline Float unaryPlus(Float a) { return a; }
+Value add(const Value &a);
+inline Int add(Int a) { return a; }
+inline Float add(Float a) { return a; }
 
-// -
+// - -=
 Value sub(const Value &a, const Value &b);
+Value subEquals(Value &a, const Value &b);
 
 inline Int sub(Int a, Int b) { return Int{a.value - b.value}; }
+inline Int &subEquals(Int &a, Int b) {
+  a.value -= b.value;
+  return a;
+}
+
 inline Float sub(Float a, Float b) { return Float{a.value - b.value}; }
+inline Float &subEquals(Float &a, Float b) {
+  a.value -= b.value;
+  return a;
+}
 
-// -x
-Value unaryMinus(const Value &a);
-inline Int unaryMinus(Int a) { return Int{-a.value}; }
-inline Float unaryMinus(Float a) { return Float{-a.value}; }
+// Unary negation (-x)
+Value sub(const Value &a);
+inline Int sub(Int a) { return Int{-a.value}; }
+inline Float sub(Float a) { return Float{-a.value}; }
 
-// *
+// * *=
 Value mul(const Value &a, const Value &b);
+Value mulEquals(Value &a, const Value &b);
 
 inline Int mul(Int a, Int b) { return Int{a.value * b.value}; }
+inline Int &mulEquals(Int &a, Int b) {
+  a.value *= b.value;
+  return a;
+}
+
 inline Float mul(Float a, Float b) { return Float{a.value * b.value}; }
+inline Float &mulEquals(Float &a, Float b) {
+  a.value *= b.value;
+  return a;
+}
+
 String mul(String a, Int times);
+String &mulEquals(String &a, Int times);
+
 List mul(List a, Int times);
+List &mulEquals(List &a, Int times);
 
 /*
  * Exception thrown when input to a mathematical function is invalid.
@@ -219,29 +260,44 @@ inline static void checkDivision(ValueType b) {
 }
 } // namespace
 
-// /
+// / /=
 Value div(const Value &a, const Value &b);
+Value divEquals(Value &a, const Value &b);
 
 inline Float div(Float a, Float b) {
   checkDivision(b);
   return Float{a.value / b.value};
 }
+inline Float &divEquals(Float &a, Float b) {
+  a = div(a, b);
+  return a;
+}
 
-// %
+// % %=
 Value mod(const Value &a, const Value &b);
+Value modEquals(Value &a, const Value &b);
 
 inline Int mod(Int a, Int b) {
   checkDivision(b);
   return Int{a.value % b.value};
+}
+inline Int &modEquals(Int &a, Int b) {
+  a = mod(a, b);
+  return a;
 }
 
 inline Float mod(Float a, Float b) {
   checkDivision(b);
   return Float{std::fmod(a.value, b.value)};
 }
+inline Float &modEquals(Float &a, Float b) {
+  a = mod(a, b);
+  return a;
+}
 
-// //
+// // //=
 Value floorDiv(const Value &a, const Value &b);
+Value floorDivEquals(Value &a, const Value &b);
 
 inline Int floorDiv(Int a, Int b) {
   checkDivision(b);
@@ -249,16 +305,34 @@ inline Int floorDiv(Int a, Int b) {
                            static_cast<Float::ValueType>(b.value));
   return Int{static_cast<Int::ValueType>(result)};
 }
+inline Int &floorDivEquals(Int &a, Int b) {
+  a = floorDiv(a, b);
+  return a;
+}
 
 inline Float floorDiv(Float a, Float b) {
   return Float{std::floor(a.value / b.value)};
 }
+inline Float &floorDivEquals(Float &a, Float b) {
+  a = floorDiv(a, b);
+  return a;
+}
 
-// **
+// ** **=
 Value pow(const Value &a, const Value &b);
+Value powEquals(Value &a, const Value &b);
 
 Float pow(Float a, Float b);
+inline Float &powEquals(Float &a, Float b) {
+  a = pow(a, b);
+  return a;
+}
+
 Float pow(Float a, Int b);
+inline Float &powEquals(Float &a, Int b) {
+  a = pow(a, b);
+  return a;
+}
 
 // ..
 Value dotDot(const Value &a, const Value &b);
@@ -291,68 +365,91 @@ inline Char &mutableIndex(String &a, Int i) { return a[i]; }
 // !
 Reference ref(Value &v);
 
-// &
+// & &=
 Value bitAnd(const Value &a, const Value &b);
+Value bitAndEquals(Value &a, const Value &b);
 
 inline Int bitAnd(Int a, Int b) { return Int{a.value & b.value}; }
+inline Int &bitAndEquals(Int &a, Int b) {
+  a = bitAnd(a, b);
+  return a;
+}
 
-// |
+// | |=
 Value bitOr(const Value &a, const Value &b);
+Value bitOrEquals(Value &a, const Value &b);
 
 inline Int bitOr(Int a, Int b) { return Int{a.value | b.value}; }
+inline Int &bitOrEquals(Int &a, Int b) {
+  a = bitOr(a, b);
+  return a;
+}
 
-// ^
+// ^ ^=
 Value bitXor(const Value &a, const Value &b);
+Value bitXorEquals(Value &a, const Value &b);
 
 inline Int bitXor(Int a, Int b) { return Int{a.value ^ b.value}; }
+inline Int &bitXorEquals(Int &a, Int b) {
+  a = bitXor(a, b);
+  return a;
+}
 
 // ~
 Value bitNot(const Value &a);
 inline Int bitNot(Int a) { return Int{~a.value}; }
 
-// <<
+// << <<=
 Value bitLShift(const Value &a, const Value &b);
+Value bitLShiftEquals(Value &a, const Value &b);
 
 inline Int bitLShift(Int a, Int b) { return Int{a.value << b.value}; }
+inline Int &bitLShiftEquals(Int &a, Int b) {
+  a = bitLShift(a, b);
+  return a;
+}
 
-// >>
+// >> >>=
 Value bitRShift(const Value &a, const Value &b);
+Value bitRShiftEquals(Value &a, const Value &b);
 
 inline Int bitRShift(Int a, Int b) { return Int{a.value >> b.value}; }
+inline Int &bitRShiftEquals(Int &a, Int b) {
+  a = bitRShift(a, b);
+  return a;
+}
 
 // is
 Bool is(const Value &a, std::string_view type);
 
 // and
-Bool logicalAnd(const Value &a, const Value &b);
+Value logicalAnd(const Value &a, const Value &b);
 inline Bool logicalAnd(Bool a, Bool b) { return Bool{a.value && b.value}; }
 // or
-Bool logicalOr(const Value &a, const Value &b);
+Value logicalOr(const Value &a, const Value &b);
 inline Bool logicalOr(Bool a, Bool b) { return Bool{a.value || b.value}; }
 // not
-Bool logicalNot(const Value &a);
+Value logicalNot(const Value &a);
 inline Bool logicalNot(Bool a) { return Bool{!a.value}; }
 
 // <
-Bool lessThan(const Value &a, const Value &b);
+Value lessThan(const Value &a, const Value &b);
 inline Bool lessThan(Int a, Int b) { return Bool{a.value < b.value}; }
 inline Bool lessThan(Float a, Float b) { return Bool{a.value < b.value}; }
 // <=
-Bool lessEquals(const Value &a, const Value &b);
+Value lessEquals(const Value &a, const Value &b);
 inline Bool lessEquals(Int a, Int b) { return Bool{a.value <= b.value}; }
 inline Bool lessEquals(Float a, Float b) { return Bool{a.value <= b.value}; }
 // >
-Bool greaterThan(const Value &a, const Value &b);
+Value greaterThan(const Value &a, const Value &b);
 inline Bool greaterThan(Int a, Int b) { return Bool{a.value > b.value}; }
 inline Bool greaterThan(Float a, Float b) { return Bool{a.value > b.value}; }
 // >=
-Bool greaterEquals(const Value &a, const Value &b);
+Value greaterEquals(const Value &a, const Value &b);
 inline Bool greaterEquals(Int a, Int b) { return Bool{a.value >= b.value}; }
 inline Bool greaterEquals(Float a, Float b) { return Bool{a.value >= b.value}; }
 
 // ==
-inline Bool equal(const Value &, const Value &);
-
 inline Bool equal(None, None) { return Bool::t; }
 inline Bool equal(Bool a, Bool b) { return Bool{a.value == b.value}; }
 inline Bool equal(Int a, Int b) { return Bool{a.value == b.value}; }
@@ -365,11 +462,13 @@ Bool equal(const Map &a, const Map &b);
 Bool equal(const List &a, const List &b);
 inline Bool equal(const Scope &, const Scope &) { return Bool::f; }
 inline Bool equal(const Label &, const Label &) { return Bool::f; }
-Bool equal(const UserObject &a, const UserObject &b);
+inline Bool equal(const UserObject &, const UserObject &) { return Bool::f; }
 
 template <typename... ValueTypes>
 Bool equal(const BasicFlatValue<ValueTypes...> &,
            const BasicFlatValue<ValueTypes...> &);
+
+inline Bool equal(const Value &, const Value &);
 
 // !=
 template <typename VT1, typename VT2>
@@ -381,38 +480,57 @@ inline Bool notEqual(const VT1 &a, const VT2 &b) {
 // The following operations cannot be overloaded:
 //   ':', '::', ';', ';;', '!', 'unary /'
 Value add(Map &a, const Value &b);
-Value unaryPlus(Map &a);
+Value addEquals(Map &a, const Value &b);
+Value add(Map &a);
 
 Value sub(Map &a, const Value &b);
-Value unaryMinus(Map &a);
+Value subEquals(Map &a, const Value &b);
+Value sub(Map &a);
 
 Value mul(Map &a, const Value &b);
+Value mulEquals(Map &a, const Value &b);
+
 Value div(Map &a, const Value &b);
+Value divEquals(Map &a, const Value &b);
+
 Value mod(Map &a, const Value &b);
+Value modEquals(Map &a, const Value &b);
+
 Value floorDiv(Map &a, const Value &b);
+Value floorDivEquals(Map &a, const Value &b);
+
 Value pow(Map &a, const Value &b);
+Value powEquals(Map &a, const Value &b);
 
 Value dotDot(Map &a, const Value &b);
 
 Value bitAnd(Map &a, const Value &b);
+Value bitAndEquals(Map &a, const Value &b);
+
 Value bitOr(Map &a, const Value &b);
+Value bitOrEquals(Map &a, const Value &b);
+
 Value bitXor(Map &a, const Value &b);
+Value bitXorEquals(Map &a, const Value &b);
+
 Value bitNot(Map &a);
 
 Value bitLShift(Map &a, const Value &b);
+Value bitLShiftEquals(Map &a, const Value &b);
+
 Value bitRShift(Map &a, const Value &b);
+Value bitRShiftEquals(Map &a, const Value &b);
 
-Bool logicalAnd(Map &a, const Value &b);
-Bool logicalOr(Map &a, const Value &b);
-Bool logicalNot(Map &a);
+Value logicalAnd(Map &a, const Value &b);
+Value logicalOr(Map &a, const Value &b);
 
-Bool lessThan(Map &a, const Value &b);
-Bool lessEquals(Map &a, const Value &b);
-Bool greaterThan(Map &a, const Value &b);
-Bool greaterEquals(Map &a, const Value &b);
+Value lessThan(Map &a, const Value &b);
+Value lessEquals(Map &a, const Value &b);
+Value greaterThan(Map &a, const Value &b);
+Value greaterEquals(Map &a, const Value &b);
 
-Bool equal(Map &a, const Value &b);
-Bool notEqual(Map &a, const Value &b);
+Value equal(Map &a, const Value &b);
+Value notEqual(Map &a, const Value &b);
 
 // UserObject overload operations
 // The following operations cannot be overloaded:
@@ -421,38 +539,57 @@ Value index(const UserObject &a, const Value &b);
 Value &mutableIndex(UserObject &a, const Value &b);
 
 Value add(UserObject &a, const Value &b);
-Value unaryPlus(UserObject &a);
+Value addEquals(UserObject &a, const Value &b);
+Value add(UserObject &a);
 
 Value sub(UserObject &a, const Value &b);
-Value unaryMinus(UserObject &a);
+Value subEquals(UserObject &a, const Value &b);
+Value sub(UserObject &a);
 
 Value mul(UserObject &a, const Value &b);
+Value mulEquals(UserObject &a, const Value &b);
+
 Value div(UserObject &a, const Value &b);
+Value divEquals(UserObject &a, const Value &b);
+
 Value mod(UserObject &a, const Value &b);
+Value modEquals(UserObject &a, const Value &b);
+
 Value floorDiv(UserObject &a, const Value &b);
+Value floorDivEquals(UserObject &a, const Value &b);
+
 Value pow(UserObject &a, const Value &b);
+Value powEquals(UserObject &a, const Value &b);
 
 Value dotDot(UserObject &a, const Value &b);
 
 Value bitAnd(UserObject &a, const Value &b);
+Value bitAndEquals(UserObject &a, const Value &b);
+
 Value bitOr(UserObject &a, const Value &b);
+Value bitOrEquals(UserObject &a, const Value &b);
+
 Value bitXor(UserObject &a, const Value &b);
+Value bitXorEquals(UserObject &a, const Value &b);
+
 Value bitNot(UserObject &a);
 
 Value bitLShift(UserObject &a, const Value &b);
+Value bitLShiftEquals(UserObject &a, const Value &b);
+
 Value bitRShift(UserObject &a, const Value &b);
+Value bitRShiftEquals(UserObject &a, const Value &b);
 
-Bool logicalAnd(UserObject &a, const Value &b);
-Bool logicalOr(UserObject &a, const Value &b);
-Bool logicalNot(UserObject &a);
+Value logicalAnd(UserObject &a, const Value &b);
+Value logicalOr(UserObject &a, const Value &b);
 
-Bool lessThan(UserObject &a, const Value &b);
-Bool lessEquals(UserObject &a, const Value &b);
-Bool greaterThan(UserObject &a, const Value &b);
-Bool greaterEquals(UserObject &a, const Value &b);
+Value lessThan(UserObject &a, const Value &b);
+Value lessEquals(UserObject &a, const Value &b);
+Value greaterThan(UserObject &a, const Value &b);
+Value greaterEquals(UserObject &a, const Value &b);
 
-Bool equal(UserObject &a, const Value &b);
-Bool notEqual(UserObject &a, const Value &b);
+Value equal(UserObject &a, const Value &b);
+Value notEqual(UserObject &a, const Value &b);
 } // namespace ops
 
 template <typename VT, detail::enableValidOpArgs<VT> * = nullptr>
@@ -470,10 +607,15 @@ template <typename VT1, typename VT2,
 auto operator+(const VT1 &a, const VT2 &b) {
   return extense::ops::add(a, b);
 }
+template <typename VT1, typename VT2,
+          detail::enableValidOpArgs<VT1, VT2> * = nullptr>
+auto operator+=(VT1 &a, const VT2 &b) {
+  return extense::ops::addEquals(a, b);
+}
 
 template <typename VT, detail::enableValidOpArgs<VT> * = nullptr>
 auto operator+(const VT &v) {
-  return extense::ops::unaryPlus(v);
+  return extense::ops::add(v);
 }
 
 template <typename VT1, typename VT2,
@@ -481,10 +623,15 @@ template <typename VT1, typename VT2,
 auto operator-(const VT1 &a, const VT2 &b) {
   return extense::ops::sub(a, b);
 }
+template <typename VT1, typename VT2,
+          detail::enableValidOpArgs<VT1, VT2> * = nullptr>
+auto operator-=(VT1 &a, const VT2 &b) {
+  return extense::ops::subEquals(a, b);
+}
 
 template <typename VT, detail::enableValidOpArgs<VT> * = nullptr>
 auto operator-(const VT &v) {
-  return extense::ops::unaryMinus(v);
+  return extense::ops::sub(v);
 }
 
 template <typename VT1, typename VT2,
@@ -492,11 +639,21 @@ template <typename VT1, typename VT2,
 auto operator*(const VT1 &a, const VT2 &b) {
   return extense::ops::mul(a, b);
 }
+template <typename VT1, typename VT2,
+          detail::enableValidOpArgs<VT1, VT2> * = nullptr>
+auto operator*=(VT1 &a, const VT2 &b) {
+  return extense::ops::mulEquals(a, b);
+}
 
 template <typename VT1, typename VT2,
           detail::enableValidOpArgs<VT1, VT2> * = nullptr>
 auto operator/(const VT1 &a, const VT2 &b) {
   return extense::ops::div(a, b);
+}
+template <typename VT1, typename VT2,
+          detail::enableValidOpArgs<VT1, VT2> * = nullptr>
+auto operator/=(VT1 &a, const VT2 &b) {
+  return extense::ops::divEquals(a, b);
 }
 
 template <typename VT1, typename VT2,
@@ -504,11 +661,21 @@ template <typename VT1, typename VT2,
 auto operator%(const VT1 &a, const VT2 &b) {
   return extense::ops::mod(a, b);
 }
+template <typename VT1, typename VT2,
+          detail::enableValidOpArgs<VT1, VT2> * = nullptr>
+auto operator%=(VT1 &a, const VT2 &b) {
+  return extense::ops::modEquals(a, b);
+}
 
 template <typename VT1, typename VT2,
           detail::enableValidOpArgs<VT1, VT2> * = nullptr>
 auto operator&(const VT1 &a, const VT2 &b) {
   return extense::ops::bitAnd(a, b);
+}
+template <typename VT1, typename VT2,
+          detail::enableValidOpArgs<VT1, VT2> * = nullptr>
+auto operator&=(VT1 &a, const VT2 &b) {
+  return extense::ops::bitAndEquals(a, b);
 }
 
 template <typename VT1, typename VT2,
@@ -516,11 +683,21 @@ template <typename VT1, typename VT2,
 auto operator|(const VT1 &a, const VT2 &b) {
   return extense::ops::bitOr(a, b);
 }
+template <typename VT1, typename VT2,
+          detail::enableValidOpArgs<VT1, VT2> * = nullptr>
+auto operator|=(VT1 &a, const VT2 &b) {
+  return extense::ops::bitOrEquals(a, b);
+}
 
 template <typename VT1, typename VT2,
           detail::enableValidOpArgs<VT1, VT2> * = nullptr>
 auto operator^(const VT1 &a, const VT2 &b) {
   return extense::ops::bitXor(a, b);
+}
+template <typename VT1, typename VT2,
+          detail::enableValidOpArgs<VT1, VT2> * = nullptr>
+auto operator^=(VT1 &a, const VT2 &b) {
+  return extense::ops::bitXorEquals(a, b);
 }
 
 template <typename VT, detail::enableValidOpArgs<VT> * = nullptr>
@@ -531,9 +708,15 @@ auto operator~(const VT &a) {
 inline auto operator<<(extense::Int a, extense::Int b) {
   return extense::ops::bitLShift(a, b);
 }
+inline auto operator<<=(extense::Int &a, extense::Int b) {
+  return extense::ops::bitLShiftEquals(a, b);
+}
 
 inline auto operator>>(extense::Int a, extense::Int b) {
   return extense::ops::bitRShift(a, b);
+}
+inline auto operator>>=(extense::Int &a, extense::Int b) {
+  return extense::ops::bitRShiftEquals(a, b);
 }
 
 template <typename VT1, typename VT2,

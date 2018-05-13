@@ -106,7 +106,7 @@ static void injectAll(Scope &global) {
     auto &args = get<List>(v);
     if (args.value.size() % 2 != 0)
       throw ArgumentError{"Expected an even number of arguments"};
-    for (auto i = 0_ei; i < args.size(); i = i + 2_ei) {
+    for (auto i = 0_ei; i < args.size(); i += 2_ei) {
       auto condition = get<Bool>(args[i]);
       if (!condition) continue;
 
@@ -223,17 +223,9 @@ int main(int argc, const char *argv[]) {
       std::cout << "Result: " << result;
     }
 
-    Value bitLShift(const Value &v) override {
+    Value addEquals(const Value &v) override {
       result.value.push_back(Value{String{std::string(v.typeAsString())}});
       return noneValue;
-    }
-
-    Bool equal(const Value &v) const override {
-      if (!v.is<UserObject>()) return Bool::f;
-      const auto &uo = get<UserObject>(v);
-      const auto *tb = dynamic_cast<const TypeBuilder *>(&uo.data());
-      if (!tb) return Bool::f;
-      return result == tb->result;
     }
 
     const Value &at(const Value &index) const override {

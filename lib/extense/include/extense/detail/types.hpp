@@ -410,38 +410,57 @@ public:
     }
 
     virtual Value add(const Value &);
+    virtual Value addEquals(const Value &);
     virtual Value unaryPlus();
 
     virtual Value sub(const Value &);
+    virtual Value subEquals(const Value &);
     virtual Value unaryMinus();
 
     virtual Value mul(const Value &);
+    virtual Value mulEquals(const Value &);
+
     virtual Value div(const Value &);
+    virtual Value divEquals(const Value &);
+
     virtual Value mod(const Value &);
+    virtual Value modEquals(const Value &);
+
     virtual Value floorDiv(const Value &);
+    virtual Value floorDivEquals(const Value &);
+
     virtual Value pow(const Value &);
+    virtual Value powEquals(const Value &);
 
     virtual Value dotDot(const Value &);
 
     virtual Value bitAnd(const Value &);
+    virtual Value bitAndEquals(const Value &);
+
     virtual Value bitOr(const Value &);
+    virtual Value bitOrEquals(const Value &);
+
     virtual Value bitXor(const Value &);
+    virtual Value bitXorEquals(const Value &);
+
     virtual Value bitNot();
 
     virtual Value bitLShift(const Value &);
+    virtual Value bitLShiftEquals(const Value &);
+
     virtual Value bitRShift(const Value &);
+    virtual Value bitRShiftEquals(const Value &);
 
-    virtual Bool logicalAnd(const Value &) const;
-    virtual Bool logicalOr(const Value &) const;
-    virtual Bool logicalNot() const;
+    virtual Value logicalAnd(const Value &);
+    virtual Value logicalOr(const Value &);
 
-    virtual Bool lessThan(const Value &) const;
-    virtual Bool lessEquals(const Value &) const;
-    virtual Bool greaterThan(const Value &) const;
-    virtual Bool greaterEquals(const Value &) const;
+    virtual Value lessThan(const Value &);
+    virtual Value lessEquals(const Value &);
+    virtual Value greaterThan(const Value &);
+    virtual Value greaterEquals(const Value &);
 
-    virtual Bool equal(const Value &) const;
-    virtual Bool notEqual(const Value &) const;
+    virtual Value equal(const Value &);
+    virtual Value notEqual(const Value &);
   };
 
 private:
@@ -492,38 +511,57 @@ public:
   }
 
   Value add(const Value &v);
+  Value addEquals(const Value &);
   Value unaryPlus();
 
   Value sub(const Value &);
+  Value subEquals(const Value &);
   Value unaryMinus();
 
   Value mul(const Value &);
+  Value mulEquals(const Value &);
+
   Value div(const Value &);
+  Value divEquals(const Value &);
+
   Value mod(const Value &);
+  Value modEquals(const Value &);
+
   Value floorDiv(const Value &);
+  Value floorDivEquals(const Value &);
+
   Value pow(const Value &);
+  Value powEquals(const Value &);
 
   Value dotDot(const Value &);
 
   Value bitAnd(const Value &);
+  Value bitAndEquals(const Value &);
+
   Value bitOr(const Value &);
+  Value bitOrEquals(const Value &);
+
   Value bitXor(const Value &);
+  Value bitXorEquals(const Value &);
+
   Value bitNot();
 
   Value bitLShift(const Value &);
+  Value bitLShiftEquals(const Value &);
+
   Value bitRShift(const Value &);
+  Value bitRShiftEquals(const Value &);
 
-  Bool logicalAnd(const Value &) const;
-  Bool logicalOr(const Value &) const;
-  Bool logicalNot() const;
+  Value logicalAnd(const Value &);
+  Value logicalOr(const Value &);
 
-  Bool lessThan(const Value &) const;
-  Bool lessEquals(const Value &) const;
-  Bool greaterThan(const Value &) const;
-  Bool greaterEquals(const Value &) const;
+  Value lessThan(const Value &);
+  Value lessEquals(const Value &);
+  Value greaterThan(const Value &);
+  Value greaterEquals(const Value &);
 
-  Bool equal(const Value &) const;
-  Bool notEqual(const Value &) const;
+  Value equal(const Value &);
+  Value notEqual(const Value &);
 };
 
 namespace literals {

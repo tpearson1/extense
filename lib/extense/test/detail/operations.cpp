@@ -50,84 +50,125 @@ TEST_CASE("Operation functions", "[extense::ops]") {
   SECTION("Addition") {
     auto isum = ops::add(7_ei, 3_ei);
     REQUIRE(isum.value == 10);
+    REQUIRE(ops::addEquals(isum, 4_ei).value == 14);
+    REQUIRE(isum.value == 14);
 
     auto fsum = ops::add(3.5_ef, 4.5_ef);
     REQUIRE(fsum.value == Approx(8.0));
+    REQUIRE(ops::addEquals(fsum, 5.0_ef).value == Approx(13.0));
+    REQUIRE(fsum.value == Approx(13.0));
 
     auto ssum = ops::add("Hello, "_es, "World!"_es);
     REQUIRE(ssum.value == "Hello, World!");
+    REQUIRE(ops::addEquals(ssum, " I'm here."_es).value ==
+            "Hello, World! I'm here.");
+    REQUIRE(ssum.value == "Hello, World! I'm here.");
 
     auto lsum = ops::add(List{3_ei, Bool::f}, List{"Hi"_es});
     REQUIRE(lsum == List{3_ei, Bool::f, "Hi"_es});
+    auto expected = List{3_ei, Bool::f, "Hi"_es, 'a'_ec, 1.0_ef};
+    REQUIRE(ops::addEquals(lsum, List{'a'_ec, 1.0_ef}) == expected);
+    REQUIRE(lsum == expected);
   }
 
   SECTION("Unary plus") {
-    auto i = ops::unaryPlus(17_ei);
+    auto i = ops::add(17_ei);
     REQUIRE(i.value == 17);
-    i = ops::unaryPlus(-17_ei);
+    i = ops::add(-17_ei);
     REQUIRE(i.value == -17);
 
-    auto f = ops::unaryPlus(5.0_ef);
+    auto f = ops::add(5.0_ef);
     REQUIRE(f.value == 5.0);
-    f = ops::unaryPlus(-5.0_ef);
+    f = ops::add(-5.0_ef);
     REQUIRE(f.value == -5.0);
   }
 
   SECTION("Unary minus") {
-    auto i = ops::unaryMinus(6_ei);
+    auto i = ops::sub(6_ei);
     REQUIRE(i.value == -6);
-    i = ops::unaryMinus(-6_ei);
+    i = ops::sub(-6_ei);
     REQUIRE(i.value == 6);
 
-    auto f = ops::unaryMinus(8.0_ef);
+    auto f = ops::sub(8.0_ef);
     REQUIRE(f.value == -8.0);
-    f = ops::unaryMinus(-8.0_ef);
+    f = ops::sub(-8.0_ef);
     REQUIRE(f.value == 8.0);
   }
 
   SECTION("Subtraction") {
     auto idiff = ops::sub(7_ei, 3_ei);
     REQUIRE(idiff.value == 4);
+    REQUIRE(ops::subEquals(idiff, 5_ei).value == -1);
+    REQUIRE(idiff.value == -1);
 
     auto fdiff = ops::sub(3.5_ef, 4.5_ef);
     REQUIRE(fdiff.value == Approx(-1.0));
+    REQUIRE(ops::subEquals(fdiff, 5.0_ef).value == Approx(-6.0));
+    REQUIRE(fdiff.value == Approx(-6.0));
   }
 
   SECTION("Multiplication") {
     auto iprod = ops::mul(7_ei, 3_ei);
     REQUIRE(iprod.value == 21);
+    REQUIRE(ops::mulEquals(iprod, 5_ei).value == 105);
+    REQUIRE(iprod.value == 105);
 
     auto fprod = ops::mul(3.5_ef, 4.5_ef);
     REQUIRE(fprod.value == Approx(3.5 * 4.5));
+    REQUIRE(ops::mulEquals(fprod, Float{1.0 / 3.5}).value == Approx(4.5));
+    REQUIRE(fprod.value == Approx(4.5));
 
     auto repeatedString = ops::mul("abc"_es, 4_ei);
     REQUIRE(repeatedString.value == "abcabcabcabc");
+    REQUIRE(ops::mulEquals(repeatedString, 0_ei).value == "");
+    REQUIRE(repeatedString.value == "");
 
     auto repeatedList = ops::mul(List{1_ei, Bool::t}, 2_ei);
     auto expected = List{1_ei, Bool::t, 1_ei, Bool::t};
     REQUIRE(repeatedList == expected);
+    REQUIRE(ops::mulEquals(repeatedList, 1_ei) == expected);
+    REQUIRE(repeatedList == expected);
+    REQUIRE(ops::mulEquals(repeatedList, 0_ei) == List{});
+    REQUIRE(repeatedList == List{});
   }
 
   SECTION("Division") {
     auto quotient = ops::div(18.6_ef, 6.0_ef);
-    REQUIRE(quotient.value == Approx(18.6 / 6.0));
+    auto expected = 18.6 / 6.0;
+    REQUIRE(quotient.value == Approx(expected));
+    expected /= 2.0;
+    REQUIRE(ops::divEquals(quotient, 2.0_ef).value == Approx(expected));
+    REQUIRE(quotient.value == Approx(expected));
   }
 
   SECTION("Modulo") {
     auto iremainder = ops::mod(83_ei, 17_ei);
-    REQUIRE(iremainder.value == Approx(83 % 17));
+    auto iexpected = 83 % 17;
+    REQUIRE(iremainder.value == iexpected);
+    iexpected %= 4;
+    REQUIRE(ops::modEquals(iremainder, 4_ei).value == iexpected);
+    REQUIRE(iremainder.value == iexpected);
 
     auto fremainder = ops::mod(12.4_ef, 3.2_ef);
-    REQUIRE(fremainder.value == Approx(std::fmod(12.4, 3.2)));
+    auto fexpected = std::fmod(12.4, 3.2);
+    REQUIRE(fremainder.value == Approx(fexpected));
+    fexpected = std::fmod(fexpected, 1.3);
+    REQUIRE(ops::modEquals(fremainder, 1.3_ef).value == Approx(fexpected));
+    REQUIRE(fremainder.value == Approx(fexpected));
   }
 
   SECTION("Floor division") {
     auto iresult = ops::floorDiv(-83_ei, 17_ei);
     REQUIRE(iresult.value == -5);
+    REQUIRE(ops::floorDivEquals(iresult, -3_ei).value == 1);
+    REQUIRE(iresult.value == 1);
 
     auto fresult = ops::floorDiv(-37.6_ef, 8.4_ef);
     auto expected = std::floor(-37.6 / 8.4);
     REQUIRE(fresult.value == Approx(expected));
+    expected = std::floor(expected / 1.4);
+    REQUIRE(ops::floorDivEquals(fresult, 1.4_ef).value == expected);
+    REQUIRE(fresult.value == expected);
   }
 
   SECTION("Exponentiation") {
@@ -135,10 +176,16 @@ TEST_CASE("Operation functions", "[extense::ops]") {
     auto result = ops::pow(3.9_ef, 2.4_ef);
     auto expected = std::pow(3.9, 2.4);
     REQUIRE(result.value == Approx(expected));
+    expected = std::pow(expected, 0.5);
+    REQUIRE(ops::powEquals(result, 0.5_ef).value == Approx(expected));
+    REQUIRE(result.value == Approx(expected));
 
     // Int exponent
     result = ops::pow(3.9_ef, 2_ei);
     expected = 3.9 * 3.9;
+    REQUIRE(result.value == Approx(expected));
+    expected = 1.0 / expected;
+    REQUIRE(ops::powEquals(result, -1_ei).value == Approx(expected));
     REQUIRE(result.value == Approx(expected));
   }
 
@@ -179,6 +226,13 @@ TEST_CASE("Operation functions", "[extense::ops]") {
     //   01001001
     auto i = ops::bitAnd(0b11011001_ei, 0b01101101_ei);
     REQUIRE(i.value == 0b01001001);
+
+    //   01001001
+    // & 11000001
+    // ----------
+    //   01000001
+    REQUIRE(ops::bitAndEquals(i, 0b11000001_ei).value == 0b01000001);
+    REQUIRE(i.value == 0b01000001);
   }
 
   SECTION("Bitwise or") {
@@ -187,6 +241,13 @@ TEST_CASE("Operation functions", "[extense::ops]") {
     // ----------
     //   11111101
     auto i = ops::bitOr(0b11011001_ei, 0b01101101_ei);
+    REQUIRE(i.value == 0b11111101);
+
+    //   11111101
+    // | 11000001
+    // ----------
+    //   11111101
+    REQUIRE(ops::bitOrEquals(i, 0b11000001_ei).value == 0b11111101);
     REQUIRE(i.value == 0b11111101);
   }
 
@@ -197,6 +258,13 @@ TEST_CASE("Operation functions", "[extense::ops]") {
     //   10110100
     auto i = ops::bitXor(0b11011001_ei, 0b01101101_ei);
     REQUIRE(i.value == 0b10110100);
+
+    //   10110100
+    // ^ 11000001
+    // ----------
+    //   01110101
+    REQUIRE(ops::bitXorEquals(i, 0b11000001_ei).value == 0b01110101);
+    REQUIRE(i.value == 0b01110101);
   }
 
   SECTION("Bitwise not") {
@@ -211,9 +279,13 @@ TEST_CASE("Operation functions", "[extense::ops]") {
   SECTION("Bit shifting") {
     auto shifted = ops::bitLShift(1_ei, 3_ei);
     REQUIRE(shifted.value == 8);
+    REQUIRE(ops::bitLShiftEquals(shifted, 4_ei).value == 128);
+    REQUIRE(shifted.value == 128);
 
     shifted = ops::bitRShift(24_ei, 2_ei);
     REQUIRE(shifted.value == 6);
+    REQUIRE(ops::bitRShiftEquals(shifted, 1_ei).value == 3);
+    REQUIRE(shifted.value == 3);
   }
 
   // and or not
@@ -287,7 +359,7 @@ TEST_CASE("Operators with Values", "[extense::ops]") {
   REQUIRE(get<Float>(sum).value == Approx(10.2));
 
   auto a = Value{3_ei};
-  a = ops::add(a, Value{2_ei});
+  ops::addEquals(a, Value{2_ei});
   REQUIRE(a.is<Int>());
   REQUIRE(get<Int>(a).value == 5);
 }
