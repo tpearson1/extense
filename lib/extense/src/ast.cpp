@@ -170,8 +170,10 @@ extense::Proxy extense::ScopeCall::evalImpl(Scope &scope) {
       scope_->type() == ASTNodeType::SemicolonSemicolon) {
     auto &indexExpr = *static_cast<BinaryOperation *>(scope_.get());
     auto map = constEval(scope, indexExpr.leftOperand());
-    auto toCallValue = ops::index(
-        map, Value{detail::getIdentifierName(indexExpr.rightOperand())});
+    auto toCallValue =
+        ops::index(map,
+                   Value{detail::getIdentifierName(indexExpr.rightOperand())})
+            .get();
     auto &toCall = getScopeForCall(toCallValue);
     return Proxy::make<ValueEvaluator>(
         toCall(detail::buildArgumentsForScopeCall(map, argEvaled)));
@@ -339,23 +341,13 @@ extense::Proxy extense::IndexOperation::evalImpl(Scope &s) {
     }
 
     Value get() const override {
-      return ops::index(constEval(scope_, a), indexValue());
+      return ops::index(constEval(scope_, a), indexValue()).get();
     }
     bool isMutable() const override { return true; }
 
     void set(Value v) override {
-      a.eval(scope_).mutate([&](Value &m) {
-        auto indexVal = indexValue();
-        if (m.is<String>()) {
-          if (!v.is<Char>()) throw AccessError{};
-          if (!indexVal.is<Int>())
-            throw InvalidBinaryOperation(m, indexVal, "Unable to index type");
-          extense::get<String>(m)[extense::get<Int>(indexVal)] =
-              extense::get<Char>(v);
-          return;
-        }
-        ops::mutableIndex(m, indexVal) = std::move(v);
-      });
+      a.eval(scope_).mutate(
+          [&](Value &m) { ops::index(m, indexValue()).set(std::move(v)); });
     }
   };
 

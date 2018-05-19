@@ -389,26 +389,9 @@ public:
 
     virtual void print(std::ostream &os) const { os << "<UserObject::Data>"; }
 
-    virtual Value &operator[](const Value &) {
+    virtual Proxy index(const Value &) { detail::throwOperatorOverloadError(); }
+    virtual Proxy index(const Value &) const {
       detail::throwOperatorOverloadError();
-    }
-    template <typename VT>
-    Value &operator[](const VT &i) {
-      return (*this)[Value{i}];
-    }
-
-    virtual Value &at(const Value &) { detail::throwOperatorOverloadError(); }
-    template <typename VT>
-    Value &at(const VT &i) {
-      return at(Value{i});
-    }
-
-    virtual const Value &at(const Value &) const {
-      detail::throwOperatorOverloadError();
-    }
-    template <typename VT>
-    const Value &at(const VT &i) const {
-      return at(Value{i});
     }
 
     virtual Value add(const Value &);
@@ -494,22 +477,28 @@ public:
   // The below functions delegate to the corresponding virtual functions in Data
   void print(std::ostream &os) const { data_->print(os); }
 
-  Value &operator[](const Value &v) { return (*data_)[v]; }
+  Proxy operator[](const Value &v) { return data_->index(v); }
   template <typename VT>
-  Value &operator[](const VT &i) {
+  Proxy operator[](const VT &i) {
     return (*this)[Value{i}];
   }
 
-  Value &at(const Value &v) { return data_->at(v); }
+  Proxy operator[](const Value &v) const { return data_->index(v); }
   template <typename VT>
-  Value &at(const VT &i) {
-    return at(Value{i});
+  Proxy operator[](const VT &i) const {
+    return (*this)[Value{i}];
   }
 
-  const Value &at(const Value &v) const { return data_->at(v); }
+  Proxy index(const Value &v) { return data_->index(v); }
   template <typename VT>
-  const Value &at(const VT &i) const {
-    return at(Value{i});
+  Proxy index(const VT &i) {
+    return index(Value{i});
+  }
+
+  Proxy index(const Value &v) const { return data_->index(v); }
+  template <typename VT>
+  Proxy index(const VT &i) const {
+    return index(Value{i});
   }
 
   Value add(const Value &v);

@@ -204,28 +204,60 @@ List dotDot(Int a, Int b) {
   return List(list);
 }
 
-Value index(const Value &a, const Value &b) {
-  if (a.is<Map>()) return get<Map>(a).at(b);
-  if (a.is<List>()) return get<List>(a).at(b);
-  if (a.is<UserObject>()) return get<UserObject>(a).at(b);
+Proxy index(const Value &a, const Value &b) {
+  class IndexProxy : public Proxy::Data {
+    const Value &a, &index;
 
-  if (!a.is<String>() || !b.is<Int>())
-    throw InvalidBinaryOperation(a, b, "Unable to index type");
-  return Value{get<String>(a).at(get<Int>(b))};
-}
+  public:
+    IndexProxy(const Value &v1, const Value &i) : a(v1), index(i) {}
 
-Value &mutableIndex(const Value &a, const Value &b) {
-  if (a.is<Map>()) return mutableGet<Map>(a)[b];
-  if (a.is<UserObject>()) return mutableGet<UserObject>(a)[b];
+    Value get() const override {
+      if (a.is<Map>()) return extense::get<Map>(a).at(index);
+      if (a.is<List>()) return extense::get<List>(a).at(index);
+      if (a.is<UserObject>())
+        return Value{extense::get<UserObject>(a).index(index).get()};
 
-  if (!a.is<List>()) throw InvalidBinaryOperation(a, b, "Unable to index type");
-  if (!b.is<Int>())
-    throw InvalidBinaryOperation("List", b.typeAsString(),
-                                 "Unable to index type");
+      if (!a.is<String>() || !index.is<Int>())
+        throw InvalidBinaryOperation(a, index, "Unable to index type");
+      return Value{extense::get<String>(a).at(extense::get<Int>(index))};
+    }
 
-  if (b.is<List>())
-    throw InvalidBinaryOperation("List", "List", "Unable to mutate sub-list");
-  return mutableGet<List>(a)[get<Int>(b)];
+    bool isMutable() const override { return true; }
+
+    void set(Value v) override {
+      if (a.is<String>()) {
+        if (!v.is<Char>()) throw AccessError{};
+        if (!index.is<Int>())
+          throw InvalidBinaryOperation(a, index, "Unable to index type");
+        extense::mutableGet<String>(a)[extense::get<Int>(index)] =
+            extense::get<Char>(v);
+        return;
+      }
+
+      if (a.is<Map>()) {
+        mutableGet<Map>(a)[index] = v;
+        return;
+      }
+
+      if (a.is<UserObject>()) {
+        mutableGet<UserObject>(a)[index].set(v);
+        return;
+      }
+
+      if (!a.is<List>())
+        throw InvalidBinaryOperation(a, index, "Unable to index type");
+      if (!index.is<Int>())
+        throw InvalidBinaryOperation("List", index.typeAsString(),
+                                     "Unable to index type");
+
+      if (index.is<List>())
+        throw InvalidBinaryOperation("List", "List",
+                                     "Unable to mutate sub-list");
+      mutableGet<List>(a)[extense::get<Int>(index)] = v;
+    }
+  };
+
+  return Proxy::make<IndexProxy>(a, b);
 }
 
 Reference ref(Value &v) { return Reference{v}; }
@@ -390,8 +422,7 @@ Value greaterEquals(Map &a, const Value &b) {
 }
 
 // UserObject operations
-Value index(const UserObject &a, const Value &b) { return a.at(b); }
-Value &mutableIndex(UserObject &a, const Value &b) { return a[b]; }
+Proxy index(UserObject &a, const Value &b) { return a[b]; }
 
 Value add(UserObject &a, const Value &b) { return a.add(b); }
 Value addEquals(UserObject &a, const Value &b) { return a.addEquals(b); }

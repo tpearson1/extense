@@ -339,8 +339,7 @@ Value dotDot(const Value &a, const Value &b);
 List dotDot(Int a, Int b);
 
 // :
-Value index(const Value &a, const Value &b);
-Value &mutableIndex(const Value &a, const Value &b);
+Proxy index(const Value &a, const Value &b);
 
 template <typename VT>
 const auto &index(const List &a, const VT &i) {
@@ -535,8 +534,7 @@ Value greaterEquals(Map &a, const Value &b);
 // UserObject overload operations
 // The following operations cannot be overloaded:
 //   '::', ';', ';;', '!', 'unary /'
-Value index(const UserObject &a, const Value &b);
-Value &mutableIndex(UserObject &a, const Value &b);
+Proxy index(UserObject &a, const Value &b);
 
 Value add(UserObject &a, const Value &b);
 Value addEquals(UserObject &a, const Value &b);

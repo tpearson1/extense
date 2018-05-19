@@ -206,12 +206,9 @@ int main(int argc, const char *argv[]) {
   injectAll(global);
 
   class TypeBuilder : public UserObject::Data {
-    Value resultVal = Value{List{}};
-    List &result;
+    std::vector<std::string> result;
 
   public:
-    TypeBuilder() : result(get<List>(resultVal)) {}
-
     std::unique_ptr<UserObject::Data> clone() const override {
       auto m = std::make_unique<TypeBuilder>();
       std::cout << "COPY\n";
@@ -220,16 +217,34 @@ int main(int argc, const char *argv[]) {
     }
 
     void print(std::ostream &os) const override {
-      std::cout << "Result: " << result;
+      std::cout << "Result: " << index(Value{"result"_es}).get();
     }
 
     Value addEquals(const Value &v) override {
-      result.value.push_back(Value{String{std::string(v.typeAsString())}});
+      result.push_back(std::string(v.typeAsString()));
       return noneValue;
     }
 
-    const Value &at(const Value &index) const override {
-      if (index == Value{"result"_es}) return resultVal;
+    Proxy index(const Value &index) const override {
+      if (index == Value{"result"_es}) {
+        class ResultProxy : public Proxy::Data {
+          const std::vector<std::string> &result_;
+
+        public:
+          ResultProxy(const std::vector<std::string> &result)
+              : result_(result) {}
+
+          Value get() const override {
+            auto list = List{};
+            for (const auto &s : result_)
+              list.value.push_back(Value{String{s}});
+            return Value{list};
+          }
+        };
+
+        return Proxy::make<ResultProxy>(result);
+      }
+
       throw InvalidBinaryOperation{"UserObject", index.typeAsString(),
                                    "Key not present"};
     }
@@ -239,7 +254,7 @@ int main(int argc, const char *argv[]) {
       const auto &uo = get<UserObject>(v);
       const auto *tb = dynamic_cast<const TypeBuilder *>(&uo.data());
       if (!tb) return Bool::f;
-      return result == tb->result;
+      return Bool{result == tb->result};
     }
 
     Bool notEqual(const Value &v) const override { return !equal(v); }

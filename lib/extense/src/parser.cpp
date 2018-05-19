@@ -381,7 +381,7 @@ auto extense::detail::unaryOperationFunc(extense::ASTNodeType type) {
 }
 
 static extense::Value reflexiveIndexCall(extense::Value a, extense::Value v) {
-  auto scopeElement = extense::ops::index(a, v);
+  auto scopeElement = extense::ops::index(a, v).get();
   if (!scopeElement.is<extense::Scope>()) {
     throw extense::InvalidBinaryOperation{
         a, v, "Expected scope as result of indexing lhs"};
