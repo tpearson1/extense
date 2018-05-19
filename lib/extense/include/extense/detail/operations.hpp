@@ -463,6 +463,7 @@ Bool equal(const List &a, const List &b);
 inline Bool equal(const Scope &, const Scope &) { return Bool::f; }
 inline Bool equal(const Label &, const Label &) { return Bool::f; }
 inline Bool equal(const UserObject &, const UserObject &) { return Bool::f; }
+Bool equal(const Proxy &a, const Proxy &b);
 
 template <typename... ValueTypes>
 Bool equal(const BasicFlatValue<ValueTypes...> &,

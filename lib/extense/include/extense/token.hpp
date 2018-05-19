@@ -37,6 +37,9 @@ SOFTWARE.
 #define _LIB_EXTENSE__TOKEN__TYPE_ENUM                                         \
   /****** START OF BINARY OPERATORS ******/                                    \
   X(CustomOperator) /*   E.g. <=> or |>   */                                   \
+  X(Semicolon) /*   ;   */                                                     \
+  X(Colon) /*   :   */                                                         \
+                                                                               \
   X(Assign) /*   =   */                                                        \
                                                                                \
   /* Relative math Operators */                                                \
@@ -82,8 +85,6 @@ SOFTWARE.
   X(Is) /*   is   */                                                           \
                                                                                \
   X(DotDot) /*   ..   */                                                       \
-  X(Semicolon) /*   ;   */                                                     \
-  X(Colon) /*   :   */                                                         \
                                                                                \
   /* Math operators */                                                         \
   X(Mul) /*   *   */                                                           \

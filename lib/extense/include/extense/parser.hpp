@@ -56,6 +56,9 @@ struct BinaryOperatorProperties {
 constexpr const std::array<BinaryOperatorProperties, 41> binaryOperators = {{
     // { Precedence, RightAssociative }
     {14, false}, // CustomOperator
+    {20, false}, // Semicolon
+    {20, false}, // Colon
+
     {1, true}, // Assign
     {1, true}, // PlusEquals
     {1, true}, // MinusEquals
@@ -88,8 +91,6 @@ constexpr const std::array<BinaryOperatorProperties, 41> binaryOperators = {{
     {20, false}, // ColonColon
     {7, false}, // Is
     {13, false}, // DotDot
-    {20, false}, // Semicolon
-    {20, false}, // Colon
     {14, false}, // Mul
     {14, false}, // FloorDiv
     {15, true}, // Pow

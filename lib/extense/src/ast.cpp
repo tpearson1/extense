@@ -46,45 +46,14 @@ void extense::Expr::displayHeaderWithIndent(std::ostream &os,
   throw extense::ExceptionWrapper(std::move(e), loc);
 }
 
-extense::Expr::EvalResult extense::Expr::eval(Scope &scope) {
+extense::Proxy extense::Expr::eval(Scope &scope) {
   try {
     return evalImpl(scope);
   } catch (const Exception &e) { handleThrow(e, location_); }
 }
 
-extense::Value *extense::Expr::tryPointerEval(Scope &scope) {
-  try {
-    return tryPointerEvalImpl(scope);
-  } catch (const Exception &e) { handleThrow(e, location_); }
-}
-
-std::function<void(extense::Value)>
-extense::Expr::tryMutableEval(Scope &scope) {
-  try {
-    return tryMutableEvalImpl(scope);
-  } catch (const Exception &e) { handleThrow(e, location_); }
-}
-
-extense::Value &extense::referenceEval(Scope &scope, Expr &e) {
-  auto *pointer = e.tryPointerEval(scope);
-  if (pointer) return *pointer;
-  handleThrow(MutableAccessError{"Expected mutable Reference"}, e.location());
-}
-
-void extense::mutateExpr(Scope &scope, Expr &a, Value v) {
-  auto setter = a.tryMutableEval(scope);
-  if (setter) {
-    setter(std::move(v));
-    return;
-  }
-
-  auto *pointer = a.tryPointerEval(scope);
-  if (pointer) {
-    *pointer = std::move(v);
-    return;
-  }
-
-  throw MutableAccessError{"Expected mutable expression"};
+extense::Value extense::constEval(Scope &scope, Expr &e) {
+  return e.eval(scope).get();
 }
 
 std::ostream &extense::operator<<(std::ostream &os, ASTNodeType type) {
@@ -92,9 +61,31 @@ std::ostream &extense::operator<<(std::ostream &os, ASTNodeType type) {
   return os;
 }
 
+class ValueEvaluator : public extense::Proxy::Data {
+  extense::Value value_;
+
+public:
+  explicit ValueEvaluator(extense::Value value) : value_(std::move(value)) {}
+
+  std::unique_ptr<extense::Proxy::Data> clone() const override {
+    return std::make_unique<ValueEvaluator>(value_);
+  }
+
+  extense::Value get() const override { return value_; }
+  bool isMutable() const override { return false; }
+};
+
+extense::Proxy extense::ValueExpr::evalImpl(Scope &s) {
+  return Proxy::make<ValueEvaluator>(value_);
+}
+
 void extense::ValueExpr::dumpWithIndent(std::ostream &os, int indent) const {
   displayHeaderWithIndent(os, indent);
   os << ": " << LiteralShow{value_} << '\n';
+}
+
+extense::Proxy extense::LabelDeclaration::evalImpl(Scope &s) {
+  return Proxy::make<ValueEvaluator>(noneValue);
 }
 
 void extense::LabelDeclaration::dumpWithIndent(std::ostream &os,
@@ -103,17 +94,38 @@ void extense::LabelDeclaration::dumpWithIndent(std::ostream &os,
   os << ": name '" << name_ << "'\n";
 }
 
+extense::Proxy extense::Identifier::evalImpl(Scope &s) {
+  class IdentifierEvaluator : public Proxy::Data {
+    Scope &scope_;
+    std::string &name_;
+
+  public:
+    IdentifierEvaluator(Scope &scope, std::string &name)
+        : scope_(scope), name_(name) {}
+
+    std::unique_ptr<Proxy::Data> clone() const override {
+      return std::make_unique<IdentifierEvaluator>(scope_, name_);
+    }
+
+    Value get() const override { return scope_.getIdentifier(name_); }
+    bool isMutable() const override { return true; }
+
+    void set(Value v) override {
+      scope_.createOrGetIdentifier(name_) = std::move(v);
+    }
+
+    void mutate(std::function<void(Value &)> visitor) override {
+      auto &ident = scope_.getIdentifier(name_);
+      visitor(ident);
+    }
+  };
+
+  return Proxy::make<IdentifierEvaluator>(s, name_);
+}
+
 void extense::Identifier::dumpWithIndent(std::ostream &os, int indent) const {
   displayHeaderWithIndent(os, indent);
   os << ": name '" << name_ << "'\n";
-}
-
-extense::Expr::EvalResult extense::Identifier::evalImpl(Scope &s) {
-  return {true, s.getIdentifier(name_)};
-}
-
-extense::Value *extense::Identifier::tryPointerEvalImpl(Scope &s) {
-  return &s.createOrGetIdentifier(name_);
 }
 
 void extense::ScopeCall::dumpWithIndent(std::ostream &os, int indent) const {
@@ -141,8 +153,8 @@ static extense::Scope &getScopeForCall(extense::Value &scope) {
   return extense::get<extense::Scope>(scope);
 }
 
-extense::Expr::EvalResult extense::ScopeCall::evalImpl(Scope &scope) {
-  auto argEvaled = argument_->eval(scope).value;
+extense::Proxy extense::ScopeCall::evalImpl(Scope &scope) {
+  auto argEvaled = constEval(scope, *argument_);
 
   // Handle special cases
   if (scope_->type() == ASTNodeType::Dot) {
@@ -151,7 +163,8 @@ extense::Expr::EvalResult extense::ScopeCall::evalImpl(Scope &scope) {
     auto &toCallExpr = dotOpExpr.rightOperand();
     auto toCallValue = constEval(scope, toCallExpr);
     auto &toCall = getScopeForCall(toCallValue);
-    return {true, toCall(detail::buildArgumentsForScopeCall(lhs, argEvaled))};
+    return Proxy::make<ValueEvaluator>(
+        toCall(detail::buildArgumentsForScopeCall(lhs, argEvaled)));
   }
   if (scope_->type() == ASTNodeType::ColonColon ||
       scope_->type() == ASTNodeType::SemicolonSemicolon) {
@@ -160,12 +173,13 @@ extense::Expr::EvalResult extense::ScopeCall::evalImpl(Scope &scope) {
     auto toCallValue = ops::index(
         map, Value{detail::getIdentifierName(indexExpr.rightOperand())});
     auto &toCall = getScopeForCall(toCallValue);
-    return {true, toCall(detail::buildArgumentsForScopeCall(map, argEvaled))};
+    return Proxy::make<ValueEvaluator>(
+        toCall(detail::buildArgumentsForScopeCall(map, argEvaled)));
   }
 
   auto toCallValue = constEval(scope, *scope_);
   auto &toCall = getScopeForCall(toCallValue);
-  return {true, toCall(argEvaled)};
+  return Proxy::make<ValueEvaluator>(toCall(argEvaled));
 }
 
 void extense::MapConstructor::dumpWithIndent(std::ostream &os,
@@ -186,13 +200,13 @@ void extense::MapConstructor::dumpWithIndent(std::ostream &os,
   }
 }
 
-extense::Expr::EvalResult extense::MapConstructor::evalImpl(Scope &scope) {
+extense::Proxy extense::MapConstructor::evalImpl(Scope &scope) {
   Map s;
   for (auto &[key, value] : mappings_) {
-    auto keyValue = key->eval(scope).value;
-    s[keyValue] = value->eval(scope).value;
+    auto keyValue = constEval(scope, *key);
+    s[keyValue] = constEval(scope, *value);
   }
-  return {false, Value{s}};
+  return Proxy::make<ValueEvaluator>(Value{s});
 }
 
 void extense::ListConstructor::dumpWithIndent(std::ostream &os,
@@ -209,12 +223,12 @@ void extense::ListConstructor::dumpWithIndent(std::ostream &os,
     elem->dumpWithIndent(os, indent + indentAmount);
 }
 
-extense::Expr::EvalResult extense::ListConstructor::evalImpl(Scope &scope) {
+extense::Proxy extense::ListConstructor::evalImpl(Scope &scope) {
   List l;
   std::transform(elements_.begin(), elements_.end(),
                  std::back_inserter(l.value),
-                 [&scope](auto &expr) { return expr->eval(scope).value; });
-  return {false, Value{l}};
+                 [&scope](auto &expr) { return constEval(scope, *expr); });
+  return Proxy::make<ValueEvaluator>(Value{l});
 }
 
 extense::ExprList::ExprList(Source::Location location,
@@ -228,6 +242,10 @@ extense::ExprList::ExprList(Source::Location location,
     labels.push_back(
         Label{static_cast<int>(it - exprs_.begin()), labelDecl->name()});
   }
+}
+
+extense::Proxy extense::ExprList::evalImpl(Scope &outer) {
+  return Proxy::make<ValueEvaluator>(Value{toScope(outer)});
 }
 
 void extense::ExprList::dumpWithIndent(std::ostream &os, int indent) const {
@@ -257,10 +275,14 @@ extense::Scope extense::ExprList::toScope(Scope &outer) {
               // the last
               std::for_each(exprs_.begin(), exprs_.end() - 1,
                             [&s](auto &expr) { expr->eval(s); });
-              return exprs_.back()->eval(s).value;
+              return constEval(s, *exprs_.back());
             },
             &outer};
   return out;
+}
+
+extense::Proxy extense::UnaryOperation::evalImpl(Scope &scope) {
+  return Proxy::make<ValueEvaluator>(operation_(scope, *operand_));
 }
 
 void extense::UnaryOperation::dumpWithIndent(std::ostream &os,
@@ -268,6 +290,10 @@ void extense::UnaryOperation::dumpWithIndent(std::ostream &os,
   displayHeaderWithIndent(os, indent);
   os << ": UnaryOperation\n";
   operand_->dumpWithIndent(os, indent + indentAmount);
+}
+
+extense::Proxy extense::BinaryOperation::evalImpl(Scope &scope) {
+  return Proxy::make<ValueEvaluator>(operation_(scope, *operand1_, *operand2_));
 }
 
 void extense::BinaryOperation::dumpWithIndent(std::ostream &os,
@@ -278,6 +304,13 @@ void extense::BinaryOperation::dumpWithIndent(std::ostream &os,
   operand2_->dumpWithIndent(os, indent + indentAmount);
 }
 
+extense::Proxy extense::CustomOperation::evalImpl(Scope &s) {
+  auto opFuncVal = s.getIdentifier(op_);
+  auto result =
+      get<Scope>(opFuncVal)(constEval(s, *operand1_), constEval(s, *operand2_));
+  return Proxy::make<ValueEvaluator>(result);
+}
+
 void extense::CustomOperation::dumpWithIndent(std::ostream &os,
                                               int indent) const {
   displayHeaderWithIndent(os, indent);
@@ -286,16 +319,53 @@ void extense::CustomOperation::dumpWithIndent(std::ostream &os,
   operand2_->dumpWithIndent(os, indent + indentAmount);
 }
 
-extense::Expr::EvalResult extense::CustomOperation::evalImpl(Scope &s) {
-  auto opFuncVal = s.getIdentifier(op_);
-  return {true, get<Scope>(opFuncVal)(constEval(s, *operand1_),
-                                      constEval(s, *operand2_))};
+extense::Proxy extense::IndexOperation::evalImpl(Scope &s) {
+  class IndexEvaluator : public Proxy::Data {
+    Scope &scope_;
+    Expr &a, &index;
+
+    Value indexValue() const {
+      return (index.type() == ASTNodeType::Semicolon) ?
+                 Value{detail::getIdentifierName(index)} :
+                 constEval(scope_, index);
+    }
+
+  public:
+    IndexEvaluator(Scope &scope, Expr &e1, Expr &idx)
+        : scope_(scope), a(e1), index(idx) {}
+
+    std::unique_ptr<Proxy::Data> clone() const override {
+      return std::make_unique<IndexEvaluator>(scope_, a, index);
+    }
+
+    Value get() const override {
+      return ops::index(constEval(scope_, a), indexValue());
+    }
+    bool isMutable() const override { return true; }
+
+    void set(Value v) override {
+      a.eval(scope_).mutate([&](Value &m) {
+        auto indexVal = indexValue();
+        if (m.is<String>()) {
+          if (!v.is<Char>()) throw AccessError{};
+          if (!indexVal.is<Int>())
+            throw InvalidBinaryOperation(m, indexVal, "Unable to index type");
+          extense::get<String>(m)[extense::get<Int>(indexVal)] =
+              extense::get<Char>(v);
+          return;
+        }
+        ops::mutableIndex(m, indexVal) = std::move(v);
+      });
+    }
+  };
+
+  return Proxy::make<IndexEvaluator>(s, leftOperand(), rightOperand());
 }
 
-void extense::MutableBinaryOperation::dumpWithIndent(std::ostream &os,
-                                                     int indent) const {
+void extense::IndexOperation::dumpWithIndent(std::ostream &os,
+                                             int indent) const {
   displayHeaderWithIndent(os, indent);
-  os << ": MutableBinaryOperation\n";
+  os << ": IndexOperation (" << type() << ")\n";
   leftOperand().dumpWithIndent(os, indent + indentAmount);
   rightOperand().dumpWithIndent(os, indent + indentAmount);
 }

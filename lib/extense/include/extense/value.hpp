@@ -166,13 +166,17 @@ class Value {
   template <typename ValueType>
   friend struct detail::InternalData;
 
+  template <typename T>
+  inline static constexpr bool isSetDirectly =
+      std::is_same_v<T, Reference> || std::is_same_v<T, FlatValue>;
+
 public:
   // Initializes with None
   Value() = default;
 
   template <typename T>
   explicit Value(T v) {
-    if constexpr (std::is_same_v<T, Reference>)
+    if constexpr (isSetDirectly<T>)
       data = v;
     else if constexpr (isReferencedOnCopy<T>)
       data = makeReference(std::move(v));
@@ -182,7 +186,7 @@ public:
 
   template <typename T>
   Value &operator=(T v) {
-    if constexpr (std::is_same_v<T, Reference>)
+    if constexpr (isSetDirectly<T>)
       data = std::move(v);
     else
       *this = Value(std::move(v));
@@ -360,11 +364,12 @@ T &mutableGet(const Value &v) {
   static_assert(Value::supportsType<T>,
                 "Invalid template argument given to 'extense::mutableGet'");
   try {
-    auto ref = std::get<Reference>(v.internalVariant());
     if constexpr (std::is_same_v<T, Reference>)
-      throw MutableAccessError{};
-    else
+      throw AccessError{};
+    else {
+      auto ref = std::get<Reference>(v.internalVariant());
       return std::get<T>(ref->internalVariant());
+    }
   } catch (const std::bad_variant_access &) { throw ValueGetError{}; }
 }
 

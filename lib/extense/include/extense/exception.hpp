@@ -84,14 +84,25 @@ public:
 };
 
 /*
- * Exception thrown when asked to get a mutable value from a const type.
+ * Exception thrown when asked to get a mutable value from a const type or when
+ * a variable cannot be accessed.
  */
-class MutableAccessError : public Exception {
+class AccessError : public Exception {
 public:
-  explicit MutableAccessError(
-      std::string error = "Unable to get a mutable value type")
+  explicit AccessError(std::string error = "Unable to access a value")
       : Exception(std::move(error)) {
-    setType("MutableAccessError");
+    setType("AccessError");
+  }
+};
+
+/*
+ * Exception thrown when a variable could not be copied.
+ */
+class CopyError : public Exception {
+public:
+  explicit CopyError(std::string error = "Unable to copy the value")
+      : Exception(std::move(error)) {
+    setType("CopyError");
   }
 };
 

@@ -371,9 +371,7 @@ auto extense::detail::unaryOperationFunc(extense::ASTNodeType type) {
            // LogicalNot
            [](auto &s, auto &e) { return ops::logicalNot(constEval(s, e)); },
            // Exclamation
-           [](auto &s, auto &e) {
-             return Value{ops::ref(referenceEval(s, e))};
-           },
+           [](auto &s, auto &e) { return Value{e.eval(s)}; },
            // BitNot
            [](auto &s, auto &e) { return ops::bitNot(constEval(s, e)); }}};
 
@@ -395,113 +393,62 @@ static extense::Value reflexiveIndexCall(extense::Value a, extense::Value v) {
 auto extense::detail::binaryOperationFunc(ASTNodeType type) {
   assert(isBinaryOperator(type));
 
-  constexpr std::array<BinaryOperation::Function *, 40> binaryOperationFuncs = {
+#define COMPOUND_OPERATION(name)                                               \
+  [](auto &s, auto &a, auto &b) {                                              \
+    Value ret;                                                                 \
+    a.eval(s).mutate([&](Value &m) { ret = ops::name(m, constEval(s, b)); });  \
+    return ret;                                                                \
+  }
+#define OPERATION(name)                                                        \
+  [](auto &s, auto &a, auto &b) {                                              \
+    return ops::name(constEval(s, a), constEval(s, b));                        \
+  }
+
+  constexpr std::array<BinaryOperation::Function *, 38> binaryOperationFuncs = {
       {// Assign
        [](auto &s, auto &a, auto &b) {
-         mutateExpr(s, a, constEval(s, b));
+         a.eval(s).set(constEval(s, b));
          return noneValue;
        },
        // PlusEquals
-       [](auto &s, auto &a, auto &b) {
-         return mutableEval(s, a, [&s, &b](auto &mutA) {
-           return ops::addEquals(mutA, constEval(s, b));
-         });
-       },
+       COMPOUND_OPERATION(addEquals),
        // MinusEquals
-       [](auto &s, auto &a, auto &b) {
-         return mutableEval(s, a, [&s, &b](auto &mutA) {
-           return ops::subEquals(mutA, constEval(s, b));
-         });
-       },
+       COMPOUND_OPERATION(subEquals),
        // MulEquals
-       [](auto &s, auto &a, auto &b) {
-         return mutableEval(s, a, [&s, &b](auto &mutA) {
-           return ops::mulEquals(mutA, constEval(s, b));
-         });
-       },
+       COMPOUND_OPERATION(mulEquals),
        // DivEquals
-       [](auto &s, auto &a, auto &b) {
-         return mutableEval(s, a, [&s, &b](auto &mutA) {
-           return ops::divEquals(mutA, constEval(s, b));
-         });
-       },
+       COMPOUND_OPERATION(divEquals),
        // FloorDivEquals
-       [](auto &s, auto &a, auto &b) {
-         return mutableEval(s, a, [&s, &b](auto &mutA) {
-           return ops::floorDivEquals(mutA, constEval(s, b));
-         });
-       },
+       COMPOUND_OPERATION(floorDivEquals),
        // PowEquals
-       [](auto &s, auto &a, auto &b) {
-         return mutableEval(s, a, [&s, &b](auto &mutA) {
-           return ops::powEquals(mutA, constEval(s, b));
-         });
-       },
+       COMPOUND_OPERATION(powEquals),
        // ModEquals
-       [](auto &s, auto &a, auto &b) {
-         return mutableEval(s, a, [&s, &b](auto &mutA) {
-           return ops::modEquals(mutA, constEval(s, b));
-         });
-       },
+       COMPOUND_OPERATION(modEquals),
        // BitAndEquals
-       [](auto &s, auto &a, auto &b) {
-         return mutableEval(s, a, [&s, &b](auto &mutA) {
-           return ops::bitAndEquals(mutA, constEval(s, b));
-         });
-       },
+       COMPOUND_OPERATION(bitAndEquals),
        // BitOrEquals
-       [](auto &s, auto &a, auto &b) {
-         return mutableEval(s, a, [&s, &b](auto &mutA) {
-           return ops::bitOrEquals(mutA, constEval(s, b));
-         });
-       },
+       COMPOUND_OPERATION(bitOrEquals),
        // BitXorEquals
-       [](auto &s, auto &a, auto &b) {
-         return mutableEval(s, a, [&s, &b](auto &mutA) {
-           return ops::bitXorEquals(mutA, constEval(s, b));
-         });
-       },
+       COMPOUND_OPERATION(bitXorEquals),
        // BitLShiftEquals
-       [](auto &s, auto &a, auto &b) {
-         return mutableEval(s, a, [&s, &b](auto &mutA) {
-           return ops::bitLShiftEquals(mutA, constEval(s, b));
-         });
-       },
+       COMPOUND_OPERATION(bitLShiftEquals),
        // BitRShiftEquals
-       [](auto &s, auto &a, auto &b) {
-         return mutableEval(s, a, [&s, &b](auto &mutA) {
-           return ops::bitRShiftEquals(mutA, constEval(s, b));
-         });
-       },
+       COMPOUND_OPERATION(bitRShiftEquals),
 
        // BitAnd
-       [](auto &s, auto &a, auto &b) {
-         return ops::bitAnd(constEval(s, a), constEval(s, b));
-       },
+       OPERATION(bitAnd),
        // BitOr
-       [](auto &s, auto &a, auto &b) {
-         return ops::bitOr(constEval(s, a), constEval(s, b));
-       },
+       OPERATION(bitOr),
        // BitXor
-       [](auto &s, auto &a, auto &b) {
-         return ops::bitXor(constEval(s, a), constEval(s, b));
-       },
+       OPERATION(bitXor),
        // BitLShift
-       [](auto &s, auto &a, auto &b) {
-         return ops::bitLShift(constEval(s, a), constEval(s, b));
-       },
+       OPERATION(bitLShift),
        // BitRShift
-       [](auto &s, auto &a, auto &b) {
-         return ops::bitRShift(constEval(s, a), constEval(s, b));
-       },
+       OPERATION(bitRShift),
        // And
-       [](auto &s, auto &a, auto &b) {
-         return ops::logicalAnd(constEval(s, a), constEval(s, b));
-       },
+       OPERATION(logicalAnd),
        // Or
-       [](auto &s, auto &a, auto &b) {
-         return ops::logicalOr(constEval(s, a), constEval(s, b));
-       },
+       OPERATION(logicalOr),
        // Equals
        [](auto &s, auto &a, auto &b) {
          return Value{ops::equal(constEval(s, a), constEval(s, b))};
@@ -511,21 +458,13 @@ auto extense::detail::binaryOperationFunc(ASTNodeType type) {
          return Value{ops::notEqual(constEval(s, a), constEval(s, b))};
        },
        // LessThan
-       [](auto &s, auto &a, auto &b) {
-         return ops::lessThan(constEval(s, a), constEval(s, b));
-       },
+       OPERATION(lessThan),
        // LessEquals
-       [](auto &s, auto &a, auto &b) {
-         return ops::lessEquals(constEval(s, a), constEval(s, b));
-       },
+       OPERATION(lessEquals),
        // GreaterThan
-       [](auto &s, auto &a, auto &b) {
-         return ops::greaterThan(constEval(s, a), constEval(s, b));
-       },
+       OPERATION(greaterThan),
        // GreaterEquals
-       [](auto &s, auto &a, auto &b) {
-         return ops::greaterEquals(constEval(s, a), constEval(s, b));
-       },
+       OPERATION(greaterEquals),
        // Dot
        [](auto &s, auto &a, auto &b) {
          Value bEvaled = constEval(s, b);
@@ -554,46 +493,28 @@ auto extense::detail::binaryOperationFunc(ASTNodeType type) {
          return Value{ops::is(constEval(s, a), get<String>(tStr).value)};
        },
        // DotDot
-       [](auto &s, auto &a, auto &b) {
-         return ops::dotDot(constEval(s, a), constEval(s, b));
-       },
-       // Semicolon
-       [](auto &s, auto &a, auto &b) {
-         return ops::index(constEval(s, a), Value{getIdentifierName(b)});
-       },
-       // Colon
-       [](auto &s, auto &a, auto &b) {
-         return ops::index(constEval(s, a), constEval(s, b));
-       },
+       OPERATION(dotDot),
        // Mul
-       [](auto &s, auto &a, auto &b) {
-         return ops::mul(constEval(s, a), constEval(s, b));
-       },
+       OPERATION(mul),
        // FloorDiv
-       [](auto &s, auto &a, auto &b) {
-         return ops::floorDiv(constEval(s, a), constEval(s, b));
-       },
+       OPERATION(floorDiv),
        // Pow
-       [](auto &s, auto &a, auto &b) {
-         return ops::pow(constEval(s, a), constEval(s, b));
-       },
+       OPERATION(pow),
        // Mod
-       [](auto &s, auto &a, auto &b) {
-         return ops::mod(constEval(s, a), constEval(s, b));
-       },
+       OPERATION(mod),
        // Div
-       [](auto &s, auto &a, auto &b) {
-         return ops::div(constEval(s, a), constEval(s, b));
-       },
+       OPERATION(div),
        // Plus
-       [](auto &s, auto &a, auto &b) {
-         return ops::add(constEval(s, a), constEval(s, b));
-       },
+       OPERATION(add),
        // Minus
-       [](auto &s, auto &a, auto &b) {
-         return ops::sub(constEval(s, a), constEval(s, b));
-       }}};
-  return binaryOperationFuncs[static_cast<int>(type) - 1];
+       OPERATION(sub)}};
+#undef OPERATION
+#undef COMPOUND_OPERATION
+
+  // The first three binary operations are special cases and not included in the
+  // array. However, they are located at the beginning of the enum, and the
+  // offset of 3 compensates for that.
+  return binaryOperationFuncs[static_cast<int>(type) - 3];
 }
 
 bool extense::detail::parseSpecialBinaryOperator(Source::Location loc,
@@ -607,49 +528,9 @@ bool extense::detail::parseSpecialBinaryOperator(Source::Location loc,
     return true;
   }
 
-  if (op == ASTNodeType::Colon) {
-    left = std::make_unique<MutableBinaryOperation>(
-        std::move(loc), op, binaryOperationFunc(op),
-        [](auto &s, auto &a, auto &i) -> Expr::Setter {
-          Value left = constEval(s, a);
-          Value iEvaled = constEval(s, i);
-          return [left, iEvaled](Value v) {
-            if (left.is<String>()) {
-              if (!iEvaled.is<Int>()) {
-                throw InvalidBinaryOperation{
-                    "String", iEvaled.typeAsString(),
-                    "Cannot index String with given type"};
-              }
-
-              if (!v.is<Char>()) {
-                throw InvalidBinaryOperation{
-                    "String", iEvaled.typeAsString(),
-                    "Can only assign to String indices with Char type"};
-              }
-
-              mutableGet<String>(left).value[get<Int>(iEvaled).value] =
-                  get<Char>(v).value;
-              return;
-            }
-
-            ops::mutableIndex(left, iEvaled) = std::move(v);
-          };
-        },
-        std::move(left), std::move(right));
-    return true;
-  }
-
-  if (op == ASTNodeType::Semicolon) {
-    left = std::make_unique<MutableBinaryOperation>(
-        std::move(loc), op, binaryOperationFunc(op),
-        [](auto &s, auto &a, auto &i) -> Expr::Setter {
-          auto &left = referenceEval(s, a);
-          auto index = Value{getIdentifierName(i)};
-          return [&left, index](Value v) {
-            ops::mutableIndex(left, index) = std::move(v);
-          };
-        },
-        std::move(left), std::move(right));
+  if (op == ASTNodeType::Colon || op == ASTNodeType::Semicolon) {
+    left = std::make_unique<IndexOperation>(std::move(loc), op, std::move(left),
+                                            std::move(right));
     return true;
   }
 

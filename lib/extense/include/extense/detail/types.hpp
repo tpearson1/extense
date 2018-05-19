@@ -36,6 +36,7 @@ SOFTWARE.
 #include <string>
 #include <vector>
 
+#include <extense/detail/proxy.hpp>
 #include <extense/detail/valuetypebase.hpp>
 
 namespace extense {
@@ -79,7 +80,7 @@ struct Convert<Char, String>;
 template <typename T>
 inline constexpr bool isFlatValueType =
     detail::isAnyOf<T, None, Int, Float, Bool, Char, List, String, Map, Label,
-                    Scope, UserObject>;
+                    Scope, UserObject, Proxy>;
 
 // Whether or not T is a valid type for a Value - either a FlatValue type or a
 // Reference
@@ -102,6 +103,7 @@ constexpr std::string_view typeAsString() {
   if (std::is_same_v<Label, T>) return "Label";
   if (std::is_same_v<Scope, T>) return "Scope";
   if (std::is_same_v<UserObject, T>) return "UserObject";
+  if (std::is_same_v<Proxy, T>) return "Proxy";
   if (std::is_same_v<Reference, T>) return "Reference";
 }
 } // namespace detail
@@ -184,7 +186,7 @@ template <typename... ValueTypes>
 class BasicFlatValue;
 
 using FlatValue = BasicFlatValue<None, Int, Float, Bool, Char, String, List,
-                                 Map, Label, Scope, UserObject>;
+                                 Map, Label, Scope, UserObject, Proxy>;
 
 namespace detail {
 using MapKeyType = BasicFlatValue<Int, Float, Bool, Char, String>;

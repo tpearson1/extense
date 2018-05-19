@@ -8,7 +8,8 @@ set (sources
     ${source_dir}/ast.cpp
     ${source_dir}/parser.cpp
     ${detail_source_dir}/types.cpp
-    ${detail_source_dir}/operations.cpp)
+    ${detail_source_dir}/operations.cpp
+    ${detail_source_dir}/proxy.cpp)
 
 add_library (api SHARED ${sources})
 target_include_directories (api PUBLIC

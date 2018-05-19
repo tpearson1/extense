@@ -269,6 +269,7 @@ OP_VISITOR(greaterEquals)
 
 Bool equal(const Map &a, const Map &b) { return Bool{a.value == b.value}; }
 Bool equal(const List &a, const List &b) { return Bool{a.value == b.value}; }
+Bool equal(const Proxy &a, const Proxy &b) { return Bool{a.get() == b.get()}; }
 } // namespace extense::ops
 
 static extense::Value binaryFunction(const extense::String &op, extense::Map &a,

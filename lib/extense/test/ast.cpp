@@ -144,8 +144,7 @@ TEST_CASE("Manipulating and dumping expressions", "[Expr]") {
     ValueExpr: `v
 )");
 
-    auto[isMut, mapValue] = mapConstructor.eval(dummyScope);
-    REQUIRE(!isMut);
+    auto mapValue = constEval(dummyScope, mapConstructor);
     REQUIRE(mapValue.is<Map>());
 
     auto map = get<Map>(mapValue);
@@ -173,8 +172,7 @@ TEST_CASE("Manipulating and dumping expressions", "[Expr]") {
   ValueExpr: `a
 )");
 
-    auto[isMut, listValue] = listConstructor.eval(dummyScope);
-    REQUIRE(!isMut);
+    auto listValue = constEval(dummyScope, listConstructor);
     REQUIRE(listValue.is<List>());
 
     auto list = get<List>(listValue);
@@ -241,8 +239,7 @@ TEST_CASE("Manipulating and dumping expressions", "[Expr]") {
                                        get<Int>(constEval(s, b))};
                         },
                         std::move(v2), std::move(v3)};
-    auto[isMut, result] = bop.eval(dummyScope);
-    REQUIRE(isMut);
+    auto result = constEval(dummyScope, bop);
     REQUIRE(result.is<Int>());
     REQUIRE(get<Int>(result).value == 32);
   }

@@ -37,6 +37,8 @@ SOFTWARE.
 namespace extense {
 #define _LIB_EXTENSE__AST_NODE_TYPE_ENUM                                       \
   X(CustomOperator)                                                            \
+  X(Semicolon)                                                                 \
+  X(Colon)                                                                     \
                                                                                \
   X(Assign)                                                                    \
   X(PlusEquals)                                                                \
@@ -70,8 +72,6 @@ namespace extense {
   X(ColonColon)                                                                \
   X(Is)                                                                        \
   X(DotDot)                                                                    \
-  X(Semicolon)                                                                 \
-  X(Colon)                                                                     \
   X(Mul)                                                                       \
   X(FloorDiv)                                                                  \
   X(Pow)                                                                       \
@@ -146,7 +146,7 @@ protected:
   void displayHeaderWithIndent(std::ostream &os, int indent) const;
 
 public:
-  explicit Expr(Source::Location location, ASTNodeType type)
+  Expr(Source::Location location, ASTNodeType type)
       : type_(type), location_(std::move(location)) {}
 
   ASTNodeType type() const { return type_; }
@@ -157,41 +157,27 @@ public:
   void dump(std::ostream &os) { dumpWithIndent(os, 0); }
   virtual void dumpWithIndent(std::ostream &os, int indent) const = 0;
 
-  struct EvalResult {
-    bool isMutable = false;
-    Value value;
-  };
-
-  using Setter = std::function<void(Value)>;
-
 protected:
-  virtual EvalResult evalImpl(Scope &scope) = 0;
-  virtual Value *tryPointerEvalImpl(Scope &) { return nullptr; }
-  virtual Setter tryMutableEvalImpl(Scope &) { return nullptr; }
+  virtual Proxy evalImpl(Scope &scope) = 0;
 
 public:
-  EvalResult eval(Scope &scope);
-  Value *tryPointerEval(Scope &);
-
-  Setter tryMutableEval(Scope &scope);
+  Proxy eval(Scope &scope);
 
   virtual ~Expr() {}
 };
 
-inline Value constEval(Scope &scope, Expr &e) { return e.eval(scope).value; }
-Value &referenceEval(Scope &, Expr &);
-void mutateExpr(Scope &scope, Expr &a, Value v);
+Value constEval(Scope &scope, Expr &e);
 
 class ValueExpr : public Expr {
   Value value_;
 
 protected:
-  EvalResult evalImpl(Scope &) override { return {false, value_}; }
+  Proxy evalImpl(Scope &) override;
 
   void dumpWithIndent(std::ostream &os, int indent) const override;
 
 public:
-  explicit ValueExpr(Source::Location location, Value v)
+  ValueExpr(Source::Location location, Value v)
       : Expr(std::move(location), ASTNodeType::ValueExpr),
         value_(std::move(v)) {}
 
@@ -203,12 +189,12 @@ class LabelDeclaration : public Expr {
   std::string name_;
 
 protected:
-  EvalResult evalImpl(Scope &) override { return {false, noneValue}; }
+  Proxy evalImpl(Scope &) override;
 
   void dumpWithIndent(std::ostream &os, int indent) const override;
 
 public:
-  explicit LabelDeclaration(Source::Location location, std::string name)
+  LabelDeclaration(Source::Location location, std::string name)
       : Expr(std::move(location), ASTNodeType::LabelDeclaration),
         name_(std::move(name)) {}
 
@@ -235,13 +221,12 @@ class Identifier : public Expr {
   std::string name_;
 
 protected:
-  EvalResult evalImpl(Scope &s) override;
-  Value *tryPointerEvalImpl(Scope &s) override;
+  Proxy evalImpl(Scope &s) override;
 
   void dumpWithIndent(std::ostream &os, int indent) const override;
 
 public:
-  explicit Identifier(Source::Location location, std::string name)
+  Identifier(Source::Location location, std::string name)
       : Expr(std::move(location), ASTNodeType::Identifier),
         name_(std::move(name)) {}
 
@@ -254,13 +239,13 @@ class ScopeCall : public Expr {
   std::unique_ptr<Expr> argument_;
 
 protected:
-  EvalResult evalImpl(Scope &) override;
+  Proxy evalImpl(Scope &) override;
 
   void dumpWithIndent(std::ostream &os, int indent) const override;
 
 public:
-  explicit ScopeCall(Source::Location location, std::unique_ptr<Expr> scope,
-                     std::unique_ptr<Expr> argument)
+  ScopeCall(Source::Location location, std::unique_ptr<Expr> scope,
+            std::unique_ptr<Expr> argument)
       : Expr(std::move(location), ASTNodeType::ScopeCall),
         scope_(std::move(scope)), argument_(std::move(argument)) {}
 
@@ -280,13 +265,12 @@ class MapConstructor : public Expr {
 
 protected:
   // Returns a Map created from the evaluated mappings
-  EvalResult evalImpl(Scope &) override;
+  Proxy evalImpl(Scope &) override;
 
   void dumpWithIndent(std::ostream &os, int indent) const override;
 
 public:
-  explicit MapConstructor(Source::Location location,
-                          std::vector<ParsedMapping> mappings)
+  MapConstructor(Source::Location location, std::vector<ParsedMapping> mappings)
       : Expr(std::move(location), ASTNodeType::MapConstructor),
         mappings_(std::move(mappings)) {}
 };
@@ -296,13 +280,13 @@ class ListConstructor : public Expr {
 
 protected:
   // Returns a List constructed from the evaluated elements
-  EvalResult evalImpl(Scope &) override;
+  Proxy evalImpl(Scope &) override;
 
   void dumpWithIndent(std::ostream &os, int indent) const override;
 
 public:
-  explicit ListConstructor(Source::Location location,
-                           std::vector<std::unique_ptr<Expr>> elements)
+  ListConstructor(Source::Location location,
+                  std::vector<std::unique_ptr<Expr>> elements)
       : Expr(std::move(location), ASTNodeType::ListConstructor),
         elements_(std::move(elements)) {}
 };
@@ -313,15 +297,12 @@ class ExprList : public Expr {
   std::vector<Label> labels;
 
 protected:
-  EvalResult evalImpl(Scope &outer) override {
-    return {false, Value{toScope(outer)}};
-  }
+  Proxy evalImpl(Scope &outer) override;
 
   void dumpWithIndent(std::ostream &os, int indent) const override;
 
 public:
-  explicit ExprList(Source::Location location,
-                    std::vector<std::unique_ptr<Expr>> exprs);
+  ExprList(Source::Location location, std::vector<std::unique_ptr<Expr>> exprs);
 
   Scope toScope(Scope &outer);
 
@@ -333,17 +314,15 @@ public:
 
 class UnaryOperation : public Expr {
 protected:
-  EvalResult evalImpl(Scope &s) override {
-    return {true, operation_(s, *operand_)};
-  }
+  Proxy evalImpl(Scope &s) override;
 
   void dumpWithIndent(std::ostream &os, int indent) const override;
 
 public:
   using Function = Value(Scope &, Expr &);
 
-  explicit UnaryOperation(Source::Location location, ASTNodeType opType,
-                          Function *operation, std::unique_ptr<Expr> operand)
+  UnaryOperation(Source::Location location, ASTNodeType opType,
+                 Function *operation, std::unique_ptr<Expr> operand)
       : Expr(std::move(location), opType), operation_(operation),
         operand_(std::move(operand)) {}
 
@@ -357,18 +336,16 @@ private:
 
 class BinaryOperation : public Expr {
 protected:
-  EvalResult evalImpl(Scope &s) override {
-    return {true, operation_(s, *operand1_, *operand2_)};
-  }
+  Proxy evalImpl(Scope &s) override;
 
   void dumpWithIndent(std::ostream &os, int indent) const override;
 
 public:
   using Function = Value(Scope &, Expr &, Expr &);
 
-  explicit BinaryOperation(Source::Location location, ASTNodeType opType,
-                           Function *operation, std::unique_ptr<Expr> operand1,
-                           std::unique_ptr<Expr> operand2)
+  BinaryOperation(Source::Location location, ASTNodeType opType,
+                  Function *operation, std::unique_ptr<Expr> operand1,
+                  std::unique_ptr<Expr> operand2)
       : Expr(std::move(location), opType), operation_(operation),
         operand1_(std::move(operand1)), operand2_(std::move(operand2)) {}
 
@@ -387,14 +364,14 @@ class CustomOperation : public Expr {
   std::string op_;
 
 protected:
-  EvalResult evalImpl(Scope &s) override;
+  Proxy evalImpl(Scope &s) override;
 
   void dumpWithIndent(std::ostream &os, int indent) const override;
 
 public:
-  explicit CustomOperation(Source::Location location, std::string op,
-                           std::unique_ptr<Expr> operand1,
-                           std::unique_ptr<Expr> operand2)
+  CustomOperation(Source::Location location, std::string op,
+                  std::unique_ptr<Expr> operand1,
+                  std::unique_ptr<Expr> operand2)
       : Expr(std::move(location), ASTNodeType::CustomOperator),
         op_(std::move(op)), operand1_(std::move(operand1)),
         operand2_(std::move(operand2)) {}
@@ -411,28 +388,25 @@ private:
   std::unique_ptr<Expr> operand1_, operand2_;
 };
 
-class MutableBinaryOperation : public BinaryOperation {
+class IndexOperation : public Expr {
+  std::unique_ptr<Expr> operand1_, operand2_;
+
 protected:
-  Expr::Setter tryMutableEvalImpl(Scope &s) override {
-    return mutableOperation_(s, leftOperand(), rightOperand());
-  }
+  Proxy evalImpl(Scope &) override;
 
   void dumpWithIndent(std::ostream &os, int indent) const override;
 
 public:
-  using MutableFunction = std::function<void(Value)>(Scope &, Expr &, Expr &);
+  IndexOperation(Source::Location location, ASTNodeType opType,
+                 std::unique_ptr<Expr> operand1, std::unique_ptr<Expr> operand2)
+      : Expr(std::move(location), opType), operand1_(std::move(operand1)),
+        operand2_(std::move(operand2)) {}
 
-  explicit MutableBinaryOperation(Source::Location location, ASTNodeType opType,
-                                  Function *operation,
-                                  MutableFunction *mutableOperation,
-                                  std::unique_ptr<Expr> operand1,
-                                  std::unique_ptr<Expr> operand2)
-      : BinaryOperation(std::move(location), opType, operation,
-                        std::move(operand1), std::move(operand2)),
-        mutableOperation_(mutableOperation) {}
+  const Expr &leftOperand() const { return *operand1_; }
+  Expr &leftOperand() { return *operand1_; }
 
-private:
-  MutableFunction *mutableOperation_;
+  const Expr &rightOperand() const { return *operand2_; }
+  Expr &rightOperand() { return *operand2_; }
 };
 
 namespace detail {
