@@ -323,19 +323,19 @@ extense::Proxy extense::IndexOperation::evalImpl(Scope &s) {
   class IndexEvaluator : public Proxy::Data {
     Scope &scope_;
     Expr &a, &index;
+    bool isSemicolon_;
 
     Value indexValue() const {
-      return (index.type() == ASTNodeType::Semicolon) ?
-                 Value{detail::getIdentifierName(index)} :
-                 constEval(scope_, index);
+      return isSemicolon_ ? Value{detail::getIdentifierName(index)} :
+                            constEval(scope_, index);
     }
 
   public:
-    IndexEvaluator(Scope &scope, Expr &e1, Expr &idx)
-        : scope_(scope), a(e1), index(idx) {}
+    IndexEvaluator(Scope &scope, Expr &e1, Expr &idx, bool isSemicolon)
+        : scope_(scope), a(e1), index(idx), isSemicolon_(isSemicolon) {}
 
     std::unique_ptr<Proxy::Data> clone() const override {
-      return std::make_unique<IndexEvaluator>(scope_, a, index);
+      return std::make_unique<IndexEvaluator>(scope_, a, index, isSemicolon_);
     }
 
     Value get() const override {
@@ -359,7 +359,8 @@ extense::Proxy extense::IndexOperation::evalImpl(Scope &s) {
     }
   };
 
-  return Proxy::make<IndexEvaluator>(s, leftOperand(), rightOperand());
+  return Proxy::make<IndexEvaluator>(s, leftOperand(), rightOperand(),
+                                     type() == ASTNodeType::Semicolon);
 }
 
 void extense::IndexOperation::dumpWithIndent(std::ostream &os,

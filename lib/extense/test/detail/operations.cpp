@@ -72,26 +72,26 @@ TEST_CASE("Operation functions", "[extense::ops]") {
   }
 
   SECTION("Unary plus") {
-    auto i = ops::add(17_ei);
+    auto i = ops::unaryPlus(17_ei);
     REQUIRE(i.value == 17);
-    i = ops::add(-17_ei);
+    i = ops::unaryPlus(-17_ei);
     REQUIRE(i.value == -17);
 
-    auto f = ops::add(5.0_ef);
+    auto f = ops::unaryPlus(5.0_ef);
     REQUIRE(f.value == 5.0);
-    f = ops::add(-5.0_ef);
+    f = ops::unaryPlus(-5.0_ef);
     REQUIRE(f.value == -5.0);
   }
 
   SECTION("Unary minus") {
-    auto i = ops::sub(6_ei);
+    auto i = ops::unaryMinus(6_ei);
     REQUIRE(i.value == -6);
-    i = ops::sub(-6_ei);
+    i = ops::unaryMinus(-6_ei);
     REQUIRE(i.value == 6);
 
-    auto f = ops::sub(8.0_ef);
+    auto f = ops::unaryMinus(8.0_ef);
     REQUIRE(f.value == -8.0);
-    f = ops::sub(-8.0_ef);
+    f = ops::unaryMinus(-8.0_ef);
     REQUIRE(f.value == 8.0);
   }
 

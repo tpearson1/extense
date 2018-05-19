@@ -64,7 +64,8 @@ namespace extense::ops {
                                                                                \
   Value opFuncName(const Value &a, const Value &b) {                           \
     if (a.is<Map>()) return opFuncName(mutableGet<Map>(a), b);                 \
-    if (a.is<UserObject>()) return opFuncName(mutableGet<UserObject>(a), b);   \
+    if (a.is<UserObject>())                                                    \
+      return Value{opFuncName(mutableGet<UserObject>(a), b)};                  \
                                                                                \
     return visit(                                                              \
         [](const auto &a, const auto &b) -> Value {                            \
@@ -100,7 +101,7 @@ namespace extense::ops {
     return noneValue;                                                          \
   }
 
-Value add(const Value &a) {
+Value unaryPlus(const Value &a) {
   if (a.is<Int>() || a.is<Float>()) return a;
   throw InvalidUnaryOperation{a};
 }
@@ -120,7 +121,7 @@ List &addEquals(List &a, const List &b) {
   return a;
 }
 
-Value sub(const Value &a) {
+Value unaryMinus(const Value &a) {
   if (a.is<Int>()) return Value{-get<Int>(a)};
   if (a.is<Float>()) return Value{-get<Float>(a)};
   throw InvalidUnaryOperation{a};
@@ -269,6 +270,9 @@ OP_VISITOR(greaterEquals)
 
 Bool equal(const Map &a, const Map &b) { return Bool{a.value == b.value}; }
 Bool equal(const List &a, const List &b) { return Bool{a.value == b.value}; }
+Bool equal(const UserObject &a, const UserObject &b) {
+  return a.equal(Value{b});
+}
 Bool equal(const Proxy &a, const Proxy &b) { return Bool{a.get() == b.get()}; }
 } // namespace extense::ops
 
@@ -301,13 +305,13 @@ Value add(Map &a, const Value &b) { return binaryFunction("+"_es, a, b); }
 Value addEquals(Map &a, const Value &b) {
   return binaryFunction("+="_es, a, b);
 }
-Value add(Map &a) { return unaryFunction("+"_es, a); }
+Value unaryPlus(Map &a) { return unaryFunction("+"_es, a); }
 
 Value sub(Map &a, const Value &b) { return binaryFunction("-"_es, a, b); }
 Value subEquals(Map &a, const Value &b) {
   return binaryFunction("-="_es, a, b);
 }
-Value sub(Map &a) { return unaryFunction("-"_es, a); }
+Value unaryMinus(Map &a) { return unaryFunction("-"_es, a); }
 
 Value mul(Map &a, const Value &b) { return binaryFunction("*"_es, a, b); }
 Value mulEquals(Map &a, const Value &b) {
@@ -385,20 +389,17 @@ Value greaterEquals(Map &a, const Value &b) {
   return binaryFunction(">="_es, a, b);
 }
 
-Value equal(Map &a, const Value &b) { return binaryFunction("=="_es, a, b); }
-Value notEqual(Map &a, const Value &b) { return binaryFunction("!="_es, a, b); }
-
 // UserObject operations
 Value index(const UserObject &a, const Value &b) { return a.at(b); }
 Value &mutableIndex(UserObject &a, const Value &b) { return a[b]; }
 
 Value add(UserObject &a, const Value &b) { return a.add(b); }
 Value addEquals(UserObject &a, const Value &b) { return a.addEquals(b); }
-Value add(UserObject &a) { return a.unaryPlus(); }
+Value unaryPlus(UserObject &a) { return a.unaryPlus(); }
 
 Value sub(UserObject &a, const Value &b) { return a.sub(b); }
 Value subEquals(UserObject &a, const Value &b) { return a.subEquals(b); }
-Value sub(UserObject &a) { return a.unaryMinus(); }
+Value unaryMinus(UserObject &a) { return a.unaryMinus(); }
 
 Value mul(UserObject &a, const Value &b) { return a.mul(b); }
 Value mulEquals(UserObject &a, const Value &b) { return a.mulEquals(b); }
@@ -450,6 +451,6 @@ Value greaterEquals(UserObject &a, const Value &b) {
   return a.greaterEquals(b);
 }
 
-Value equal(UserObject &a, const Value &b) { return a.equal(b); }
-Value notEqual(UserObject &a, const Value &b) { return a.notEqual(b); }
+Bool equal(UserObject &a, const Value &b) { return a.equal(b); }
+Bool notEqual(UserObject &a, const Value &b) { return a.notEqual(b); }
 } // namespace extense::ops

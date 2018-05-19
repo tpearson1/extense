@@ -461,8 +461,8 @@ public:
     virtual Value greaterThan(const Value &);
     virtual Value greaterEquals(const Value &);
 
-    virtual Value equal(const Value &);
-    virtual Value notEqual(const Value &);
+    virtual Bool equal(const Value &) const;
+    virtual Bool notEqual(const Value &) const;
   };
 
 private:
@@ -562,8 +562,8 @@ public:
   Value greaterThan(const Value &);
   Value greaterEquals(const Value &);
 
-  Value equal(const Value &);
-  Value notEqual(const Value &);
+  Bool equal(const Value &) const;
+  Bool notEqual(const Value &) const;
 };
 
 namespace literals {

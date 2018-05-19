@@ -233,6 +233,16 @@ int main(int argc, const char *argv[]) {
       throw InvalidBinaryOperation{"UserObject", index.typeAsString(),
                                    "Key not present"};
     }
+
+    Bool equal(const Value &v) const override {
+      if (!v.is<UserObject>()) return Bool::f;
+      const auto &uo = get<UserObject>(v);
+      const auto *tb = dynamic_cast<const TypeBuilder *>(&uo.data());
+      if (!tb) return Bool::f;
+      return result == tb->result;
+    }
+
+    Bool notEqual(const Value &v) const override { return !equal(v); }
   };
 
   injectFunction(global, "CppTypeBuilder", [](const Value &v) -> Value {

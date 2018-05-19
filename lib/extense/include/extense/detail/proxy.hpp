@@ -51,7 +51,7 @@ public:
   Proxy(Proxy &&) = default;
   Proxy &operator=(Proxy &&) = default;
 
-  // Access the contained value
+  // Access the contained value. Should NOT return another Proxy.
   Value get() const;
 
   // Can the contained value be modified

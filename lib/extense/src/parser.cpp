@@ -365,9 +365,9 @@ auto extense::detail::unaryOperationFunc(extense::ASTNodeType type) {
           {// IdentifierName
            [](auto &, auto &e) { return Value{getIdentifierName(e)}; },
            // UnaryPlus
-           [](auto &s, auto &e) { return ops::add(constEval(s, e)); },
+           [](auto &s, auto &e) { return ops::unaryPlus(constEval(s, e)); },
            // UnaryMinus
-           [](auto &s, auto &e) { return ops::sub(constEval(s, e)); },
+           [](auto &s, auto &e) { return ops::unaryMinus(constEval(s, e)); },
            // LogicalNot
            [](auto &s, auto &e) { return ops::logicalNot(constEval(s, e)); },
            // Exclamation

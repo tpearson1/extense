@@ -238,8 +238,12 @@ USER_OBJECT_BINARY_FUNCTION(lessEquals)
 USER_OBJECT_BINARY_FUNCTION(greaterThan)
 USER_OBJECT_BINARY_FUNCTION(greaterEquals)
 
-USER_OBJECT_BINARY_FUNCTION(equal)
-USER_OBJECT_BINARY_FUNCTION(notEqual)
+extense::Bool extense::UserObject::Data::equal(const Value &) const {
+  extense::detail::throwOperatorOverloadError();
+}
+extense::Bool extense::UserObject::Data::notEqual(const Value &) const {
+  extense::detail::throwOperatorOverloadError();
+}
 
 #undef USER_OBJECT_UNARY_FUNCTION
 #undef USER_OBJECT_BINARY_FUNCTION
@@ -301,8 +305,12 @@ USER_OBJECT_BINARY_DELEGATOR(lessEquals)
 USER_OBJECT_BINARY_DELEGATOR(greaterThan)
 USER_OBJECT_BINARY_DELEGATOR(greaterEquals)
 
-USER_OBJECT_BINARY_DELEGATOR(equal)
-USER_OBJECT_BINARY_DELEGATOR(notEqual)
+extense::Bool extense::UserObject::equal(const Value &v) const {
+  return data_->equal(v);
+}
+extense::Bool extense::UserObject::notEqual(const Value &v) const {
+  return data_->notEqual(v);
+}
 
 #undef USER_OBJECT_UNARY_DELEGATOR
 #undef USER_OBJECT_BINARY_DELEGATOR

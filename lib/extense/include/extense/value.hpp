@@ -166,9 +166,7 @@ class Value {
   template <typename ValueType>
   friend struct detail::InternalData;
 
-  template <typename T>
-  inline static constexpr bool isSetDirectly =
-      std::is_same_v<T, Reference> || std::is_same_v<T, FlatValue>;
+  void constructFromFlatValue(FlatValue fv);
 
 public:
   // Initializes with None
@@ -176,8 +174,10 @@ public:
 
   template <typename T>
   explicit Value(T v) {
-    if constexpr (isSetDirectly<T>)
+    if constexpr (std::is_same_v<T, Reference>)
       data = v;
+    else if constexpr (std::is_same_v<T, FlatValue>)
+      constructFromFlatValue(std::move(v));
     else if constexpr (isReferencedOnCopy<T>)
       data = makeReference(std::move(v));
     else
@@ -186,10 +186,7 @@ public:
 
   template <typename T>
   Value &operator=(T v) {
-    if constexpr (isSetDirectly<T>)
-      data = std::move(v);
-    else
-      *this = Value(std::move(v));
+    *this = Value(std::move(v));
     return *this;
   }
 
@@ -455,17 +452,31 @@ FlatValueTo constrain(FlatValueFrom from) {
 }
 
 namespace ops {
+namespace detail {
+template <typename V>
+Bool equalHelper(const V &a, const V &b) {
+  if constexpr (V::template supportsType<Int> &&
+                V::template supportsType<Float>) {
+    // We want a Float and Int with the same values (e.g. 1.0 and 1) to compare
+    // equal. A variant's default operator== will not do this, and so this
+    // special case is handled manually.
+    if ((a.template is<Float>() && b.template is<Int>()) ||
+        (a.template is<Int>() && b.template is<Float>()))
+      return as<Float>(a) == as<Float>(b);
+  }
+
+  if constexpr (V::template supportsType<UserObject>) {
+    if (a.template is<UserObject>()) return get<UserObject>(a).equal(Value{b});
+  }
+
+  return Bool{a.internalVariant() == b.internalVariant()};
+}
+} // namespace detail
+
 template <typename... ValueTypes>
 Bool equal(const BasicFlatValue<ValueTypes...> &a,
            const BasicFlatValue<ValueTypes...> &b) {
-  // We want a Float and Int with the same values (e.g. 1.0 and 1) to compare
-  // equal. A variant's default operator== will not do this, and so this special
-  // case is handled manually.
-  if ((a.template is<Float>() && b.template is<Int>()) ||
-      (a.template is<Int>() && b.template is<Float>()))
-    return as<Float>(a) == as<Float>(b);
-
-  return Bool{a.internalVariant() == b.internalVariant()};
+  return detail::equalHelper(a, b);
 }
 
 template <typename TValue, typename... ValueTypes>

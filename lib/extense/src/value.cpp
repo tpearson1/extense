@@ -33,6 +33,10 @@ const char *extense::InvalidConversion::what() const noexcept {
   return os.str().c_str();
 }
 
+void extense::Value::constructFromFlatValue(FlatValue fv) {
+  visit([this](auto &v) { *this = Value{v}; }, fv);
+}
+
 std::string extense::Value::typeAsString(bool displayReference) const {
   std::string result;
   if (displayReference && is<Reference>()) result = "Reference to ";

@@ -187,9 +187,9 @@ List add(List a, const List &b);
 List &addEquals(List &a, const List &b);
 
 // +x
-Value add(const Value &a);
-inline Int add(Int a) { return a; }
-inline Float add(Float a) { return a; }
+Value unaryPlus(const Value &a);
+inline Int unaryPlus(Int a) { return a; }
+inline Float unaryPlus(Float a) { return a; }
 
 // - -=
 Value sub(const Value &a, const Value &b);
@@ -208,9 +208,9 @@ inline Float &subEquals(Float &a, Float b) {
 }
 
 // Unary negation (-x)
-Value sub(const Value &a);
-inline Int sub(Int a) { return Int{-a.value}; }
-inline Float sub(Float a) { return Float{-a.value}; }
+Value unaryMinus(const Value &a);
+inline Int unaryMinus(Int a) { return Int{-a.value}; }
+inline Float unaryMinus(Float a) { return Float{-a.value}; }
 
 // * *=
 Value mul(const Value &a, const Value &b);
@@ -462,7 +462,7 @@ Bool equal(const Map &a, const Map &b);
 Bool equal(const List &a, const List &b);
 inline Bool equal(const Scope &, const Scope &) { return Bool::f; }
 inline Bool equal(const Label &, const Label &) { return Bool::f; }
-inline Bool equal(const UserObject &, const UserObject &) { return Bool::f; }
+Bool equal(const UserObject &, const UserObject &);
 Bool equal(const Proxy &a, const Proxy &b);
 
 template <typename... ValueTypes>
@@ -479,14 +479,16 @@ inline Bool notEqual(const VT1 &a, const VT2 &b) {
 
 // Map overload operations.
 // The following operations cannot be overloaded:
-//   ':', '::', ';', ';;', '!', 'unary /'
+//   ':', '::', ';', ';;', '!', 'unary /', '==', '!='
+// The equality operators cannot be overloaded because it could create a
+// security concern when a Map is used as a Map and not as a class.
 Value add(Map &a, const Value &b);
 Value addEquals(Map &a, const Value &b);
-Value add(Map &a);
+Value unaryPlus(Map &a);
 
 Value sub(Map &a, const Value &b);
 Value subEquals(Map &a, const Value &b);
-Value sub(Map &a);
+Value unaryMinus(Map &a);
 
 Value mul(Map &a, const Value &b);
 Value mulEquals(Map &a, const Value &b);
@@ -530,9 +532,6 @@ Value lessEquals(Map &a, const Value &b);
 Value greaterThan(Map &a, const Value &b);
 Value greaterEquals(Map &a, const Value &b);
 
-Value equal(Map &a, const Value &b);
-Value notEqual(Map &a, const Value &b);
-
 // UserObject overload operations
 // The following operations cannot be overloaded:
 //   '::', ';', ';;', '!', 'unary /'
@@ -541,11 +540,11 @@ Value &mutableIndex(UserObject &a, const Value &b);
 
 Value add(UserObject &a, const Value &b);
 Value addEquals(UserObject &a, const Value &b);
-Value add(UserObject &a);
+Value unaryPlus(UserObject &a);
 
 Value sub(UserObject &a, const Value &b);
 Value subEquals(UserObject &a, const Value &b);
-Value sub(UserObject &a);
+Value unaryMinus(UserObject &a);
 
 Value mul(UserObject &a, const Value &b);
 Value mulEquals(UserObject &a, const Value &b);
@@ -589,8 +588,8 @@ Value lessEquals(UserObject &a, const Value &b);
 Value greaterThan(UserObject &a, const Value &b);
 Value greaterEquals(UserObject &a, const Value &b);
 
-Value equal(UserObject &a, const Value &b);
-Value notEqual(UserObject &a, const Value &b);
+Bool equal(const UserObject &a, const Value &b);
+Bool notEqual(const UserObject &a, const Value &b);
 } // namespace ops
 
 template <typename VT, detail::enableValidOpArgs<VT> * = nullptr>
@@ -616,7 +615,7 @@ auto operator+=(VT1 &a, const VT2 &b) {
 
 template <typename VT, detail::enableValidOpArgs<VT> * = nullptr>
 auto operator+(const VT &v) {
-  return extense::ops::add(v);
+  return extense::ops::unaryPlus(v);
 }
 
 template <typename VT1, typename VT2,
@@ -632,7 +631,7 @@ auto operator-=(VT1 &a, const VT2 &b) {
 
 template <typename VT, detail::enableValidOpArgs<VT> * = nullptr>
 auto operator-(const VT &v) {
-  return extense::ops::sub(v);
+  return extense::ops::unaryMinus(v);
 }
 
 template <typename VT1, typename VT2,
