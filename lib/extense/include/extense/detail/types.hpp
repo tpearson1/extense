@@ -114,12 +114,32 @@ inline constexpr std::string_view
 
 struct Int : detail::ValueTypeBase<Int, std::int64_t> {
   using Base::Base;
-  explicit Int(std::int32_t v) : Base(static_cast<ValueType>(v)) {}
+
+  template <typename T>
+  static inline constexpr bool canRepresent = std::is_integral_v<T>;
+
+  template <typename T, std::enable_if_t<canRepresent<T>> * = nullptr>
+  explicit Int(T v) : Base(static_cast<ValueType>(v)) {}
+
+  template <typename T>
+  std::enable_if_t<canRepresent<T>, T> to() const {
+    return static_cast<T>(value);
+  }
 };
 
 struct Float : detail::ValueTypeBase<Float, double> {
   using Base::Base;
-  explicit Float(float v) : Base(static_cast<ValueType>(v)) {}
+
+  template <typename T>
+  static inline constexpr bool canRepresent = std::is_floating_point_v<T>;
+
+  template <typename T, std::enable_if_t<canRepresent<T>> * = nullptr>
+  explicit Float(T v) : Base(static_cast<ValueType>(v)) {}
+
+  template <typename T>
+  std::enable_if_t<canRepresent<T>, T> to() const {
+    return static_cast<T>(value);
+  }
 };
 
 struct Bool : detail::ValueTypeBase<Bool, bool> {
@@ -128,7 +148,15 @@ struct Bool : detail::ValueTypeBase<Bool, bool> {
   static const Bool t;
   static const Bool f;
 
+  template <typename T>
+  static inline constexpr bool canRepresent = std::is_same_v<T, bool>;
+
   operator bool() const noexcept { return value; }
+
+  template <typename T>
+  std::enable_if_t<canRepresent<T>, T> to() const {
+    return value;
+  }
 };
 
 inline const Bool Bool::t{true};
@@ -138,7 +166,15 @@ struct __attribute__((packed)) Char {
   using ValueType = char;
   ValueType value;
 
+  template <typename T>
+  static inline constexpr bool canRepresent = std::is_same_v<T, char>;
+
   explicit Char(ValueType v) : value(std::move(v)) {}
+
+  template <typename T>
+  std::enable_if_t<canRepresent<T>, T> to() const {
+    return value;
+  }
 
   template <typename T,
             std::enable_if_t<implicitlyConvertible<T, Char>> * = nullptr>
@@ -159,6 +195,24 @@ static_assert(sizeof(Char) == sizeof(char));
 class String : public detail::ValueTypeBase<String, std::string> {
 public:
   using Base::Base;
+
+  template <typename T>
+  static inline constexpr bool canRepresent =
+      std::is_same_v<T, std::string> || std::is_same_v<T, std::string_view> ||
+      std::is_same_v<T, const char *>;
+
+  explicit String(std::string_view v) : Base(static_cast<ValueType>(v)) {}
+  explicit String(const char *v) : Base(static_cast<ValueType>(v)) {}
+
+  template <typename T>
+  std::enable_if_t<canRepresent<T>, T> to() const {
+    if constexpr (std::is_same_v<T, std::string_view>)
+      return std::string_view(value);
+    else if constexpr (std::is_same_v<T, const char *>)
+      return value.c_str();
+    else // std::string
+      return value;
+  }
 
   Int size() const { return Int{static_cast<Int::ValueType>(value.size())}; }
 
@@ -307,15 +361,17 @@ public:
 class ExprList;
 
 class Label {
-  int index;
+  int index_;
   std::string name_;
 
-  Label(int index_, std::string name) : index(index_), name_(std::move(name)) {}
+  Label(int index, std::string name) : index_(index), name_(std::move(name)) {}
   friend class ExprList;
 
 public:
   const std::string &name() const { return name_; }
   void rename(std::string newName) { name_ = std::move(newName); }
+
+  int index() const { return index_; }
 };
 
 class Scope {

@@ -31,6 +31,7 @@ SOFTWARE.
 
 #include <config.hpp>
 #include <extense/parser.hpp>
+#include <extense/representation.hpp>
 
 // static void dumpTokens(const std::vector<extense::Token> &tokens) {
 //   for (const auto &token : tokens) {
@@ -226,24 +227,9 @@ int main(int argc, const char *argv[]) {
     }
 
     Proxy index(const Value &index) const override {
-      if (index == Value{"result"_es}) {
-        class ResultProxy : public Proxy::Data {
-          const std::vector<std::string> &result_;
-
-        public:
-          ResultProxy(const std::vector<std::string> &result)
-              : result_(result) {}
-
-          Value get() const override {
-            auto list = List{};
-            for (const auto &s : result_)
-              list.value.push_back(Value{String{s}});
-            return Value{list};
-          }
-        };
-
-        return Proxy::make<ResultProxy>(result);
-      }
+      if (index == Value{"result"_es})
+        return Proxy::make<FieldProxy<std::vector<std::string>, true, false>>(
+            result);
 
       throw InvalidBinaryOperation{"UserObject", index.typeAsString(),
                                    "Key not present"};
