@@ -535,6 +535,7 @@ Value greaterEquals(Map &a, const Value &b);
 // The following operations cannot be overloaded:
 //   '::', ';', ';;', '!', 'unary /'
 Proxy index(UserObject &a, const Value &b);
+Proxy index(const UserObject &a, const Value &b);
 
 Value add(UserObject &a, const Value &b);
 Value addEquals(UserObject &a, const Value &b);

@@ -423,6 +423,7 @@ Value greaterEquals(Map &a, const Value &b) {
 
 // UserObject operations
 Proxy index(UserObject &a, const Value &b) { return a[b]; }
+Proxy index(const UserObject &a, const Value &b) { return a[b]; }
 
 Value add(UserObject &a, const Value &b) { return a.add(b); }
 Value addEquals(UserObject &a, const Value &b) { return a.addEquals(b); }

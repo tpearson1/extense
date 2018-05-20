@@ -389,7 +389,10 @@ public:
 
     virtual void print(std::ostream &os) const { os << "<UserObject::Data>"; }
 
-    virtual Proxy index(const Value &) { detail::throwOperatorOverloadError(); }
+    virtual Proxy index(const Value &v) {
+      // By default try and use the const version
+      return static_cast<const Data *>(this)->index(v);
+    }
     virtual Proxy index(const Value &) const {
       detail::throwOperatorOverloadError();
     }
@@ -483,7 +486,9 @@ public:
     return (*this)[Value{i}];
   }
 
-  Proxy operator[](const Value &v) const { return data_->index(v); }
+  Proxy operator[](const Value &v) const {
+    return static_cast<const Data &>(*data_).index(v);
+  }
   template <typename VT>
   Proxy operator[](const VT &i) const {
     return (*this)[Value{i}];
@@ -495,7 +500,9 @@ public:
     return index(Value{i});
   }
 
-  Proxy index(const Value &v) const { return data_->index(v); }
+  Proxy index(const Value &v) const {
+    return static_cast<const Data &>(*data_).index(v);
+  }
   template <typename VT>
   Proxy index(const VT &i) const {
     return index(Value{i});
