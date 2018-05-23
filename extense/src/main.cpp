@@ -62,6 +62,120 @@ static void injectFunction(Scope &scope, std::string name, Func f) {
       Value{Scope{[=](auto &, auto &v) { return f(v); }}};
 }
 
+struct Vector2 {
+  int x = 0, y = 0;
+
+  Vector2() = default;
+  Vector2(int x_, int y_) : x(x_), y(y_) {}
+
+  Vector2 operator+(const Vector2 &rhs) const {
+    return Vector2{x + rhs.x, y + rhs.y};
+  }
+
+  Vector2 &operator+=(const Vector2 &rhs) {
+    x += rhs.x;
+    y += rhs.y;
+    return *this;
+  }
+
+  bool operator==(const Vector2 &rhs) const { return x == rhs.x && y == rhs.y; }
+  bool operator!=(const Vector2 &rhs) const { return !(*this == rhs); }
+};
+
+inline std::ostream &operator<<(std::ostream &os, const Vector2 &v) {
+  os << '(' << v.x << ',' << v.y << ')';
+  return os;
+}
+
+class Vector2Exposer : public UserObject::Data {
+  Vector2 c;
+
+  static const Vector2Exposer *getFromValue(const Value &v) {
+    if (!v.is<UserObject>()) return nullptr;
+    const auto &uo = get<UserObject>(v);
+    return dynamic_cast<const Vector2Exposer *>(&uo.data());
+  }
+
+public:
+  explicit Vector2Exposer(Vector2 v) : c(std::move(v)) {}
+
+  explicit Vector2Exposer(const Value &v) {
+    if (!v.is<List>()) throw ArgumentError{"Expected List for argument"};
+    auto args = get<List>(v);
+    if (args.value.size() == 0) return;
+    if (args.value.size() != 2) {
+      throw ArgumentError{
+          "Expected either 0 or 2 elements in the argument List"};
+    }
+
+    c.x = fromValue<int>(args[0_ei]);
+    c.y = fromValue<int>(args[1_ei]);
+  }
+
+  std::unique_ptr<UserObject::Data> clone() const override {
+    return std::make_unique<Vector2Exposer>(*this);
+  }
+
+  void print(std::ostream &os) const override { os << c; }
+
+  Proxy index(const Value &index) const override {
+    if (index == Value{"x"_es}) return Proxy::make<RepReadProxy<int>>(c.x);
+    if (index == Value{"y"_es}) return Proxy::make<RepReadProxy<int>>(c.y);
+
+    throw InvalidBinaryOperation{"Vector2 (UserObject)", index.typeAsString(),
+                                 "Key not present"};
+  }
+
+  Proxy index(const Value &index) override {
+    if (index == Value{"x"_es}) return Proxy::make<RepWriteProxy<int>>(c.x);
+    if (index == Value{"y"_es}) return Proxy::make<RepWriteProxy<int>>(c.y);
+
+    throw InvalidBinaryOperation{"Vector2 (UserObject)", index.typeAsString(),
+                                 "Key not present"};
+  }
+
+  Value add(const Value &v) override {
+    const auto *exposer = getFromValue(v);
+    if (!exposer) {
+      throw InvalidBinaryOperation{
+          "Vector2 (UserObject)", v.typeAsString(),
+          "Cannot add a type other than Vector2 to a Vector2"};
+    }
+
+    return Value{UserObject::make<Vector2Exposer>(c + exposer->c)};
+  }
+
+  Value addEquals(const Value &v) override {
+    const auto *exposer = getFromValue(v);
+    if (!exposer) {
+      throw InvalidBinaryOperation{
+          "Vector2 (UserObject)", v.typeAsString(),
+          "Cannot add a type other than Vector2 to a Vector2"};
+    }
+
+    c += exposer->c;
+    return noneValue;
+  }
+
+  Bool equal(const Value &v) const override {
+    const auto *exposer = getFromValue(v);
+    if (!exposer) return Bool::f;
+    return Bool{c == exposer->c};
+  }
+
+  Bool notEqual(const Value &v) const override {
+    const auto *exposer = getFromValue(v);
+    if (!exposer) return Bool::f;
+    return Bool{c != exposer->c};
+  }
+};
+
+void exposeVector2(Scope &global) {
+  injectFunction(global, "Vector2", [](const Value &v) -> Value {
+    return Value{UserObject::make<Vector2Exposer>(v)};
+  });
+}
+
 static String lippincott() {
   try {
     throw;
@@ -270,6 +384,8 @@ int main(int argc, const char *argv[]) {
   injectFunction(global, "CppTypeBuilder", [](const Value &v) -> Value {
     return Value{UserObject::make<TypeBuilder>()};
   });
+
+  exposeVector2(global);
 
   auto evaluated = constEval(global, *expr);
   auto &s = get<Scope>(evaluated);
