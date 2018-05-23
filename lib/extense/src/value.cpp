@@ -26,11 +26,11 @@ SOFTWARE.
 
 #include <extense/value.hpp>
 
-const char *extense::InvalidConversion::what() const noexcept {
+std::string extense::InvalidConversion::buildError() const {
   std::ostringstream os;
   os << "Invalid " << (implicit ? "implicit" : "explicit")
-     << " conversion from '" + fromT + "' ntto '" + toT + '\'';
-  return os.str().c_str();
+     << " conversion from '" + fromT + "' to '" + toT + '\'';
+  return os.str();
 }
 
 void extense::Value::constructFromFlatValue(FlatValue fv) {

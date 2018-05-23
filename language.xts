@@ -143,11 +143,11 @@ print `a
 print `\n # Newline character
 
 pigLatin = [
-  input = $:0
-  input:0.anyOf (`a,`e,`i,`o,`u) ? [
-    pop (outer, input + 'ay')
+  firstChar = $:0
+  firstChar.anyOf (`a,`e,`i,`o,`u) ? [
+    pop (outer, firstChar + 'ay')
   ] ? [
-    pop (outer, input:(1,) + input:0 + 'ay')
+    pop (outer, $:(1,) + firstChar + 'ay')
   ]
   @outer
 ]

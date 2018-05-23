@@ -41,13 +41,19 @@ namespace extense {
  * Exception thrown when a conversion (either implicit or explicit) couldn't
  * be performed.
  */
-class InvalidConversion : public std::exception {
+class InvalidConversion : public Exception {
   std::string fromT, toT;
   bool implicit;
 
+  std::string buildError() const;
+
 public:
   InvalidConversion(std::string from, std::string to, bool implicitly)
-      : fromT(std::move(from)), toT(std::move(to)), implicit(implicitly) {}
+      : Exception(""), fromT(std::move(from)), toT(std::move(to)),
+        implicit(implicitly) {
+    setError(buildError());
+    setType("InvalidConversion");
+  }
 
   template <typename V1, typename V2>
   static InvalidConversion Create(bool implicitly) {
@@ -59,8 +65,6 @@ public:
   std::string to() const { return toT; }
 
   bool attemptedImplicit() const { return implicit; }
-
-  virtual const char *what() const noexcept override;
 };
 
 template <typename From, typename To>

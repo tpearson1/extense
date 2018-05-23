@@ -67,7 +67,9 @@ static String lippincott() {
     throw;
   } catch (const ExceptionWrapper &e) {
     return String{e.location()} + ": "_es + String{e.data().error()};
-  } catch (const Exception &e) { return String{e.error()}; } catch (...) {
+  } catch (const Exception &e) {
+    return String{e.error()};
+  } catch (const std::exception &e) { return String{e.what()}; } catch (...) {
     return "Unknown exception"_es;
   }
 }
@@ -160,7 +162,11 @@ static void injectAll(Scope &global) {
     auto &toSet = args[0_ei];
     auto &assignValue = args[1_ei];
 
-    if (!toSet.is<Reference>()) toSet = assignValue;
+    if (!toSet.is<Reference>()) {
+      toSet = assignValue;
+      return noneValue;
+    }
+
     *get<Reference>(toSet) = assignValue.flatten();
     return noneValue;
   });
@@ -227,9 +233,24 @@ int main(int argc, const char *argv[]) {
     }
 
     Proxy index(const Value &index) const override {
-      if (index == Value{"result"_es})
-        return Proxy::make<FieldProxy<std::vector<std::string>, true, false>>(
-            result);
+      if (index == Value{"result"_es}) {
+        class ResultProxy : public Proxy::Data {
+          const std::vector<std::string> &result_;
+
+        public:
+          ResultProxy(const std::vector<std::string> &result)
+              : result_(result) {}
+
+          Value get() const override {
+            auto list = List{};
+            for (const auto &s : result_)
+              list.value.push_back(Value{String{s}});
+            return Value{list};
+          }
+        };
+
+        return Proxy::make<ResultProxy>(result);
+      }
 
       throw InvalidBinaryOperation{"UserObject", index.typeAsString(),
                                    "Key not present"};
